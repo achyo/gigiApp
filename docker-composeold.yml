@@ -1,0 +1,42 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: proyecto_gigi
+      POSTGRES_USER: gigi_user
+      POSTGRES_PASSWORD: gigi_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  server:
+    build: ./server
+    depends_on: [postgres, redis]
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://gigi_user:gigi_password@postgres:5432/proyecto_gigi
+      REDIS_URL: redis://redis:6379
+    env_file: ./server/.env
+    volumes:
+      - ./server/src:/app/src
+    command: npm run dev
+
+  client:
+    build: ./client
+    ports:
+      - "5173:5173"
+    depends_on: [server]
+    volumes:
+      - ./client/src:/app/src
+    command: npm run dev -- --host
+
+volumes:
+  postgres_data:

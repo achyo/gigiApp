@@ -1,0 +1,206 @@
+import React from 'react';
+
+/* ── Button ──────────────────────────────────────────────────────────────── */
+export function Button({ variant = 'primary', size = 'md', className = '', children, ...props }) {
+  const base = 'inline-flex items-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap';
+  const sizes = { sm: 'px-2.5 py-1 text-xs', md: 'px-3.5 py-2 text-sm', lg: 'px-5 py-3 text-base' };
+  const variants = {
+    primary: 'bg-[var(--ac)] text-white border-[var(--ac)] hover:brightness-110',
+    secondary: 'bg-[var(--sf)] text-[var(--tx)] border-[var(--bd)] hover:bg-[var(--bg2)]',
+    ghost: 'bg-transparent text-[var(--tx2)] border-transparent hover:bg-[var(--bg2)]',
+    danger: 'bg-[var(--erb)] text-[var(--er)] border-[var(--erbd)] hover:brightness-95',
+  };
+  return (
+    <button className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...props}>
+      {children}
+    </button>
+  );
+}
+
+/* ── Badge ───────────────────────────────────────────────────────────────── */
+export function Badge({ variant = 'default', children, className = '' }) {
+  const variants = {
+    default: 'bg-[var(--bg3)] text-[var(--tx2)]',
+    blue:    'bg-[var(--acb)] text-[var(--act)]',
+    green:   'bg-[var(--okb)] text-[var(--ok)]',
+    red:     'bg-[var(--erb)] text-[var(--er)]',
+    amber:   'bg-[var(--wab)] text-[var(--wa)]',
+    gold:    'bg-[var(--gob)] text-[var(--go)]',
+  };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${variants[variant]} ${className}`}>
+      {children}
+    </span>
+  );
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+export function Card({ children, className = '', ...props }) {
+  return (
+    <div className={`bg-[var(--sf)] border border-[var(--bd)] rounded-[var(--rl)] p-4 ${className}`} {...props}>
+      {children}
+    </div>
+  );
+}
+
+/* ── Input ───────────────────────────────────────────────────────────────── */
+export function Input({ label, error, className = '', ...props }) {
+  return (
+    <div className="flex flex-col gap-1">
+      {label && <label className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">{label}</label>}
+      <input
+        className={`w-full px-3 py-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)] focus:bg-[var(--sf)] transition-colors ${className}`}
+        {...props}
+      />
+      {error && <span className="text-xs text-[var(--er)]">{error}</span>}
+    </div>
+  );
+}
+
+/* ── Select ──────────────────────────────────────────────────────────────── */
+export function Select({ label, className = '', children, ...props }) {
+  return (
+    <div className="flex flex-col gap-1">
+      {label && <label className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">{label}</label>}
+      <select
+        className={`w-full px-3 py-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)] appearance-none cursor-pointer ${className}`}
+        {...props}
+      >
+        {children}
+      </select>
+    </div>
+  );
+}
+
+/* ── Textarea ────────────────────────────────────────────────────────────── */
+export function Textarea({ label, className = '', ...props }) {
+  return (
+    <div className="flex flex-col gap-1">
+      {label && <label className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">{label}</label>}
+      <textarea
+        className={`w-full px-3 py-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)] focus:bg-[var(--sf)] transition-colors resize-y ${className}`}
+        {...props}
+      />
+    </div>
+  );
+}
+
+/* ── Modal ───────────────────────────────────────────────────────────────── */
+export function Modal({ open, onClose, title, children, maxWidth = 640, className = '' }) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 pt-[4vh] overflow-y-auto"
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        className={`bg-[var(--sf)] rounded-[var(--rl)] p-6 w-full scale-in ${className}`}
+        style={{ maxWidth }}
+      >
+        {title && (
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-black text-base">{title}</h2>
+            <button onClick={onClose} className="text-[var(--tx3)] hover:text-[var(--tx)] text-xl leading-none">&times;</button>
+          </div>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ── Confirm ─────────────────────────────────────────────────────────────── */
+export function Confirm({ open, message, onConfirm, onCancel }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-[var(--sf)] rounded-[var(--rl)] p-6 max-w-xs w-full text-center scale-in">
+        <div className="text-4xl mb-3">🗑</div>
+        <p className="font-bold mb-1">¿Eliminar?</p>
+        <p className="text-sm text-[var(--tx2)] mb-5">{message}</p>
+        <div className="flex gap-2 justify-center">
+          <Button variant="secondary" onClick={onCancel}>Cancelar</Button>
+          <Button variant="danger" onClick={onConfirm}>Eliminar</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── SearchBar ───────────────────────────────────────────────────────────── */
+export function SearchBar({ value, onChange, placeholder = 'Buscar...', extra }) {
+  return (
+    <div className="flex gap-2 items-center mb-3 flex-wrap">
+      <div className="relative flex-1 min-w-[160px]">
+        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-[var(--tx3)]">🔍</span>
+        <input
+          value={value} onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full pl-8 pr-3 py-1.5 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)]"
+        />
+      </div>
+      {extra}
+    </div>
+  );
+}
+
+/* ── TabBar ──────────────────────────────────────────────────────────────── */
+export function TabBar({ tabs, active, onChange, actions }) {
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap pb-3 mb-4 border-b border-[var(--bd)]">
+      {tabs.map(t => (
+        <button
+          key={t.id}
+          onClick={() => onChange(t.id)}
+          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--r)] text-xs font-bold border transition-all
+            ${active === t.id
+              ? 'bg-[var(--ac)] text-white border-[var(--ac)]'
+              : 'bg-[var(--sf)] text-[var(--tx2)] border-[var(--bd)] hover:bg-[var(--bg2)]'
+            }`}
+        >
+          {t.icon} {t.label}
+        </button>
+      ))}
+      {actions && <div className="ml-auto flex gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/* ── Spinner ─────────────────────────────────────────────────────────────── */
+export function Spinner({ size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className="animate-spin text-[var(--ac)]">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity=".25" />
+      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/* ── SubStatus badge ─────────────────────────────────────────────────────── */
+export function SubBadge({ sub }) {
+  if (!sub) return <Badge variant="default">Sin suscripción</Badge>;
+  const now  = new Date();
+  const exp  = new Date(sub.expires);
+  const days = (exp - now) / 864e5;
+  if (sub.status === 'trial')           return <Badge variant="blue">Prueba 15d</Badge>;
+  if (days > 0  && days <= 15)          return <Badge variant="amber">Vence pronto</Badge>;
+  if (days > 0)                         return <Badge variant="green">Activa</Badge>;
+  if (days > -15)                       return <Badge variant="amber">Cortesía 15d</Badge>;
+  return <Badge variant="red">Caducada</Badge>;
+}
+
+/* ── Divider ─────────────────────────────────────────────────────────────── */
+export function Divider() {
+  return <hr className="border-[var(--bd)] my-3" />;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+export function Empty({ icon = '📭', title, subtitle }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center gap-2">
+      <span className="text-4xl">{icon}</span>
+      {title && <p className="font-bold text-[var(--tx2)]">{title}</p>}
+      {subtitle && <p className="text-sm text-[var(--tx3)]">{subtitle}</p>}
+    </div>
+  );
+}

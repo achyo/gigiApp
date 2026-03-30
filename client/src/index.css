@@ -1,0 +1,58 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* ── Google Fonts fallback ───────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@400;700;900&display=swap');
+
+/* ── Palette: default ───────────────────────────────────────────────────── */
+:root {
+  --bg:  #F5F3EF; --bg2: #ECEAE4; --bg3: #D8D5CD;
+  --sf:  #ffffff; --bd:  #C8C4BB;
+  --tx:  #12100E; --tx2: #4A4640; --tx3: #7A7570;
+  --ac:  #1A5FD4; --acb: #EAF0FC; --act: #0D3D8A;
+  --ok:  #1A7A3C; --okb: #E6F4EC; --okbd:#A8D5B5;
+  --er:  #C0392B; --erb: #FDECEA; --erbd:#e06050;
+  --wa:  #B05000; --wab: #FEF3E2;
+  --go:  #8A6000; --gob: #FDF4DC;
+  --r:   8px;     --rl:  14px;
+  --fs:  16px;
+}
+
+/* ── Palette overrides (set via body class) ─────────────────────────────── */
+body.p-bw { --bg:#000;--bg2:#111;--bg3:#222;--sf:#0d0d0d;--bd:#333;--tx:#fff;--tx2:#ccc;--tx3:#888;--ac:#4D9FFF;--acb:#0A2040;--act:#90C8FF; }
+body.p-wb { --bg:#fff;--bg2:#f0f0f0;--bg3:#ddd;--sf:#fff;--bd:#aaa;--tx:#000;--tx2:#333;--tx3:#666;--ac:#0044BB;--acb:#e8f0ff;--act:#002888; }
+body.p-de { --bg:#fff;--bg2:#f2f2f2;--bg3:#e5e5e5;--sf:#fff;--bd:#999;--tx:#000;--tx2:#333;--tx3:#666;--ac:#0077BB;--acb:#e6f3fa;--act:#004477; }
+body.p-tr { --bg:#fff;--bg2:#f2f2f2;--bg3:#e5e5e5;--sf:#fff;--bd:#999;--tx:#000;--tx2:#333;--tx3:#666;--ac:#CC3300;--acb:#ffe8e0;--act:#881100; }
+body.p-ye { --bg:#FFFF99;--bg2:#ffffaa;--bg3:#ffff66;--sf:#ffffcc;--bd:#888800;--tx:#000;--tx2:#222;--tx3:#555;--ac:#003399;--acb:#cce0ff;--act:#001166; }
+
+/* ── Base ────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: var(--fs); scroll-behavior: smooth; }
+body {
+  font-family: 'Lexend Deca', 'Segoe UI', Arial, sans-serif;
+  background: var(--bg); color: var(--tx);
+  min-height: 100vh; transition: font-size .2s;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 3px; }
+
+/* ── Focus ring ──────────────────────────────────────────────────────────── */
+:focus-visible { outline: 2.5px solid var(--ac); outline-offset: 2px; border-radius: 4px; }
+
+/* ── Utility: card ───────────────────────────────────────────────────────── */
+.card {
+  background: var(--sf); border: 1.5px solid var(--bd);
+  border-radius: var(--rl); padding: 16px 18px;
+}
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
+@keyframes fadeIn  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
+@keyframes shake  { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+.animate-in  { animation: fadeIn  .22s ease forwards; }
+.scale-in    { animation: scaleIn .2s  ease forwards; }
+.shake       { animation: shake .3s ease; }

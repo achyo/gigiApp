@@ -1,0 +1,260 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  specialist
+  client
+}
+
+enum ApprovalStatus {
+  private
+  pending
+  approved
+  rejected
+}
+
+enum DifficultyLevel {
+  model_3d
+  photo
+  drawing
+}
+
+enum MediaType {
+  model_3d_url
+  image_upload
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         Role
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt      @map("updated_at")
+
+  specialistProfile Specialist?
+  clientProfile     Client?
+  preferences       UserPreference?
+  ownedCategories   Category[]
+  ownedObjects      Object[]
+  refreshTokens     RefreshToken[]
+
+  @@map("users")
+}
+
+model Specialist {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  bio       String?
+  subscription Json?    // { plan, billing, status, expires }
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  user       User       @relation(fields:[userId], references:[id], onDelete:Cascade)
+  clients    Client[]
+  activities Activity[]
+  groups     Group[]
+
+  @@map("specialists")
+}
+
+model Client {
+  id             String    @id @default(uuid())
+  userId         String    @unique @map("user_id")
+  specialistId   String    @map("specialist_id")
+  childName      String    @map("child_name")
+  childBirthDate DateTime? @map("child_birth_date") @db.Date
+  diagnosisNotes String?   @map("diagnosis_notes")  @db.Text
+  active         Boolean   @default(true)
+  subscription   Json?     // { plan, billing, status, expires }
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt      @map("updated_at")
+
+  user        User        @relation(fields:[userId],      references:[id], onDelete:Cascade)
+  specialist  Specialist  @relation(fields:[specialistId],references:[id])
+  assignments Assignment[]
+  groups      Group[]     @relation("ClientGroups")
+
+  @@map("clients")
+}
+
+model Group {
+  id       String @id @default(uuid())
+  name     String
+  color    String @default("#1A5FD4")
+  specId   String @map("spec_id")
+
+  specialist Specialist @relation(fields:[specId], references:[id], onDelete:Cascade)
+  clients    Client[]   @relation("ClientGroups")
+
+  @@map("groups")
+}
+
+model UserPreference {
+  id             String   @id @default(uuid())
+  userId         String   @unique @map("user_id")
+  colorProfileId String?  @map("color_profile_id")
+  ttsEnabled     Boolean  @default(true)  @map("tts_enabled")
+  textSize       Int      @default(1)     @map("text_size")
+  sequentialMode Boolean  @default(true)  @map("sequential_mode")
+  updatedAt      DateTime @updatedAt      @map("updated_at")
+
+  user         User          @relation(fields:[userId],         references:[id], onDelete:Cascade)
+  colorProfile ColorProfile? @relation(fields:[colorProfileId], references:[id], onDelete:SetNull)
+
+  @@map("user_preferences")
+}
+
+model ColorProfile {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  bgColor     String   @map("bg_color")
+  textColor   String   @map("text_color")
+  accentColor String   @map("accent_color")
+  isDefault   Boolean  @default(false)  @map("is_default")
+  createdAt   DateTime @default(now())  @map("created_at")
+
+  userPreferences UserPreference[]
+
+  @@map("color_profiles")
+}
+
+model Category {
+  id           String         @id @default(uuid())
+  name         String
+  description  String?        @db.Text
+  ownerId      String?        @map("owner_id")
+  status       ApprovalStatus @default(private)
+  rejectedNote String?        @map("rejected_note")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt      @map("updated_at")
+
+  owner   User?    @relation(fields:[ownerId], references:[id], onDelete:SetNull)
+  objects Object[]
+
+  @@unique([name, ownerId])
+  @@map("categories")
+}
+
+model Object {
+  id           String         @id @default(uuid())
+  name         String
+  em           String         @default("📦")
+  categoryId   String         @map("category_id")
+  ownerId      String?        @map("owner_id")
+  status       ApprovalStatus @default(private)
+  rejectedNote String?        @map("rejected_note")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt      @map("updated_at")
+
+  category        Category               @relation(fields:[categoryId], references:[id])
+  owner           User?                  @relation(fields:[ownerId],    references:[id], onDelete:SetNull)
+  representations ObjectRepresentation[]
+  activityObjects ActivityObject[]
+
+  @@unique([name, categoryId, ownerId])
+  @@map("objects")
+}
+
+model ObjectRepresentation {
+  id                 String          @id @default(uuid())
+  objectId           String          @map("object_id")
+  level              DifficultyLevel
+  mediaType          MediaType       @map("media_type")
+  fileUrl            String?         @map("file_url")
+  model3dUrl         String?         @map("model_3d_url")
+  altText            String?         @map("alt_text")
+  cloudinaryPublicId String?         @map("cloudinary_public_id")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt      @map("updated_at")
+
+  object Object @relation(fields:[objectId], references:[id], onDelete:Cascade)
+
+  @@unique([objectId, level])
+  @@map("object_representations")
+}
+
+model Activity {
+  id           String   @id @default(uuid())
+  title        String
+  instructions String?  @db.Text
+  specialistId String   @map("specialist_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt      @map("updated_at")
+
+  specialist      Specialist       @relation(fields:[specialistId], references:[id])
+  activityObjects ActivityObject[]
+  assignments     Assignment[]
+
+  @@map("activities")
+}
+
+model ActivityObject {
+  id              String          @id @default(uuid())
+  activityId      String          @map("activity_id")
+  objectId        String          @map("object_id")
+  activityType    String          @map("activity_type")  @default("show")
+  difficultyLevel DifficultyLevel @map("difficulty_level") @default(photo)
+  sortOrder       Int             @default(0) @map("sort_order")
+
+  activity Activity @relation(fields:[activityId], references:[id], onDelete:Cascade)
+  object   Object   @relation(fields:[objectId],   references:[id])
+  results  GameResult[]
+
+  @@map("activity_objects")
+}
+
+model Assignment {
+  id          String    @id @default(uuid())
+  activityId  String    @map("activity_id")
+  clientId    String    @map("client_id")
+  isActive    Boolean   @default(true) @map("is_active")
+  assignedAt  DateTime  @default(now()) @map("assigned_at")
+  completedAt DateTime? @map("completed_at")
+
+  activity Activity     @relation(fields:[activityId], references:[id])
+  client   Client       @relation(fields:[clientId],   references:[id])
+  results  GameResult[]
+
+  @@unique([activityId, clientId])
+  @@map("assignments")
+}
+
+model GameResult {
+  id               String   @id @default(uuid())
+  assignmentId     String   @map("assignment_id")
+  activityObjectId String   @map("activity_object_id")
+  isCorrect        Boolean  @map("is_correct")
+  timeMs           Int?     @map("time_ms")
+  attemptNumber    Int      @default(1) @map("attempt_number")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  assignment     Assignment     @relation(fields:[assignmentId],     references:[id], onDelete:Cascade)
+  activityObject ActivityObject @relation(fields:[activityObjectId], references:[id])
+
+  @@map("game_results")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  userAgent String?   @map("user_agent")
+  ipAddress String?   @map("ip_address")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+
+  @@map("refresh_tokens")
+}
