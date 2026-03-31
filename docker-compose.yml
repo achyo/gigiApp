@@ -58,11 +58,34 @@ services:
     ports:
       - "5173:5173"
     volumes:
-      - ./client/src:/app/src                    # hot-reload del código fuente
-      - client_node_modules:/app/node_modules   # ✅ AÑADIDO: ídem
+      - ./client:/app                           # bind-mount del proyecto completo (hot-reload + assets)
+      - client_node_modules:/app/node_modules   # evita que el bind mount machaque node_modules
     environment:
       - PROXY_TARGET=http://server:3000
+      - CHOKIDAR_USEPOLLING=true                # enable polling for file watchers on Windows/WSL
+      - VITE_USE_POLLING=true                   # optional: used if Vite config checks this var
     command: npm run dev -- --host
+
+    # Notes:
+    # - Rebuild the image when you change the Dockerfile or install native
+    #   dependencies (packages in package.json that require rebuild/compile):
+    #     docker-compose build client
+    #     docker-compose up -d client
+    # - For file-watch issues on Windows/WSL, enabling polling is effective.
+    #   You already set CHOKIDAR_USEPOLLING and VITE_USE_POLLING above. If
+    #   you prefer to configure Vite directly, add in client/vite.config.js:
+    #
+    #   export default defineConfig({
+    #     server: {
+    #       watch: {
+    #         usePolling: true,
+    #         interval: 1000,
+    #       },
+    #       host: true,
+    #     },
+    #   })
+    #
+    #   Lower `interval` to reduce CPU, raise it to increase reliability.
 
 volumes:
   postgres_data:       # base de datos PostgreSQL
