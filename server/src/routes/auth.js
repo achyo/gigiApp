@@ -25,6 +25,7 @@ function signRefresh(userId) {
 // POST /api/auth/login
 router.post('/login', async (req, res, next) => {
   try {
+    console.log('AUTH LOGIN REQ', { body: req.body, ip: req.ip, ua: req.headers['user-agent'] });
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS' } });
 
@@ -62,7 +63,10 @@ router.post('/login', async (req, res, next) => {
         preferences: prefs,
       },
     });
-  } catch (e) { next(e); }
+  } catch (e) {
+    console.error('AUTH LOGIN ERROR', e && e.stack ? e.stack : e, { body: req.body, ip: req.ip });
+    next(e);
+  }
 });
 
 // POST /api/auth/refresh

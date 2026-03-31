@@ -25,8 +25,16 @@ function applyZoom(id) {
 
 function applyPalette(id) {
   const p = PALETTES.find(x => x.id === id) || PALETTES[0];
-  PALETTES.forEach(x => document.body.classList.remove(x.cls));
-  if (p.cls) document.body.classList.add(p.cls);
+  // Remover todas las clases de paleta excepto la vacía
+  PALETTES.forEach(x => {
+    if (x.cls && x.cls.trim()) {
+      document.body.classList.remove(x.cls);
+    }
+  });
+  // Aplicar nueva paleta si existe
+  if (p.cls && p.cls.trim()) {
+    document.body.classList.add(p.cls);
+  }
 }
 
 const usePrefsStore = create(

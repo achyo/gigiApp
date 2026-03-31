@@ -64,11 +64,15 @@ async function main() {
   const catNames = ['Animales', 'Frutas', 'Hogar', 'Transporte'];
   const cats = {};
   for (const name of catNames) {
-    cats[name] = await prisma.category.upsert({
-      where: { name_ownerId: { name, ownerId: null } },
-      create: { name, ownerId: null, status: 'approved' },
-      update: {},
+    let cat = await prisma.category.findFirst({
+      where: { name, ownerId: null },
     });
+    if (!cat) {
+      cat = await prisma.category.create({
+        data: { name, ownerId: null, status: 'approved' },
+      });
+    }
+    cats[name] = cat;
   }
   console.log('  ✅ Categories');
 
@@ -93,11 +97,14 @@ async function main() {
 
   const objects = {};
   for (const o of objectData) {
-    const obj = await prisma.object.upsert({
-      where: { name_categoryId_ownerId: { name: o.name, categoryId: cats[o.cat].id, ownerId: null } },
-      create: { name: o.name, em: o.em, categoryId: cats[o.cat].id, ownerId: null, status: 'approved' },
-      update: {},
+    let obj = await prisma.object.findFirst({
+      where: { name: o.name, categoryId: cats[o.cat].id, ownerId: null },
     });
+    if (!obj) {
+      obj = await prisma.object.create({
+        data: { name: o.name, em: o.em, categoryId: cats[o.cat].id, ownerId: null, status: 'approved' },
+      });
+    }
     objects[o.name] = obj;
     if (o.model3d) {
       await prisma.objectRepresentation.upsert({

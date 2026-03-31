@@ -60,6 +60,8 @@ services:
     volumes:
       - ./client/src:/app/src                    # hot-reload del código fuente
       - client_node_modules:/app/node_modules   # ✅ AÑADIDO: ídem
+    environment:
+      - PROXY_TARGET=http://server:3000
     command: npm run dev -- --host
 
 volumes:
