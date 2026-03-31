@@ -46,8 +46,8 @@ services:
       REDIS_URL: redis://redis:6379
     env_file: ./server/.env
     volumes:
-      - ./server/src:/app/src                    # hot-reload del código fuente
-      - server_node_modules:/app/node_modules   # ✅ AÑADIDO: evita que el bind mount machaque node_modules del contenedor
+      - ./server/src:/gigiapp/src                # hot-reload del código fuente
+      - server_node_modules:/gigiapp/node_modules # evita que el bind mount machaque node_modules del contenedor
     command: npm run dev
 
   client:

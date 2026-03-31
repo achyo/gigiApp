@@ -53,6 +53,22 @@ body {
 @keyframes fadeIn  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes scaleIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
 @keyframes shake  { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
-.animate-in{animation:fadeIn .22s ease forwards;display:flex;flex-direction:column;height:700px;min-height:100%;}
+.animate-in{
+  animation: fadeIn .22s ease forwards;
+  display: flex;
+  flex-direction: column;
+  /* ocupar la altura disponible bajo el header (header usa h-14 -> 3.5rem) */
+  min-height: calc(100vh - 3.5rem);
+  height: auto;
+  overflow: auto; /* permite hacer scroll si el contenido excede la pantalla */
+}
 .scale-in    { animation: scaleIn .2s  ease forwards; }
 .shake       { animation: shake .3s ease; }
+
+/* Asegurar que el root y el contenedor principal ocupen toda la altura
+  para que `.animate-in` pueda usar 100vh correctamente. */
+html, body, #root, #app { height: 100%; }
+#app { min-height: 100vh; }
+
+/* Forzar min-height en casos donde un ancestro limite el alto */
+.animate-in { min-height: calc(100vh - 3.5rem) !important; height: auto !important; flex: 1; }

@@ -73,6 +73,7 @@ export default function ClientHome() {
   );
 }
 
+// dev-trigger: updated component to test hot-reload
 function ActivityCard({ assignment, onStart, done }) {
   const act  = assignment.activity;
   const objs = act?.activityObjects || [];

@@ -3,13 +3,19 @@ const router = require('express').Router();
 const { prisma } = require('../lib/prisma');
 const { authenticateJWT, authorizeRole, scopeFilter, paginateQuery, paginatedResponse } = require('../middleware/auth');
 
+const clientInclude = {
+  user: { select: { id: 1, name: 1, email: 1 } },
+  specialist: { include: { user: { select: { id: 1, name: 1, email: 1 } } } },
+  groups: { select: { id: 1, name: 1, color: 1 } },
+};
+
 router.get('/', authenticateJWT, scopeFilter('clients'), async (req, res, next) => {
   try {
     const { page, limit, skip, take } = paginateQuery(req.query);
     const search = req.query.search;
     const where = { ...req.scope, ...(search && { OR: [{ childName: { contains: search, mode: 'insensitive' } }, { user: { name: { contains: search, mode: 'insensitive' } } }] }) };
     const [data, total] = await Promise.all([
-      prisma.client.findMany({ where, skip, take, include: { user: { select: { id:1,name:1,email:1 } }, specialist: true }, orderBy: { createdAt: 'desc' } }),
+      prisma.client.findMany({ where, skip, take, include: clientInclude, orderBy: { createdAt: 'desc' } }),
       prisma.client.count({ where }),
     ]);
     res.json(paginatedResponse(data, total, page, limit));
@@ -22,26 +28,43 @@ router.post('/', authenticateJWT, authorizeRole('admin','specialist'), async (re
     const bcrypt = require('bcrypt');
     const hash = await bcrypt.hash(password || 'Client1234!', 12);
     const specId = specialist_id || req.user.specialist_id;
+    if (!specId) {
+      return res.status(400).json({ success: false, error: { code: 'SPECIALIST_REQUIRED' } });
+    }
     const client = await prisma.client.create({
       data: {
         childName: child_name, childBirthDate: child_birth_date ? new Date(child_birth_date) : null,
-        diagnosisNotes: diagnosis_notes, specialistId: specId,
+        diagnosisNotes: diagnosis_notes,
+        specialist: { connect: { id: specId } },
         user: { create: { name: name || child_name, email, passwordHash: hash, role: 'client',
           preferences: { create: { ttsEnabled: true, textSize: 1 } },
         }},
       },
-      include: { user: { select: { id:1,name:1,email:1 } } },
+      include: clientInclude,
     });
     res.status(201).json({ success: true, data: client });
   } catch (e) { next(e); }
 });
 
-router.patch('/:id', authenticateJWT, async (req, res, next) => {
+router.patch('/:id', authenticateJWT, authorizeRole('admin','specialist'), async (req, res, next) => {
   try {
-    const { child_name, diagnosis_notes } = req.body;
+    const { child_name, diagnosis_notes, specialist_id, name, email } = req.body;
     const updated = await prisma.client.update({
       where: { id: req.params.id },
-      data: { ...(child_name && { childName: child_name }), ...(diagnosis_notes !== undefined && { diagnosisNotes: diagnosis_notes }) },
+      data: {
+        ...(child_name && { childName: child_name }),
+        ...(diagnosis_notes !== undefined && { diagnosisNotes: diagnosis_notes }),
+        ...(specialist_id && { specialist: { connect: { id: specialist_id } } }),
+        ...((name !== undefined || email !== undefined) && {
+          user: {
+            update: {
+              ...(name !== undefined && { name }),
+              ...(email !== undefined && { email }),
+            },
+          },
+        }),
+      },
+      include: clientInclude,
     });
     res.json({ success: true, data: updated });
   } catch (e) { next(e); }

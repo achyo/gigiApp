@@ -33,15 +33,16 @@ router.get('/:id', authenticateJWT, async (req, res, next) => {
 
 router.post('/', authenticateJWT, authorizeRole('admin', 'specialist'), async (req, res, next) => {
   try {
-    const { title, instructions, objects } = req.body;
+    const { title, instructions, objects = [], specialist_id } = req.body;
     const specialistId = req.user.specialist_id;
-    if (!specialistId && req.user.role !== 'admin') {
+    const targetSpecialistId = specialist_id || specialistId;
+    if (!targetSpecialistId) {
       return res.status(400).json({ success: false, error: { code: 'NOT_SPECIALIST' } });
     }
     const act = await prisma.activity.create({
       data: {
         title, instructions,
-        specialistId: specialistId || (await prisma.specialist.findFirst()).id,
+        specialistId: targetSpecialistId,
         activityObjects: {
           create: objects.map((o, i) => ({
             objectId: o.object_id,
@@ -51,7 +52,10 @@ router.post('/', authenticateJWT, authorizeRole('admin', 'specialist'), async (r
           })),
         },
       },
-      include: { activityObjects: { include: { object: true } } },
+      include: {
+        specialist: { include: { user: { select: { id:1,name:1,email:1 } } } },
+        activityObjects: { include: { object: true }, orderBy: { sortOrder: 'asc' } },
+      },
     });
     res.status(201).json({ success: true, data: act });
   } catch (e) { next(e); }
@@ -62,10 +66,34 @@ router.patch('/:id', authenticateJWT, async (req, res, next) => {
     const act = await prisma.activity.findUnique({ where: { id: req.params.id } });
     if (!act) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
     if (!canModify(req.user, act)) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
-    const { title, instructions } = req.body;
-    const updated = await prisma.activity.update({
-      where: { id: req.params.id },
-      data: { ...(title && { title }), ...(instructions !== undefined && { instructions }) },
+    const { title, instructions, objects, specialist_id } = req.body;
+    const updated = await prisma.$transaction(async (tx) => {
+      if (Array.isArray(objects)) {
+        await tx.activityObject.deleteMany({ where: { activityId: req.params.id } });
+      }
+
+      return tx.activity.update({
+        where: { id: req.params.id },
+        data: {
+          ...(title && { title }),
+          ...(instructions !== undefined && { instructions }),
+          ...(specialist_id && { specialistId: specialist_id }),
+          ...(Array.isArray(objects) && {
+            activityObjects: {
+              create: objects.map((o, i) => ({
+                objectId: o.object_id,
+                activityType: o.activity_type || 'show',
+                difficultyLevel: o.difficulty_level || 'photo',
+                sortOrder: o.sort_order ?? i,
+              })),
+            },
+          }),
+        },
+        include: {
+          specialist: { include: { user: { select: { id:1,name:1,email:1 } } } },
+          activityObjects: { include: { object: true }, orderBy: { sortOrder: 'asc' } },
+        },
+      });
     });
     res.json({ success: true, data: updated });
   } catch (e) { next(e); }

@@ -34,6 +34,21 @@ export function Badge({ variant = 'default', children, className = '' }) {
   );
 }
 
+/* ── Notice ──────────────────────────────────────────────────────────────── */
+export function Notice({ variant = 'info', children, className = '' }) {
+  const variants = {
+    info: 'bg-[var(--acb)] text-[var(--act)] border-[color:var(--ac)]/20',
+    success: 'bg-[var(--okb)] text-[var(--ok)] border-[color:var(--ok)]/20',
+    error: 'bg-[var(--erb)] text-[var(--er)] border-[color:var(--er)]/20',
+  };
+
+  return (
+    <div className={`rounded-[var(--r)] border px-3 py-2 text-sm font-bold ${variants[variant]} ${className}`}>
+      {children}
+    </div>
+  );
+}
+
 /* ── Card ────────────────────────────────────────────────────────────────── */
 export function Card({ children, className = '', ...props }) {
   return (
