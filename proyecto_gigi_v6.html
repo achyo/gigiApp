@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Proyecto Gigi</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:var(--fs,16px);background:var(--bg);color:var(--tx);min-height:100vh;transition:font-size .2s}
+
+/* Palettes */
+:root{--bg:#F5F3EF;--bg2:#ECEAE4;--bg3:#D8D5CD;--sf:#fff;--bd:#C8C4BB;--tx:#12100E;--tx2:#4A4640;--tx3:#7A7570;--ac:#1A5FD4;--acb:#EAF0FC;--act:#0D3D8A;--ok:#1A7A3C;--okb:#E6F4EC;--okbd:#A8D5B5;--er:#C0392B;--erb:#FDECEA;--erbd:#e06050;--wa:#B05000;--wab:#FEF3E2;--go:#8A6000;--gob:#FDF4DC;--r:10px;--rl:16px;--fs:16px}
+.p-bw{--bg:#000;--bg2:#111;--bg3:#222;--sf:#0d0d0d;--bd:#333;--tx:#fff;--tx2:#ccc;--tx3:#888;--ac:#4D9FFF;--acb:#0A2040;--act:#90C8FF;--ok:#22C55E;--okb:#052012;--okbd:#0a5020;--er:#F87171;--erb:#2a0a0a;--erbd:#f87171;--wa:#FCD34D;--wab:#201500;--go:#ffd700;--gob:#201500}
+.p-wb{--bg:#fff;--bg2:#f0f0f0;--bg3:#ddd;--sf:#fff;--bd:#aaa;--tx:#000;--tx2:#333;--tx3:#666;--ac:#0044BB;--acb:#e8f0ff;--act:#002888;--ok:#006600;--okb:#e0ffe0;--okbd:#99cc99;--er:#cc0000;--erb:#ffe0e0;--erbd:#cc0000;--wa:#886600;--wab:#fff8e0;--go:#886600;--gob:#fff8e0}
+.p-de{--bg:#fff;--bg2:#f2f2f2;--bg3:#e5e5e5;--sf:#fff;--bd:#999;--tx:#000;--tx2:#333;--tx3:#666;--ac:#0077BB;--acb:#e6f3fa;--act:#004477;--ok:#0077BB;--okb:#e0f0ff;--okbd:#77bbdd;--er:#994400;--erb:#fff0e0;--erbd:#994400;--wa:#775500;--wab:#fff8e0;--go:#775500;--gob:#fff8e0}
+.p-tr{--bg:#fff;--bg2:#f2f2f2;--bg3:#e5e5e5;--sf:#fff;--bd:#999;--tx:#000;--tx2:#333;--tx3:#666;--ac:#CC3300;--acb:#ffe8e0;--act:#881100;--ok:#006600;--okb:#e0ffe0;--okbd:#99cc99;--er:#CC3300;--erb:#ffe8e0;--erbd:#CC3300;--wa:#664400;--wab:#fff0cc;--go:#664400;--gob:#fff0cc}
+.p-ye{--bg:#FFFF99;--bg2:#ffffaa;--bg3:#ffff66;--sf:#ffffcc;--bd:#888800;--tx:#000;--tx2:#222;--tx3:#555;--ac:#003399;--acb:#cce0ff;--act:#001166;--ok:#004400;--okb:#ccffcc;--okbd:#009900;--er:#880000;--erb:#ffdddd;--erbd:#880000;--wa:#664400;--wab:#ffe8aa;--go:#664400;--gob:#ffe8aa}
+
+/* Layout */
+#app{display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--sf);border-bottom:1.5px solid var(--bd);padding:0 16px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:8px;flex-wrap:nowrap}
+.brand{font-weight:900;font-size:1.2em;letter-spacing:-.5px;white-space:nowrap}.brand b{color:var(--ac)}
+.topact{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.sidebar{width:190px;background:var(--sf);border-right:1.5px solid var(--bd);padding:10px 0;flex-shrink:0}
+.ml{display:flex;flex:1;min-height:0}
+.content{flex:1;padding:20px 22px;overflow-y:auto;height:calc(100vh - 54px)}
+.nsec{padding:3px 13px 1px;font-size:.65em;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin-top:10px}
+.ni{display:flex;align-items:center;gap:8px;padding:9px 16px;cursor:pointer;font-size:.88em;font-weight:500;color:var(--tx2);transition:background .12s;border-left:3px solid transparent}
+.ni:hover{background:var(--bg2);color:var(--tx)}
+.ni.on{background:var(--acb);color:var(--act);border-left-color:var(--ac);font-weight:700}
+.nico{font-size:1em;width:18px;text-align:center}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 15px;border-radius:var(--r);border:1.5px solid transparent;font-family:inherit;font-size:.88em;font-weight:700;cursor:pointer;transition:all .12s;background:var(--sf);white-space:nowrap}
+.bp{background:var(--ac);color:#fff;border-color:var(--ac)}.bp:hover{filter:brightness(1.1)}
+.bs{color:var(--tx);border-color:var(--bd)}.bs:hover{background:var(--bg2)}
+.bg{color:var(--tx2);border-color:transparent;padding:6px 9px}.bg:hover{background:var(--bg2)}
+.ber2{background:var(--erb);color:var(--er);border-color:var(--erbd)}
+.bsm{padding:4px 10px;font-size:.8em}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* Cards / grid */
+.card{background:var(--sf);border:1.5px solid var(--bd);border-radius:var(--rl);padding:16px 18px}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.ph{margin-bottom:16px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.pt{font-weight:900;font-size:1.5em;letter-spacing:-.5px}
+.ps{font-size:.85em;color:var(--tx2);margin-top:2px}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:16px;font-size:.7em;font-weight:700}
+.bb{background:var(--acb);color:var(--act)}.bg3{background:var(--bg3);color:var(--tx2)}.bok{background:var(--okb);color:var(--ok)}.ber{background:var(--erb);color:var(--er)}.bwa{background:var(--wab);color:var(--wa)}.bgo{background:var(--gob);color:var(--go)}
+
+/* Stats */
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-bottom:18px}
+.sc{background:var(--sf);border:1.5px solid var(--bd);border-radius:var(--r);padding:12px 15px}
+.sn{font-weight:900;font-size:1.8em;color:var(--ac);line-height:1}
+.sl{font-size:.65em;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--tx3);margin-top:3px}
+
+/* Forms */
+.fg{margin-bottom:12px}
+.fl{display:block;font-size:.7em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);margin-bottom:3px}
+.fi{width:100%;padding:8px 11px;border:1.5px solid var(--bd);border-radius:var(--r);background:var(--bg2);color:var(--tx);font-family:inherit;font-size:.9em;outline:none;transition:border-color .12s}
+.fi:focus{border-color:var(--ac);background:var(--sf)}
+.fsel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;padding-right:28px}
+.sep{height:1px;background:var(--bd);margin:12px 0}
+.stitle{font-weight:700;font-size:1em;color:var(--tx);margin-bottom:9px}
+.tag{display:inline-flex;align-items:center;padding:3px 8px;border-radius:6px;font-size:.78em;font-weight:700;border:1.5px solid var(--bd);background:var(--bg2);color:var(--tx2);cursor:pointer;transition:all .12s}
+.tag.on,.tag:hover{border-color:var(--ac);background:var(--acb);color:var(--act)}
+
+/* Activity card */
+.ac-card{background:var(--sf);border:2px solid var(--bd);border-radius:var(--rl);padding:14px;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;gap:8px}
+.ac-card:hover{border-color:var(--ac);box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.ac-thumb{width:100%;aspect-ratio:16/9;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:2em;background:var(--bg2);gap:4px}
+
+/* Game */
+.gwrap{max-width:620px;margin:0 auto}
+.ghdr{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.gprog{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.gpf{height:100%;background:var(--ac);border-radius:3px;transition:width .3s}
+.gstrip{display:flex;gap:7px;justify-content:center;margin-bottom:14px;flex-wrap:wrap}
+.ochip{width:60px;height:60px;border-radius:10px;border:2.5px solid var(--bd);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.5em;transition:all .12s;background:var(--sf);flex-shrink:0}
+.ochip.on{border-color:var(--ac);background:var(--acb);box-shadow:0 0 0 3px var(--ac)}
+.ochip.done{border-color:var(--ok);opacity:.7}
+.gbox{background:var(--sf);border:2px solid var(--bd);border-radius:var(--rl);padding:20px;min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;width:100%}
+.gbig{width:150px;height:150px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:4em;background:var(--bg2);border:2px solid var(--bd)}
+.gname{font-weight:900;font-size:1.3em;text-align:center}
+.exrow{display:flex;gap:5px;margin-bottom:11px;justify-content:center;flex-wrap:wrap}
+.ex{padding:5px 11px;border-radius:7px;font-size:.78em;font-weight:700;border:1.5px solid var(--bd);background:var(--bg2);color:var(--tx3);cursor:pointer;transition:all .12s}
+.ex:hover{border-color:var(--ac);color:var(--ac)}
+.ex.curr{background:var(--ac);color:#fff;border-color:var(--ac)}
+.ex.done{background:var(--okb);color:var(--ok);border-color:var(--okbd)}
+
+/* Level bar */
+.lvlbar{display:flex;border-radius:var(--r);overflow:hidden;border:1.5px solid var(--bd);margin-bottom:16px}
+.lvlseg{flex:1;padding:9px 5px;text-align:center;font-size:.8em;font-weight:700;cursor:pointer;transition:all .15s;border-right:1px solid var(--bd);background:var(--bg2);color:var(--tx2)}
+.lvlseg:last-child{border-right:none}
+.lvlseg.ldone{background:var(--okb);color:var(--ok)}
+.lvlseg.lact{background:var(--ac);color:#fff}
+.lvlseg.llck{opacity:.45;cursor:not-allowed}
+.lvlprog{display:flex;align-items:center;gap:5px;margin-bottom:12px}
+.lpdot{width:24px;height:24px;border-radius:50%;border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:.7em;font-weight:700;background:var(--bg2);color:var(--tx3);flex-shrink:0}
+.lpdot.done{background:var(--okb);border-color:var(--ok);color:var(--ok)}
+.lpdot.curr{background:var(--ac);border-color:var(--ac);color:#fff}
+.lpdot.lock{opacity:.4}
+.lpline{flex:1;height:2px;background:var(--bd)}
+.lpline.done{background:var(--ok)}
+
+/* Recognize grid */
+.rgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;width:100%}
+.ri{aspect-ratio:1;border-radius:11px;border:3px solid var(--bd);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:2.2em;transition:border-color .15s,background .15s;background:var(--bg2);overflow:hidden}
+.ri:hover{border-color:var(--ac)}
+.ri.ok{border-color:var(--ok);background:var(--okb)}
+.ri.ko{border-color:var(--er);background:var(--erb);animation:shk .3s}
+
+/* Memorize grid — NO scale on hover/click */
+.mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;width:100%}
+.mc{aspect-ratio:1;border-radius:10px;border:2px solid var(--bd);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.8em;background:var(--ac)}
+.mc.fl{background:var(--sf)}
+.mc.mt{background:var(--okb);border-color:var(--ok)}
+.mc:not(.fl):not(.mt){font-size:0}
+.mc:not(.fl):not(.mt)::after{content:"?";font-size:1.4em;color:rgba(255,255,255,.75);font-weight:900}
+
+/* Feedback */
+.fov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:300;background:rgba(0,0,0,.5)}
+.fbox{background:var(--sf);border-radius:var(--rl);padding:28px 38px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.2);animation:pin .25s}
+
+/* Client / row */
+.crow{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--sf);border:1.5px solid var(--bd);border-radius:var(--r);transition:all .12s;margin-bottom:6px}
+.crow:hover{border-color:var(--ac);background:var(--acb)}
+.cav{width:38px;height:38px;border-radius:50%;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.9em;flex-shrink:0}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:20px 12px;overflow-y:auto}
+.modal{background:var(--sf);border-radius:var(--rl);padding:22px 26px;width:100%;max-width:780px;animation:pin .22s}
+
+/* Object accordion */
+.obrow{background:var(--sf);border:1.5px solid var(--bd);border-radius:var(--rl);margin-bottom:8px;overflow:hidden;transition:border-color .15s}
+.obrow.open{border-color:var(--ac)}
+.obrh{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer}
+.obrh:hover{background:var(--bg2)}
+
+/* Groups */
+.grp-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:16px;font-size:.78em;font-weight:700;border:1.5px solid var(--bd);background:var(--bg2);cursor:pointer;transition:all .12s}
+.grp-chip:hover{border-color:var(--ac)}
+.grp-chip.on{border-color:var(--ac);background:var(--acb);color:var(--act)}
+
+/* Subscription */
+.sub-card{border:2px solid var(--bd);border-radius:var(--rl);padding:14px 16px;cursor:pointer;transition:all .15s}
+.sub-card:hover{border-color:var(--ac)}
+.sub-card.on{border-color:var(--ac);background:var(--acb)}
+.pay-tab{padding:7px 14px;border-radius:var(--r);font-size:.85em;font-weight:700;cursor:pointer;border:1.5px solid var(--bd);background:var(--bg2);color:var(--tx2);transition:all .12s}
+.pay-tab.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+
+/* Login */
+.lw{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:16px}
+.lc{background:var(--sf);border:2px solid var(--bd);border-radius:var(--rl);padding:32px 36px;width:100%;max-width:380px}
+.ll{font-weight:900;font-size:1.6em;text-align:center;margin-bottom:20px}.ll b{color:var(--ac)}
+.rpick{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:16px}
+.ro{padding:8px 5px;border-radius:8px;border:2px solid var(--bd);cursor:pointer;text-align:center;font-size:.8em;font-weight:700;color:var(--tx2);transition:all .12s}
+.ro:hover,.ro.on{border-color:var(--ac);background:var(--acb);color:var(--act)}
+.rico{font-size:1.3em;display:block;margin-bottom:2px}
+
+/* Palette strip */
+.pstrip{display:flex;gap:5px;flex-wrap:wrap}
+.pbtn{width:24px;height:24px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:transform .12s;flex-shrink:0}
+.pbtn:hover{transform:scale(1.2)}.pbtn.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ac)}
+
+/* TTS btn */
+.ttsbtn{display:flex;align-items:center;gap:5px;padding:5px 9px;border-radius:14px;border:1.5px solid var(--bd);cursor:pointer;font-size:.78em;font-weight:700;background:var(--sf);color:var(--tx2);white-space:nowrap}
+.ttsbtn.on{border-color:var(--ac);background:var(--acb);color:var(--act)}
+
+/* Font size btn */
+.fsbtn{padding:4px 9px;border-radius:var(--r);border:1.5px solid var(--bd);cursor:pointer;font-weight:900;font-size:.9em;background:var(--sf);color:var(--tx2);min-width:32px;text-align:center}
+.fsbtn:hover{border-color:var(--ac);color:var(--ac)}
+
+/* Object picker */
+.opick{border:2px solid var(--bd);border-radius:9px;padding:8px 4px 6px;cursor:pointer;text-align:center;transition:border-color .12s,background .12s;background:var(--sf)}
+.opick:hover{border-color:var(--ac)}.opick.on{border-color:var(--ac);background:var(--acb)}
+
+/* Assign opts */
+.assign-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:9px}
+.aopt{border:2px solid var(--bd);border-radius:var(--r);padding:10px 8px;cursor:pointer;transition:all .12s;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;font-size:.8em;font-weight:700;color:var(--tx2)}
+.aopt:hover{border-color:var(--ac)}.aopt.on{border-color:var(--ac);background:var(--acb);color:var(--act)}
+.cbl{max-height:180px;overflow-y:auto;border:1.5px solid var(--bd);border-radius:var(--r);background:var(--bg2)}
+.cbi{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--bd);font-size:.88em}
+.cbi:last-child{border-bottom:none}.cbi:hover{background:var(--acb)}
+.cbi input{width:15px;height:15px;accent-color:var(--ac)}
+
+/* Search input */
+.srch{position:relative;margin-bottom:8px}
+.srch input{padding-left:28px}
+.srch::before{content:'🔍';position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.85em;pointer-events:none}
+
+/* Responsive */
+@media(max-width:700px){
+  .sidebar{display:none}
+  .content{padding:14px}
+  .modal{padding:16px 14px}
+  .cgrid{grid-template-columns:1fr}
+  .sgrid{grid-template-columns:repeat(2,1fr)}
+  .topact .pstrip{display:none}
+  .assign-opts{grid-template-columns:1fr}
+  .rgrid{grid-template-columns:repeat(3,1fr)}
+  .mgrid{grid-template-columns:repeat(4,1fr)}
+  .modal{max-width:100%}
+  .ph{flex-direction:column;align-items:flex-start}
+  .ph>div:last-child{display:flex;flex-wrap:wrap;gap:5px}
+}
+@media(max-width:480px){
+  .topbar{height:auto;padding:8px 12px;flex-wrap:wrap}
+  .mgrid{grid-template-columns:repeat(3,1fr)}
+}
+
+/* Animations */
+.tabrow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;padding-bottom:12px;border-bottom:1.5px solid var(--bd)}
+.tabrow .btn{font-size:.82em}
+.srch2{display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap}
+.srch2 input{flex:1;min-width:160px}
+@keyframes pop{0%{transform:scale(.8)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+@keyframes pin{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.fdi{animation:fi .22s ease forwards;min-height:calc(100vh - 54px - 40px)}
+</style>
+</head>
+<body><div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback}=React;
+
+/* ── Constants ── */
+const DOG_PHOTO = "data:image/png;base64,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";
+
+const PALETTES=[
+  {id:'def',l:'Predeterminado',bg:'#F5F3EF',ac:'#1A5FD4',cls:''},
+  {id:'bw', l:'Negro/Blanco',  bg:'#000',   ac:'#4D9FFF',cls:'p-bw'},
+  {id:'wb', l:'Blanco/Negro',  bg:'#FFF',   ac:'#0044BB',cls:'p-wb'},
+  {id:'de', l:'Deuteranopía',  bg:'#FFF',   ac:'#0077BB',cls:'p-de'},
+  {id:'tr', l:'Tritanopía',    bg:'#FFF',   ac:'#CC3300',cls:'p-tr'},
+  {id:'ye', l:'Fondo amarillo',bg:'#FFFF99',ac:'#003399',cls:'p-ye'},
+];
+
+const FONT_SIZES=[
+  {id:'s', label:'A-',  px:'14px', zoom:0.85},
+  {id:'m', label:'A',   px:'16px', zoom:1.0},
+  {id:'l', label:'A+',  px:'18px', zoom:1.2},
+  {id:'xl',label:'A++', px:'20px', zoom:1.45},
+];
+function applyZoom(id){
+  const f=FONT_SIZES.find(x=>x.id===id)||FONT_SIZES[1];
+  document.documentElement.style.setProperty('--fs',f.px);
+  document.documentElement.style.zoom=f.zoom;
+}
+
+// Level 1: only Show3D. Level 2: 4 exercises with photo. Level 3: 4 exercises with drawing.
+const LEVELS=[
+  {id:'l1',label:'Nivel 1',sub:'Modelo 3D',   icon:'🧊',num:1},
+  {id:'l2',label:'Nivel 2',sub:'Fotografía',  icon:'📷',num:2},
+  {id:'l3',label:'Nivel 3',sub:'Dibujo',      icon:'📝',num:3},
+];
+const getLevelExercises=lvlId=>{
+  if(lvlId==='l1')return [{id:'show3d',label:'Mostrar 3D',icon:'🧊'}];
+  return [
+    {id:'show',     label:'Mostrar',   icon:'👁️'},
+    {id:'recognize',label:'Reconocer', icon:'🔍'},
+    {id:'relate',   label:'Relacionar',icon:'🔗'},
+    {id:'memorize', label:'Memorizar', icon:'🧠'},
+  ];
+};
+const getMedia=(obj,lvlId)=>{
+  if(lvlId==='l1')return{type:'3d',  src:obj.model3d};
+  if(lvlId==='l2')return{type:'img', src:obj.photo};   // Nivel 2: solo foto
+  if(lvlId==='l3')return{type:'img', src:obj.drawing}; // Nivel 3: solo dibujo
+  return{type:'emoji',src:obj.em};
+};
+
+const INIT_OBJECTS=[
+  {id:'perro',    name:'Perro',      em:'🐕',cat:'Animales',
+   photo:DOG_PHOTO,drawing:null,
+   model3d:'https://sketchfab.com/models/e395f26615ca445ab32f01ded17ff3bf/embed',
+   model3dAuthor:'neighbor'},
+  {id:'gato',     name:'Gato',       em:'🐈',cat:'Animales',   photo:null,drawing:null,model3d:null},
+  {id:'pajaro',   name:'Pájaro',     em:'🐦',cat:'Animales',   photo:null,drawing:null,model3d:null},
+  {id:'conejo',   name:'Conejo',     em:'🐇',cat:'Animales',   photo:null,drawing:null,model3d:null},
+  {id:'manzana',  name:'Manzana',    em:'🍎',cat:'Frutas',     photo:null,drawing:null,model3d:null},
+  {id:'platano',  name:'Plátano',    em:'🍌',cat:'Frutas',     photo:null,drawing:null,model3d:null},
+  {id:'naranja',  name:'Naranja',    em:'🍊',cat:'Frutas',     photo:null,drawing:null,model3d:null},
+  {id:'zanahoria',name:'Zanahoria',  em:'🥕',cat:'Frutas',     photo:null,drawing:null,model3d:null},
+  {id:'taza',     name:'Taza',       em:'☕',cat:'Hogar',      photo:null,drawing:null,model3d:null},
+  {id:'silla',    name:'Silla',      em:'🪑',cat:'Hogar',      photo:null,drawing:null,model3d:null},
+  {id:'coche',    name:'Coche',      em:'🚗',cat:'Transporte', photo:null,drawing:null,model3d:null},
+  {id:'bici',     name:'Bicicleta',  em:'🚲',cat:'Transporte', photo:null,drawing:null,model3d:null},
+];
+
+const INIT_SPECIALISTS=[
+  {id:'s1',name:'María García',email:'maria@gigi.com',bio:'Especialista en atención temprana.',active:true,
+   sub:{plan:'premium',billing:'month',status:'active',expires:'2025-09-01'},av:'MG'},
+  {id:'s2',name:'Carlos Ruiz',email:'carlos@gigi.com',bio:'Logopeda y especialista ONCE.',active:true,
+   sub:{plan:'basic',billing:'year',status:'trial',expires:'2025-04-01'},av:'CR'},
+];
+
+const INIT_CLIENTS=[
+  {id:'c1',name:'Familia Martínez',child:'Lucía', age:'5 años',av:'LM',specId:'s1',groupIds:[],
+   prog:{l1:true,l2:false,l3:false},
+   sub:{plan:'basic',billing:'month',status:'active',expires:'2025-08-01'}},
+  {id:'c2',name:'Familia Rodríguez',child:'Pablo', age:'4 años',av:'PR',specId:'s1',groupIds:['g1'],
+   prog:{l1:false,l2:false,l3:false},
+   sub:{plan:'basic',billing:'month',status:'trial',expires:'2025-04-10'}},
+  {id:'c3',name:'Familia Torres',child:'Sofía',  age:'6 años',av:'ST',specId:'s1',groupIds:['g1'],
+   prog:{l1:true,l2:true,l3:false},
+   sub:{plan:'premium',billing:'year',status:'active',expires:'2026-01-01'}},
+];
+
+const INIT_GROUPS=[
+  {id:'g1',name:'Grupo A – Mañanas',color:'#1A5FD4',specId:'s1',clientIds:['c2','c3']},
+];
+
+const INIT_ACTIVITIES=[
+  {id:'a1',title:'Animales del campo',objects:['perro','gato','pajaro'],assignedTo:'all',specId:'s1',done:{l1:false,l2:false,l3:false}},
+  {id:'a2',title:'Frutas del mercado',objects:['manzana','platano'],assignedTo:['c1'],specId:'s1',done:{l1:false,l2:false,l3:false}},
+  {id:'a3',title:'Objetos del hogar', objects:['taza','silla'],assignedTo:['g1'],specId:'s1',done:{l1:true,l2:false,l3:false}},
+];
+
+/* ── Utils ── */
+const shuf=a=>[...a].sort(()=>Math.random()-.5);
+function speak(text,on){
+  if(!on||!window.speechSynthesis)return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='es-ES';u.rate=0.88;
+  window.speechSynthesis.speak(u);
+}
+function savePrefs(id,prefs){try{localStorage.setItem('gigi_'+id,JSON.stringify(prefs));}catch(e){}}
+function loadPrefs(id){try{return JSON.parse(localStorage.getItem('gigi_'+id)||'{}');}catch(e){return{};}}
+const subStatus=sub=>{
+  if(!sub)return{label:'Sin suscripción',cls:'bg3'};
+  const now=new Date(),exp=new Date(sub.expires);
+  const diffDays=(exp-now)/(1000*60*60*24);
+  if(sub.status==='trial')return{label:'Prueba 15d',cls:'bb'};
+  if(diffDays>0)return{label:'Activa',cls:'bok'};
+  if(diffDays>-15)return{label:'Gracia 15d',cls:'bwa'};
+  return{label:'Caducada',cls:'ber'};
+};
+
+/* ── MediaDisplay ── */
+function MediaDisplay({obj,lvlId,size=150}){
+  const m=getMedia(obj,lvlId);
+  if(m.type==='3d'){
+    if(!m.src)return <div style={{width:size,height:size,borderRadius:12,background:'var(--bg2)',border:'2px dashed var(--bd)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6,color:'var(--tx3)',fontSize:'.8em'}}><span style={{fontSize:'2em'}}>🧊</span><span>Sin modelo 3D</span></div>;
+    return(
+      <div style={{width:'100%',maxWidth:520}}>
+        <div style={{position:'relative',width:'100%',paddingTop:'56.25%',borderRadius:11,overflow:'hidden',border:'2px solid var(--bd)',background:'#111'}}>
+          <iframe title={obj.name} src={m.src} frameBorder="0" allowFullScreen
+            allow="autoplay; fullscreen; xr-spatial-tracking"
+            style={{position:'absolute',top:0,left:0,width:'100%',height:'100%'}}/>
+        </div>
+        {obj.model3dAuthor&&<div style={{fontSize:'.7em',color:'var(--tx3)',textAlign:'right',marginTop:3}}>por {obj.model3dAuthor} · Sketchfab</div>}
+      </div>
+    );
+  }
+  if(m.type==='img'&&m.src){
+    return(
+      <div style={{width:'100%',maxWidth:size*2,borderRadius:11,overflow:'hidden',border:'2px solid var(--bd)',background:'#000',display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <img src={m.src} alt={obj.name} style={{width:'100%',maxHeight:size*1.5,objectFit:'contain',display:'block'}}/>
+      </div>
+    );
+  }
+  return <div className="gbig"><span style={{fontSize:'2.5em'}}>{obj.em}</span></div>;
+}
+
+/* ── Exercise components ── */
+function ShowEx({obj,lvlId,onNext,tts}){
+  const lvl=LEVELS.find(l=>l.id===lvlId);
+  return(
+    <div className="gbox fdi" style={{width:'100%',padding:lvlId==='l1'?'14px':'20px',gap:10}}>
+      <div style={{fontSize:'.7em',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--tx3)',display:'flex',gap:7,alignItems:'center'}}>
+        <span>{lvl.icon} {lvl.sub}</span>
+      </div>
+      <MediaDisplay obj={obj} lvlId={lvlId} size={160}/>
+      <div className="gname" onMouseEnter={()=>speak(obj.name,tts)}>{obj.name}</div>
+      <div style={{background:'var(--acb)',borderRadius:8,padding:'6px 12px',fontSize:'.82em',color:'var(--act)',textAlign:'center',maxWidth:400,width:'100%'}}>
+        {lvlId==='l1'?'↻ Arrastra para rotar · Rueda para zoom':lvlId==='l2'?'📷 Observa la fotografía real':'📝 Fíjate en cómo el dibujo representa el objeto'}
+      </div>
+      <div style={{background:'var(--bg2)',borderRadius:8,padding:'6px 12px',fontSize:'.8em',color:'var(--tx2)',textAlign:'center',maxWidth:400,width:'100%'}}>
+        💡 Describe el objeto en voz alta con el alumno
+      </div>
+      <button className="btn bp" onClick={onNext} onMouseEnter={()=>speak('Siguiente ejercicio',tts)}>Siguiente →</button>
+    </div>
+  );
+}
+
+function RecognizeEx({obj,lvlId,allObjs,onAnswer,tts}){
+  const [pool]=useState(()=>shuf([obj,...allObjs.filter(o=>o.id!==obj.id).concat(INIT_OBJECTS.filter(o=>!allObjs.find(a=>a.id===o.id))).slice(0,5)]));
+  const [res,setRes]=useState({});
+  const check=o=>{
+    if(res[o.id])return;
+    const ok=o.id===obj.id;
+    setRes({[o.id]:ok?'ok':'ko'});
+    speak(ok?'¡Muy bien!':'Inténtalo de nuevo',tts);
+    setTimeout(()=>{onAnswer(ok);setRes({});},850);
+  };
+  const ImgCell=({o})=>{
+    const m=getMedia(o,lvlId);
+    return(
+      <div className={`ri ${res[o.id]||''}`} onClick={()=>check(o)}
+        onMouseEnter={()=>speak(res[o.id]==='ok'||res[o.id]==='ko'?o.name:'',tts)}>
+        {m.type==='img'&&m.src
+          ?<img src={m.src} alt={o.name} style={{width:'88%',height:'88%',objectFit:'contain',pointerEvents:'none'}}/>
+          :<span style={{fontSize:'2em'}}>{o.em}</span>}
+      </div>
+    );
+  };
+  return(
+    <div className="gbox fdi" style={{padding:'14px 10px'}}>
+      <div className="gname" style={{fontSize:'1.1em'}} onMouseEnter={()=>speak('¿Cuál es el '+obj.name+'?',tts)}>
+        ¿Cuál es el <strong>{obj.name}</strong>?
+      </div>
+      <div className="rgrid">{pool.map(o=><ImgCell key={o.id} o={o}/>)}</div>
+    </div>
+  );
+}
+
+function RelateEx({obj,lvlId,onAnswer,tts}){
+  const dist=INIT_OBJECTS.filter(o=>o.id!==obj.id).slice(0,3);
+  const [pool]=useState(()=>shuf([
+    {uid:obj.id+'_a',real:true,obj},{uid:obj.id+'_b',real:true,obj},{uid:obj.id+'_c',real:true,obj},
+    ...dist.map(d=>({uid:d.id,real:false,obj:d})),
+  ]));
+  const [sel,setSel]=useState([]);
+  const toggle=uid=>setSel(s=>s.includes(uid)?s.filter(x=>x!==uid):[...s,uid]);
+  const check=()=>{
+    const rids=pool.filter(p=>p.real).map(p=>p.uid);
+    const ok=sel.length===3&&sel.every(id=>rids.includes(id));
+    speak(ok?'¡Muy bien!':'Inténtalo de nuevo',tts);
+    onAnswer(ok);setSel([]);
+  };
+  const m=getMedia(obj,lvlId);
+  const Cell=({p})=>(
+    <div className={`ri ${sel.includes(p.uid)?'ok':''}`} onClick={()=>toggle(p.uid)}>
+      {m.type==='img'&&m.src&&p.real
+        ?<img src={m.src} alt={p.obj.name} style={{width:'88%',height:'88%',objectFit:'contain',pointerEvents:'none'}}/>
+        :<span style={{fontSize:'2em'}}>{p.obj.em}</span>}
+    </div>
+  );
+  return(
+    <div className="gbox fdi" style={{padding:'14px 10px'}}>
+      <div className="gname" style={{fontSize:'1.05em'}}>Señala todas las imágenes del <strong>{obj.name}</strong></div>
+      <div style={{fontSize:'.82em',color:'var(--tx2)',marginBottom:6}}>Selecciona las 3 correctas</div>
+      <div className="rgrid">{pool.map(p=><Cell key={p.uid} p={p}/>)}</div>
+      <button className="btn bp bsm" onClick={check} disabled={sel.length===0}
+        onMouseEnter={()=>speak('Comprobar',tts)}>Comprobar</button>
+    </div>
+  );
+}
+
+function MemorizeEx({obj,lvlId,onAnswer,tts}){
+  const fill=INIT_OBJECTS.filter(o=>o.id!==obj.id).slice(0,3);
+  const [pairs]=useState(()=>shuf([obj,obj,...fill,...fill]).map((o,i)=>({...o,uid:i})));
+  const [flip,setFlip]=useState([]);
+  const [matched,setMatched]=useState([]);
+  const [busy,setBusy]=useState(false);
+  const m=getMedia(obj,lvlId);
+  const doFlip=uid=>{
+    if(busy||matched.includes(uid)||flip.includes(uid))return;
+    const nf=[...flip,uid];
+    setFlip(nf);
+    if(nf.length===2){
+      setBusy(true);
+      const [a,b]=nf.map(id=>pairs.find(p=>p.uid===id));
+      setTimeout(()=>{
+        if(a.id===b.id){
+          const nm=[...matched,...nf];setMatched(nm);
+          if(a.id===obj.id)setTimeout(()=>onAnswer(true),350);
+        }
+        setFlip([]);setBusy(false);
+      },800);
+    }
+  };
+  return(
+    <div className="gbox fdi" style={{padding:'14px 10px'}}>
+      <div className="gname" style={{fontSize:'1.05em'}}>Encuentra la pareja del <strong>{obj.name}</strong></div>
+      <div className="mgrid">
+        {pairs.map(p=>{
+          const isFlip=flip.includes(p.uid)||matched.includes(p.uid);
+          const isMat=matched.includes(p.uid);
+          const pm=getMedia(p,lvlId);
+          return(
+            <div key={p.uid} className={`mc ${isFlip?'fl':''} ${isMat?'mt':''}`} onClick={()=>doFlip(p.uid)}>
+              {isFlip?(pm.type==='img'&&pm.src
+                ?<img src={pm.src} alt={p.name} style={{width:'80%',height:'80%',objectFit:'contain',pointerEvents:'none'}}/>
+                :<span style={{fontSize:'1.5em'}}>{p.em}</span>
+              ):null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── Game Engine ── */
+function GameEngine({activity,objects,onBack,onLevelComplete,tts}){
+  const objs=activity.objects.map(id=>objects.find(o=>o.id===id)).filter(Boolean);
+
+  // Flow: per object → L1 → L2 → L3 → next object
+  const LEVEL_ORDER=['l1','l2','l3'];
+  const [objIdx,setObjIdx]=useState(0);
+  const [lvlIdx,setLvlIdx]=useState(0); // 0=l1, 1=l2, 2=l3
+  const [exIdx,setExIdx]=useState(0);
+  const [doneKeys,setDoneKeys]=useState(new Set()); // "objId_lvlId_exId"
+  const [fb,setFb]=useState(null);  // 'ok'|'ko'|'objdone'|'alldone'
+
+  const curLvl=LEVEL_ORDER[lvlIdx];
+  const curObj=objs[objIdx];
+  const exercises=getLevelExercises(curLvl);
+  const curEx=exercises[exIdx];
+  const lvl=LEVELS.find(l=>l.id===curLvl);
+
+  useEffect(()=>{if(curObj)speak(curObj.name,tts);},[objIdx]);
+
+  const totalSteps=objs.length*LEVEL_ORDER.length*1; // objects × levels (exercises vary)
+  // For progress bar: count completed object×level pairs
+  const completedObjLvls=LEVEL_ORDER.reduce((acc,lid,li)=>
+    acc+objs.filter((_,oi)=>oi<objIdx||(oi===objIdx&&li<lvlIdx)).length
+  ,0);
+
+  const advance=()=>{
+    const key=curObj.id+'_'+curLvl+'_'+curEx.id;
+
+    // More exercises in this level for this object?
+    if(exIdx+1<exercises.length){
+      setDoneKeys(s=>{const ns=new Set(s);ns.add(key);return ns;});
+      setExIdx(e=>e+1);
+      return;
+    }
+
+    // This level for this object is done
+    setDoneKeys(s=>{const ns=new Set(s);ns.add(key);return ns;});
+
+    // More levels for this object?
+    if(lvlIdx+1<LEVEL_ORDER.length){
+      const nextLvl=LEVEL_ORDER[lvlIdx+1];
+      // Brief level-transition message
+      setFb('lvldone');
+      setTimeout(()=>{
+        setFb(null);
+        setLvlIdx(li=>li+1);
+        setExIdx(0);
+      },1400);
+      return;
+    }
+
+    // All 3 levels done for this object
+    // Check if all objects are done
+    const allObjsDone=objs.every((_,i)=>i===objIdx||doneKeys.has(objs[i].id+'_l3_memorize')||i<objIdx);
+    if(allObjsDone){
+      onLevelComplete('l3');
+      setFb('alldone');
+      setTimeout(()=>setFb(null),3500);
+    }else{
+      setFb('objdone'); // stay until user picks next object
+    }
+  };
+
+  const handleAnswer=ok=>{
+    if(ok){
+      setTimeout(()=>{setFb(null);advance();},1400);
+    }else{
+      setTimeout(()=>setFb(null),1100);
+    }
+    setFb(ok?'ok':'ko');
+  };
+
+  // Progress: (objIdx * 3 + lvlIdx) out of (objs.length * 3)
+  const totalPairs=objs.length*LEVEL_ORDER.length;
+  const donePairs=objIdx*LEVEL_ORDER.length+lvlIdx;
+  const pct=Math.round((donePairs/totalPairs)*100);
+
+  return(
+    <div className="gwrap fdi">
+      {/* Header */}
+      <div className="ghdr">
+        <button className="btn bg bsm" onClick={onBack} onMouseEnter={()=>speak('Volver',tts)}>← Volver</button>
+        <div style={{flex:1}}>
+          <div style={{fontSize:'.78em',fontWeight:700,color:'var(--tx3)',marginBottom:3}}>
+            {activity.title}
+          </div>
+          <div className="gprog"><div className="gpf" style={{width:pct+'%'}}/></div>
+        </div>
+        <span style={{fontSize:'.78em',fontWeight:700,color:'var(--tx2)',whiteSpace:'nowrap'}}>{pct}%</span>
+      </div>
+
+      {/* Current object + level indicators */}
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12,padding:'8px 12px',
+        background:'var(--bg2)',borderRadius:'var(--r)',border:'1.5px solid var(--bd)'}}>
+        <span style={{fontSize:'1.8em'}}>{curObj?.em}</span>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:700,fontSize:'.95em'}}>{curObj?.name}</div>
+          <div style={{fontSize:'.75em',color:'var(--tx3)'}}>
+            Objeto {objIdx+1} de {objs.length}
+          </div>
+        </div>
+        {/* Level progress for this object */}
+        <div style={{display:'flex',gap:4,alignItems:'center'}}>
+          {LEVELS.map((l,i)=>{
+            const isPast=i<lvlIdx;
+            const isCurr=i===lvlIdx;
+            return(
+              <div key={l.id} style={{
+                display:'flex',alignItems:'center',justifyContent:'center',
+                width:28,height:28,borderRadius:'50%',fontSize:'.7em',fontWeight:700,
+                border:'2px solid '+(isPast?'var(--ok)':isCurr?'var(--ac)':'var(--bd)'),
+                background:isPast?'var(--okb)':isCurr?'var(--acb)':'var(--bg2)',
+                color:isPast?'var(--ok)':isCurr?'var(--act)':'var(--tx3)',
+              }}>
+                {isPast?'✓':l.icon}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Object strip — all objects, show current */}
+      <div className="gstrip">
+        {objs.map((o,i)=>{
+          const objAllDone=i<objIdx;
+          return(
+            <div key={o.id} className={`ochip ${i===objIdx?'on':''} ${objAllDone?'done':''}`}
+              title={o.name} onMouseEnter={()=>speak(o.name,tts)}>
+              {o.em}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Level label */}
+      <div style={{textAlign:'center',marginBottom:8}}>
+        <span style={{
+          display:'inline-flex',alignItems:'center',gap:6,
+          padding:'4px 14px',borderRadius:20,fontSize:'.82em',fontWeight:700,
+          background:'var(--acb)',color:'var(--act)',border:'1.5px solid var(--ac)'
+        }}>
+          {lvl.icon} {lvl.label} — {lvl.sub}
+        </span>
+      </div>
+
+      {/* Exercise tabs (levels 2 & 3 only) */}
+      {exercises.length>1&&(
+        <div className="exrow">
+          {exercises.map((e,i)=>{
+            const done=doneKeys.has(curObj?.id+'_'+curLvl+'_'+e.id);
+            return(
+              <div key={e.id} className={'ex '+(done?'done':i===exIdx?'curr':'')}
+                onClick={()=>setExIdx(i)}
+                onMouseEnter={()=>speak(e.label,tts)}>
+                {e.icon} {e.label}{done?' ✓':''}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Active exercise */}
+      {curObj&&curEx&&(
+        curEx.id==='show3d'||curEx.id==='show'
+          ?<ShowEx      obj={curObj} lvlId={curLvl} onNext={()=>handleAnswer(true)} tts={tts}/>
+          :curEx.id==='recognize'
+          ?<RecognizeEx obj={curObj} lvlId={curLvl} allObjs={objs} onAnswer={handleAnswer} tts={tts}/>
+          :curEx.id==='relate'
+          ?<RelateEx    obj={curObj} lvlId={curLvl} onAnswer={handleAnswer} tts={tts}/>
+          :<MemorizeEx  obj={curObj} lvlId={curLvl} onAnswer={handleAnswer} tts={tts}/>
+      )}
+
+      {/* Feedback overlays */}
+      {fb&&(fb==='ok'||fb==='ko')&&(
+        <div className="fov" onClick={()=>fb==='ko'&&setFb(null)}>
+          <div className="fbox">
+            <div style={{fontSize:'3em',marginBottom:8}}>{fb==='ok'?'👏':'😮'}</div>
+            <div style={{fontWeight:900,fontSize:'1.2em'}}>{fb==='ok'?'¡Muy bien!':'¡Inténtalo de nuevo!'}</div>
+          </div>
+        </div>
+      )}
+      {fb==='lvldone'&&(
+        <div className="fov">
+          <div className="fbox">
+            <div style={{fontSize:'3em',marginBottom:8}}>🏅</div>
+            <div style={{fontWeight:900,fontSize:'1.2em'}}>{lvl.label} completado</div>
+            <div style={{fontSize:'.85em',color:'var(--tx2)',marginTop:6}}>
+              Siguiente: {LEVELS[lvlIdx+1]?.label||''} {LEVELS[lvlIdx+1]?.icon||''}
+            </div>
+          </div>
+        </div>
+      )}
+      {fb==='objdone'&&(
+        <div className="fov">
+          <div className="fbox" style={{maxWidth:420,width:'100%'}}>
+            <div style={{fontSize:'2.5em',marginBottom:6}}>⭐</div>
+            <div style={{fontWeight:900,fontSize:'1.2em',marginBottom:4}}>{curObj?.name} completado</div>
+            <div style={{fontSize:'.82em',color:'var(--tx2)',marginBottom:16}}>
+              Elige el siguiente objeto
+            </div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:10,justifyContent:'center',marginBottom:14}}>
+              {objs.map((o,i)=>{
+                const done=i===objIdx; // already done (the one we just finished or prior)
+                return(
+                  <div key={o.id}
+                    onClick={()=>{if(!done){setFb(null);setObjIdx(i);setLvlIdx(0);setExIdx(0);speak(o.name,tts);}}}
+                    style={{
+                      display:'flex',flexDirection:'column',alignItems:'center',gap:4,
+                      padding:'10px 14px',borderRadius:12,cursor:done?'default':'pointer',
+                      border:'2px solid '+(done?'var(--ok)':'var(--ac)'),
+                      background:done?'var(--okb)':'var(--acb)',
+                      opacity:done?0.6:1,minWidth:80,
+                    }}>
+                    <span style={{fontSize:'2em'}}>{o.em}</span>
+                    <span style={{fontSize:'.8em',fontWeight:700,color:done?'var(--ok)':'var(--act)'}}>{o.name}</span>
+                    {done&&<span style={{fontSize:'.65em',color:'var(--ok)',fontWeight:700}}>✓ Hecho</span>}
+                  </div>
+                );
+              })}
+            </div>
+            <button className="btn bp" style={{width:'100%',justifyContent:'center',fontSize:'.88em'}}
+              onClick={()=>{onLevelComplete('l3');setFb('alldone');}}>
+              Terminar actividad
+            </button>
+          </div>
+        </div>
+      )}
+      {fb==='alldone'&&(
+        <div className="fov" onClick={()=>setFb(null)}>
+          <div className="fbox">
+            <div style={{fontSize:'3em',marginBottom:8}}>🏆</div>
+            <div style={{fontWeight:900,fontSize:'1.2em'}}>¡Actividad completada!</div>
+            <div style={{fontSize:'.85em',color:'var(--tx2)',marginTop:6}}>Has trabajado todos los objetos en los 3 niveles</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── SubscriptionModal ── */
+function SubscriptionModal({entity,entityType,onClose,onSave}){
+  const [plan,setPlan]=useState(entity.sub?.plan||'basic');
+  const [billing,setBilling]=useState(entity.sub?.billing||'month');
+  const [method,setMethod]=useState('card');
+  const [cardNum,setCardNum]=useState('');
+  const [cardExp,setCardExp]=useState('');
+  const [cardCvc,setCardCvc]=useState('');
+  const [email,setEmail]=useState('');
+  const [done,setDone]=useState(false);
+  const PLANS={
+    basic:{label:'Básico',month:'4,99 €/mes',year:'49 €/año',features:'Hasta 5 clientes · 50 objetos'},
+    premium:{label:'Premium',month:'9,99 €/mes',year:'99 €/año',features:'Ilimitado · Contenido público · Grupos'},
+  };
+  const submit=()=>{
+    const expires=new Date();
+    expires.setMonth(expires.getMonth()+(billing==='month'?1:12));
+    onSave({plan,billing,status:'active',expires:expires.toISOString().split('T')[0]});
+    setDone(true);
+    setTimeout(onClose,1800);
+  };
+  return(
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="stitle">💳 Suscripción — {entity.name||entity.child}</div>
+        {done?(
+          <div style={{textAlign:'center',padding:'30px 0'}}>
+            <div style={{fontSize:'3em',marginBottom:10}}>✅</div>
+            <div style={{fontWeight:700,fontSize:'1.1em',color:'var(--ok)'}}>¡Suscripción activada!</div>
+            <div style={{fontSize:'.85em',color:'var(--tx2)',marginTop:6}}>Se enviará email de confirmación</div>
+          </div>
+        ):(
+          <>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+              {Object.entries(PLANS).map(([k,p])=>(
+                <div key={k} className={`sub-card ${plan===k?'on':''}`} onClick={()=>setPlan(k)}>
+                  <div style={{fontWeight:700,fontSize:'1em',marginBottom:3}}>{plan===k?'✓ ':''}{p.label}</div>
+                  <div style={{fontWeight:900,fontSize:'1.1em',color:'var(--ac)',marginBottom:5}}>
+                    {billing==='month'?p.month:p.year}
+                  </div>
+                  <div style={{fontSize:'.75em',color:'var(--tx3)'}}>{p.features}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{display:'flex',gap:7,marginBottom:14}}>
+              {[['month','Mensual'],['year','Anual (20% dto.)']].map(([k,l])=>(
+                <button key={k} className={`pay-tab ${billing===k?'on':''}`} onClick={()=>setBilling(k)}>{l}</button>
+              ))}
+            </div>
+            <div className="stitle">Método de pago</div>
+            <div style={{display:'flex',gap:7,marginBottom:12}}>
+              {[['card','💳 Tarjeta'],['paypal','🅿️ PayPal'],['bizum','📱 Bizum']].map(([k,l])=>(
+                <button key={k} className={`pay-tab ${method===k?'on':''}`} onClick={()=>setMethod(k)}>{l}</button>
+              ))}
+            </div>
+            {method==='card'&&(
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                <div className="fg" style={{gridColumn:'1/-1'}}><label className="fl">Número de tarjeta</label>
+                  <input className="fi" value={cardNum} onChange={e=>setCardNum(e.target.value)} placeholder="1234 5678 9012 3456" maxLength={19}/></div>
+                <div className="fg"><label className="fl">Caducidad</label>
+                  <input className="fi" value={cardExp} onChange={e=>setCardExp(e.target.value)} placeholder="MM/AA" maxLength={5}/></div>
+                <div className="fg"><label className="fl">CVC</label>
+                  <input className="fi" value={cardCvc} onChange={e=>setCardCvc(e.target.value)} placeholder="123" maxLength={3}/></div>
+              </div>
+            )}
+            {method==='paypal'&&(
+              <div className="fg"><label className="fl">Email PayPal</label>
+                <input className="fi" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@paypal.com"/>
+                <div style={{fontSize:'.75em',color:'var(--tx3)',marginTop:4}}>Se abrirá PayPal para completar el pago</div>
+              </div>
+            )}
+            {method==='bizum'&&(
+              <div style={{background:'var(--acb)',borderRadius:'var(--r)',padding:'12px 14px',marginBottom:10}}>
+                <div style={{fontWeight:700,fontSize:'.9em',marginBottom:5}}>📱 Pagar por Bizum</div>
+                <div style={{fontSize:'.85em',color:'var(--tx2)'}}>Envía <strong>{billing==='month'?PLANS[plan].month:PLANS[plan].year}</strong> al número:</div>
+                <div style={{fontWeight:900,fontSize:'1.4em',letterSpacing:2,margin:'8px 0',color:'var(--ac)'}}>+34 600 000 000</div>
+                <div style={{fontSize:'.78em',color:'var(--tx3)'}}>Concepto: GIGI-{entityType.toUpperCase()}-{entity.id}</div>
+              </div>
+            )}
+            <div style={{background:'var(--gob)',border:'1.5px solid var(--go)',borderRadius:'var(--r)',padding:'9px 12px',fontSize:'.8em',color:'var(--tx2)',marginBottom:14}}>
+              ⚠️ Recibirás un aviso por email 15 días antes del vencimiento. Tras caducar, dispones de 15 días de cortesía.
+            </div>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button className="btn bs" onClick={onClose}>Cancelar</button>
+              <button className="btn bp" onClick={submit}>Activar suscripción</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── DeleteConfirm ── */
+function DeleteConfirm({msg,onConfirm,onCancel}){
+  return(
+    <div className="modal-bg"><div className="modal" style={{maxWidth:360,textAlign:'center'}}>
+      <div style={{fontSize:'2.5em',marginBottom:8}}>🗑</div>
+      <div className="stitle">¿Eliminar?</div>
+      <div style={{fontSize:'.88em',color:'var(--tx2)',marginBottom:16}}>{msg}</div>
+      <div style={{display:'flex',gap:8,justifyContent:'center'}}>
+        <button className="btn bs" onClick={onCancel}>Cancelar</button>
+        <button className="btn" style={{background:'var(--er)',color:'#fff',borderColor:'var(--er)'}} onClick={onConfirm}>Eliminar</button>
+      </div>
+    </div></div>
+  );
+}
+
+/* ── ClientView ── */
+function ClientView({tts,clientId,fontSize,setFontSize,palette,setPalette}){
+  const [acts,setActs]=useState(INIT_ACTIVITIES);
+  const [objects]=useState(INIT_OBJECTS);
+  const [playing,setPlaying]=useState(null);
+  const handleLvlDone=(actId,lvlId)=>setActs(as=>as.map(a=>a.id===actId?{...a,done:{...a.done,[lvlId]:true}}:a));
+  const fsIdx=FONT_SIZES.findIndex(f=>f.id===fontSize);
+
+  if(playing)return<GameEngine activity={playing} objects={objects} onBack={()=>setPlaying(null)}
+    onLevelComplete={l=>handleLvlDone(playing.id,l)} tts={tts}/>;
+
+  return(
+    <div className="fdi">
+      <div className="ph">
+        <div><div className="pt">Mis actividades</div><div className="ps">{acts.filter(a=>!a.done?.l3).length} en curso</div></div>
+        <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+          <button className="fsbtn" onClick={()=>{if(fsIdx>0){const nf=FONT_SIZES[fsIdx-1];setFontSize(nf.id);applyZoom(nf.id);savePrefs(clientId,{fontSize:nf.id,palette,tts});}}}>{FONT_SIZES[0].label}</button>
+          <button className="fsbtn" onClick={()=>{if(fsIdx<FONT_SIZES.length-1){const nf=FONT_SIZES[fsIdx+1];setFontSize(nf.id);applyZoom(nf.id);savePrefs(clientId,{fontSize:nf.id,palette,tts});}}}>{FONT_SIZES[FONT_SIZES.length-1].label}</button>
+        </div>
+      </div>
+      <div className="cgrid">
+        {acts.map(a=>{
+          const objs=a.objects.map(id=>objects.find(o=>o.id===id)).filter(Boolean);
+          const d=a.done||{};const allDone=d.l1&&d.l2&&d.l3;
+          const curLvl=!d.l1?1:!d.l2?2:3;
+          return(
+            <div key={a.id} className="ac-card" style={{opacity:allDone?.65:1}}
+              onClick={()=>setPlaying({...a})}
+              onMouseEnter={()=>speak(a.title,tts)}>
+              <div className="ac-thumb">{objs.slice(0,4).map(o=><span key={o.id}>{o.em}</span>)}</div>
+              <div style={{fontWeight:900,fontSize:'1em'}}>{a.title}</div>
+              <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+                {LEVELS.map(l=><span key={l.id} className={`badge ${d[l.id]?'bok':curLvl===l.num?'bb':'bg3'}`}>{d[l.id]?'✓ ':curLvl===l.num?'▶ ':''}{l.icon} {l.label}</span>)}
+              </div>
+              {!allDone&&<button className="btn bp" style={{width:'100%',justifyContent:'center',fontSize:'1.05em',padding:'12px 18px',borderRadius:11}}
+                onMouseEnter={()=>speak(!d.l1?'Empezar':'Continuar nivel '+curLvl,tts)}>
+                ▶ {!d.l1?'Empezar':'Continuar'} — Nivel {curLvl}
+              </button>}
+              {allDone&&<div style={{textAlign:'center',color:'var(--ok)',fontWeight:700,fontSize:'.9em'}}>🏆 Completada</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── Specialist sub-components ── */
+
+function SpecClientModal({clients,groups,editData,onSave,onClose}){
+  const init=editData||{name:'',child:'',age:'',email:'',notes:'',groupIds:[]};
+  const [f,setF]=useState(init);
+  return(
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="stitle">{editData?'Editar cliente':'Nuevo cliente'}</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <div className="fg"><label className="fl">Nombre del tutor</label><input className="fi" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Nombre y apellidos"/></div>
+          <div className="fg"><label className="fl">Nombre del alumno</label><input className="fi" value={f.child} onChange={e=>setF({...f,child:e.target.value})} placeholder="Nombre del niño/a"/></div>
+          <div className="fg"><label className="fl">Edad</label><input className="fi" value={f.age} onChange={e=>setF({...f,age:e.target.value})} placeholder="5 años"/></div>
+          <div className="fg"><label className="fl">Email</label><input className="fi" type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="tutor@email.com"/></div>
+        </div>
+        <div className="fg"><label className="fl">Grupos</label>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+            {groups.map(g=>(
+              <div key={g.id} className={`grp-chip ${f.groupIds?.includes(g.id)?'on':''}`}
+                style={f.groupIds?.includes(g.id)?{borderColor:g.color,background:g.color+'22',color:g.color}:{}}
+                onClick={()=>setF({...f,groupIds:f.groupIds?.includes(g.id)?f.groupIds.filter(x=>x!==g.id):[...(f.groupIds||[]),g.id]})}>
+                <span style={{width:8,height:8,borderRadius:'50%',background:g.color,display:'inline-block'}}/>
+                {g.name}
+              </div>
+            ))}
+            {groups.length===0&&<span style={{fontSize:'.82em',color:'var(--tx3)'}}>Sin grupos creados</span>}
+          </div>
+        </div>
+        <div className="fg"><label className="fl">Notas clínicas</label><textarea className="fi" rows={2} value={f.notes} onChange={e=>setF({...f,notes:e.target.value})} placeholder="Diagnóstico, observaciones..."/></div>
+        <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:6}}>
+          <button className="btn bs" onClick={onClose}>Cancelar</button>
+          <button className="btn bp" disabled={!f.name||!f.child} onClick={()=>onSave(f)}>{editData?'Guardar':'Crear'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ObjectModal({objects,editData,onSave,onClose}){
+  const cats=[...new Set(objects.map(o=>o.cat)),'+ Nueva categoría'];
+  const init=editData||{name:'',cat:'Animales',model3d:'',notes:''};
+  const [f,setF]=useState(init);
+  const [newCat,setNewCat]=useState('');
+  return(
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:540}}>
+        <div className="stitle">{editData?'Editar objeto':'Nuevo objeto'}</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <div className="fg"><label className="fl">Nombre</label><input className="fi" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Ej: Tortuga"/></div>
+          <div className="fg"><label className="fl">Categoría</label>
+            <select className="fi fsel" value={f.cat} onChange={e=>setF({...f,cat:e.target.value})}>
+              {cats.map(c=><option key={c}>{c}</option>)}
+            </select>
+          </div>
+          {f.cat==='+ Nueva categoría'&&<div className="fg" style={{gridColumn:'1/-1'}}><label className="fl">Nombre nueva categoría</label>
+            <input className="fi" value={newCat} onChange={e=>setNewCat(e.target.value)} placeholder="Ej: Instrumentos musicales"/>
+          </div>}
+        </div>
+        <div className="fg"><label className="fl">URL Sketchfab embed (Nivel 1 — 3D)</label>
+          <input className="fi" value={f.model3d} onChange={e=>setF({...f,model3d:e.target.value})} placeholder="https://sketchfab.com/models/.../embed"/>
+        </div>
+        <div className="fg"><label className="fl">Notas</label><textarea className="fi" rows={2} value={f.notes} onChange={e=>setF({...f,notes:e.target.value})} placeholder="Fuente, contexto..."/></div>
+        <div style={{fontSize:'.78em',color:'var(--tx3)',marginBottom:12}}>Las imágenes de Nivel 2 (Foto) y Nivel 3 (Dibujo) se suben desde el panel de objetos</div>
+        <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+          <button className="btn bs" onClick={onClose}>Cancelar</button>
+          <button className="btn bp" disabled={!f.name} onClick={()=>onSave({...f,cat:f.cat==='+ Nueva categoría'?newCat:f.cat})}>{editData?'Guardar':'Crear'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActivityModal({clients,groups,objects,onSave,onClose,initialData}){
+  const initF=initialData?{
+    title:initialData.title||'',
+    selObjs:initialData.objects||[],
+    cat:'Todos',
+    mode:initialData.assignedTo==='all'?'all':
+         initialData.assignedTo?.groups?'group':'individual',
+    selC:Array.isArray(initialData.assignedTo)?initialData.assignedTo:[],
+    selG:initialData.assignedTo?.groups||[],
+  }:{title:'',selObjs:[],cat:'Todos',mode:'individual',selC:[],selG:[]};
+  const [f,setF]=useState(initF);
+  const [searchQ,setSearchQ]=useState('');
+  const cats=['Todos',...new Set(objects.map(o=>o.cat))];
+  const filtered=objects.filter(o=>(f.cat==='Todos'||o.cat===f.cat));
+  const toggleObj=id=>setF(n=>({...n,selObjs:n.selObjs.includes(id)?n.selObjs.filter(x=>x!==id):[...n.selObjs,id]}));
+  const toggleC=id=>setF(n=>({...n,selC:n.selC.includes(id)?n.selC.filter(x=>x!==id):[...n.selC,id]}));
+  const toggleG=id=>setF(n=>({...n,selG:n.selG.includes(id)?n.selG.filter(x=>x!==id):[...n.selG,id]}));
+  const filteredClients=clients.filter(c=>c.name.toLowerCase().includes(searchQ.toLowerCase())||c.child.toLowerCase().includes(searchQ.toLowerCase()));
+  const canSave=f.title&&f.selObjs.length>0&&(f.mode==='all'||f.selC.length>0||f.selG.length>0);
+  const save=()=>{
+    const assignedTo=f.mode==='all'?'all':f.mode==='group'?{groups:f.selG}:f.selC;
+    onSave({title:f.title,objects:f.selObjs,assignedTo,done:{l1:false,l2:false,l3:false}});
+  };
+  return(
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="stitle">{initialData?'Editar actividad':'Nueva actividad'}</div>
+        <div className="fg"><label className="fl">Título</label>
+          <input className="fi" value={f.title} onChange={e=>setF({...f,title:e.target.value})} placeholder="Ej: Animales del campo — Semana 3"/>
+        </div>
+        <div className="fg">
+          <label className="fl">Objetos ({f.selObjs.length} sel.)</label>
+          <div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:8}}>
+            {cats.map(c=><span key={c} className={`tag ${f.cat===c?'on':''}`} onClick={()=>setF({...f,cat:c})}>{c}</span>)}
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(72px,1fr))',gap:7}}>
+            {filtered.map(o=>(
+              <div key={o.id} className={`opick ${f.selObjs.includes(o.id)?'on':''}`} onClick={()=>toggleObj(o.id)}>
+                <span style={{fontSize:'1.5em',display:'block'}}>{o.em}</span>
+                <div style={{fontSize:'.72em',fontWeight:700,color:'var(--tx2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{o.name}</div>
+                <div style={{fontSize:'.65em',color:'var(--ac)',minHeight:11,fontWeight:700}}>{f.selObjs.includes(o.id)?'✓':''}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="fg">
+          <label className="fl">Ejercicios incluidos automáticamente</label>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
+            <div style={{background:'var(--bg2)',borderRadius:'var(--r)',padding:'8px 10px',fontSize:'.78em'}}>
+              <div style={{fontWeight:700,marginBottom:2}}>🧊 Nivel 1</div>
+              <div style={{color:'var(--tx3)'}}>Mostrar 3D</div>
+            </div>
+            <div style={{background:'var(--bg2)',borderRadius:'var(--r)',padding:'8px 10px',fontSize:'.78em'}}>
+              <div style={{fontWeight:700,marginBottom:2}}>📷 Nivel 2</div>
+              <div style={{color:'var(--tx3)'}}>Mostrar · Reconocer · Relacionar · Memorizar</div>
+            </div>
+            <div style={{background:'var(--bg2)',borderRadius:'var(--r)',padding:'8px 10px',fontSize:'.78em'}}>
+              <div style={{fontWeight:700,marginBottom:2}}>📝 Nivel 3</div>
+              <div style={{color:'var(--tx3)'}}>Mostrar · Reconocer · Relacionar · Memorizar</div>
+            </div>
+          </div>
+        </div>
+        <div className="fg">
+          <label className="fl">Asignar a</label>
+          <div className="assign-opts">
+            {[['individual','👤','Clientes'],['group','👥','Grupos'],['all','🌐','Todos']].map(([m,ic,lb])=>(
+              <div key={m} className={`aopt ${f.mode===m?'on':''}`} onClick={()=>setF({...f,mode:m,selC:[],selG:[]})}>
+                <span style={{fontSize:'1.3em'}}>{ic}</span><span>{lb}</span>
+              </div>
+            ))}
+          </div>
+          {f.mode==='individual'&&(
+            <>
+              <div className="srch"><input className="fi" placeholder="Buscar cliente..." value={searchQ} onChange={e=>setSearchQ(e.target.value)}/></div>
+              <div className="cbl">
+                {filteredClients.map(c=>(
+                  <div key={c.id} className="cbi" onClick={()=>toggleC(c.id)}>
+                    <input type="checkbox" checked={f.selC.includes(c.id)} onChange={()=>{}} />
+                    <div className="cav" style={{width:26,height:26,fontSize:.8+'em'}}>{c.av}</div>
+                    <div style={{flex:1}}><div style={{fontWeight:700}}>{c.child}</div><div style={{fontSize:'.78em',color:'var(--tx3)'}}>{c.age} · {c.name}</div></div>
+                  </div>
+                ))}
+              </div>
+              {f.selC.length>0&&<div style={{fontSize:'.8em',color:'var(--ac)',fontWeight:700,marginTop:5}}>{f.selC.length} clientes seleccionados</div>}
+            </>
+          )}
+          {f.mode==='group'&&(
+            <div style={{display:'flex',gap:7,flexWrap:'wrap'}}>
+              {groups.map(g=>(
+                <div key={g.id} className={`grp-chip ${f.selG.includes(g.id)?'on':''}`}
+                  style={f.selG.includes(g.id)?{borderColor:g.color,background:g.color+'22',color:g.color}:{}}
+                  onClick={()=>toggleG(g.id)}>
+                  <span style={{width:8,height:8,borderRadius:'50%',background:g.color,display:'inline-block'}}/>
+                  {g.name} ({g.clientIds.length})
+                </div>
+              ))}
+              {groups.length===0&&<span style={{fontSize:'.82em',color:'var(--tx3)'}}>No hay grupos. Créalos en la pestaña Grupos.</span>}
+            </div>
+          )}
+          {f.mode==='all'&&<div style={{background:'var(--acb)',borderRadius:'var(--r)',padding:'8px 11px',fontSize:'.82em',color:'var(--act)',fontWeight:700}}>🌐 Todos los clientes activos</div>}
+        </div>
+        <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:4}}>
+          <button className="btn bs" onClick={onClose}>Cancelar</button>
+          <button className="btn bp" disabled={!canSave} onClick={save}>{initialData?'Guardar cambios':'Crear y asignar'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── ObjectsAccordion (specialist) ── */
+function ObjectsPage({specId}){
+  const [objects,setObjects]=useState(INIT_OBJECTS.map(o=>({...o})));
+  const [expanded,setExpanded]=useState(null);
+  const [showModal,setShowModal]=useState(false);
+  const [editObj,setEditObj]=useState(null);
+  const [delObj,setDelObj]=useState(null);
+  const [srchObj,setSrchObj]=useState('');
+  const [filterCat,setFilterCat]=useState('Todos');
+
+  const saveObj=f=>{
+    if(editObj){
+      setObjects(os=>os.map(o=>o.id===editObj.id?{...o,...f}:o));
+    } else {
+      setObjects(os=>[...os,{id:'obj'+Date.now(),em:'📦',photo:null,drawing:null,...f}]);
+    }
+    setShowModal(false);setEditObj(null);
+  };
+
+  return(
+    <div className="fdi">
+      <div className="ph">
+        <div><div className="pt">Mis objetos</div></div>
+        <button className="btn bp bsm" onClick={()=>{setEditObj(null);setShowModal(true);}}>+ Nuevo objeto</button>
+      </div>
+      <div style={{background:'var(--wab)',border:'1.5px solid var(--wa)',borderRadius:'var(--r)',padding:'9px 13px',fontSize:'.85em',color:'var(--tx2)',marginBottom:12}}>
+        ⚠️ Cada objeto necesita las 3 representaciones (3D · Foto · Dibujo) para usarse en los 3 niveles.
+      </div>
+      <div className="srch2">
+        <input className="fi" style={{maxWidth:260}} placeholder="🔍 Buscar objeto..." value={srchObj} onChange={e=>setSrchObj(e.target.value)}/>
+        <select className="fi fsel" style={{maxWidth:160}} value={filterCat} onChange={e=>setFilterCat(e.target.value)}>
+          <option value="Todos">Todas las categorías</option>
+          {[...new Set(objects.map(o=>o.cat))].map(c=><option key={c}>{c}</option>)}
+        </select>
+        <span style={{fontSize:'.8em',color:'var(--tx3)'}}>{objects.filter(o=>(filterCat==='Todos'||o.cat===filterCat)&&(!srchObj||o.name.toLowerCase().includes(srchObj.toLowerCase()))).length} obj.</span>
+      </div>
+      {objects.filter(o=>(filterCat==='Todos'||o.cat===filterCat)&&(!srchObj||o.name.toLowerCase().includes(srchObj.toLowerCase()))).map((o,i)=>{
+        const has3d=!!o.model3d;
+        const hasPhoto=!!o.photo;
+        const hasDrawing=!!o.drawing;
+        const complete=has3d&&hasPhoto&&hasDrawing;
+        return(
+          <div key={o.id} className={`obrow ${expanded===o.id?'open':''}`}>
+            <div className="obrh" onClick={()=>setExpanded(expanded===o.id?null:o.id)}>
+              <span style={{fontSize:'1.4em'}}>{o.em}</span>
+              <div style={{flex:1}}><div style={{fontWeight:700}}>{o.name}</div><div style={{fontSize:'.75em',color:'var(--tx3)'}}>{o.cat}</div></div>
+              <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}>
+                <span className={`badge ${has3d?'bok':'bwa'}`}>🧊 {has3d?'✓':'✗'}</span>
+                <span className={`badge ${hasPhoto?'bok':'bwa'}`}>📷 {hasPhoto?'✓':'✗'}</span>
+                <span className={`badge ${hasDrawing?'bok':'bwa'}`}>📝 {hasDrawing?'✓':'✗'}</span>
+                <span className={`badge ${complete?'bok':'ber'}`}>{complete?'Completo':'Incompleto'}</span>
+                <button className="btn bs bsm" onClick={e=>{e.stopPropagation();setEditObj(o);setShowModal(true);}}>✏️</button>
+                <button className="btn ber2 bsm" onClick={e=>{e.stopPropagation();setDelObj(o.id);}}>🗑</button>
+                <span style={{fontSize:'.9em',color:'var(--tx3)'}}>{expanded===o.id?'▲':'▼'}</span>
+              </div>
+            </div>
+            {expanded===o.id&&(
+              <div style={{borderTop:'1px solid var(--bd)',padding:'12px 14px',display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+                {[
+                  {label:'🧊 Nivel 1 — Modelo 3D',has:has3d,content:has3d?(
+                    <div>
+                      <div style={{position:'relative',width:'100%',paddingTop:'56.25%',borderRadius:7,overflow:'hidden',border:'1.5px solid var(--bd)',background:'#111',marginBottom:6}}>
+                        <iframe title={o.name} src={o.model3d} frameBorder="0" allowFullScreen allow="autoplay; fullscreen; xr-spatial-tracking" style={{position:'absolute',top:0,left:0,width:'100%',height:'100%'}}/>
+                      </div>
+                      <button className="btn bs bsm" style={{width:'100%'}}>✏️ Cambiar</button>
+                    </div>
+                  ):(
+                    <div style={{border:'2px dashed var(--bd)',borderRadius:7,padding:'12px 6px',textAlign:'center',background:'var(--bg2)'}}>
+                      <div style={{fontSize:'1.5em',marginBottom:4}}>🧊</div>
+                      <div className="fg" style={{marginBottom:6}}><label className="fl" style={{textAlign:'left'}}>URL Sketchfab</label>
+                        <input className="fi" style={{fontSize:'.8em'}} placeholder="https://sketchfab.com/models/.../embed"/></div>
+                      <button className="btn bp bsm" style={{width:'100%'}}>Guardar</button>
+                    </div>
+                  )},
+                  {label:'📷 Nivel 2 — Fotografía',has:hasPhoto,content:o.photo?(
+                    <div style={{border:'1.5px solid var(--okbd)',borderRadius:7,overflow:'hidden',background:'var(--okb)'}}>
+                      <img src={o.photo} alt={o.name} style={{width:'100%',maxHeight:110,objectFit:'cover',display:'block'}}/>
+                      <div style={{padding:'6px 8px',display:'flex',gap:5}}>
+                        <span style={{fontSize:'.75em',color:'var(--ok)',fontWeight:700,flex:1}}>✓ Foto</span>
+                        <button className="btn bs bsm">↺</button>
+                      </div>
+                    </div>
+                  ):(
+                    <div style={{border:'2px dashed var(--bd)',borderRadius:7,padding:'12px 6px',textAlign:'center',background:'var(--bg2)'}}>
+                      <div style={{fontSize:'1.5em',marginBottom:4}}>📷</div>
+                      <div style={{fontSize:'.75em',color:'var(--tx3)',marginBottom:7}}>Sin foto</div>
+                      <button className="btn bp bsm" style={{width:'100%'}}>📁 Subir</button>
+                    </div>
+                  )},
+                  {label:'📝 Nivel 3 — Dibujo',has:hasDrawing,content:o.drawing?(
+                    <div style={{border:'1.5px solid var(--okbd)',borderRadius:7,overflow:'hidden',background:'var(--okb)'}}>
+                      <img src={o.drawing} alt={o.name} style={{width:'100%',maxHeight:110,objectFit:'cover',display:'block'}}/>
+                      <div style={{padding:'6px 8px',display:'flex',gap:5}}>
+                        <span style={{fontSize:'.75em',color:'var(--ok)',fontWeight:700,flex:1}}>✓ Dibujo</span>
+                        <button className="btn bs bsm">↺</button>
+                      </div>
+                    </div>
+                  ):(
+                    <div style={{border:'2px dashed var(--bd)',borderRadius:7,padding:'12px 6px',textAlign:'center',background:'var(--bg2)'}}>
+                      <div style={{fontSize:'1.5em',marginBottom:4}}>📝</div>
+                      <div style={{fontSize:'.75em',color:'var(--tx3)',marginBottom:7}}>Sin dibujo</div>
+                      <button className="btn bp bsm" style={{width:'100%'}}>📁 Subir</button>
+                    </div>
+                  )},
+                ].map(({label,content})=>(
+                  <div key={label}>
+                    <div style={{fontSize:'.68em',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--tx3)',marginBottom:6}}>{label}</div>
+                    {content}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {showModal&&<ObjectModal objects={objects} editData={editObj} onSave={saveObj} onClose={()=>{setShowModal(false);setEditObj(null);}}/>}
+      {delObj&&<DeleteConfirm msg="Se eliminará el objeto y sus representaciones." onConfirm={()=>{setObjects(os=>os.filter(o=>o.id!==delObj));setDelObj(null);}} onCancel={()=>setDelObj(null)}/>}
+    </div>
+  );
+}
+
+/* ── GroupsPage ── */
+function GroupsPage({clients,groups,setGroups,hidePH=false}){
+  const [showModal,setShowModal]=useState(false);
+  const [editGrp,setEditGrp]=useState(null);
+  const [delGrp,setDelGrp]=useState(null);
+  const [f,setF]=useState({name:'',color:'#1A5FD4',clientIds:[]});
+  const COLORS=['#1A5FD4','#1A7A3C','#C0392B','#B05000','#7B2D8B','#0077BB','#CC3300'];
+
+  const openNew=()=>{setF({name:'',color:'#1A5FD4',clientIds:[]});setEditGrp(null);setShowModal(true);};
+  const openEdit=g=>{setF({name:g.name,color:g.color,clientIds:[...g.clientIds]});setEditGrp(g.id);setShowModal(true);};
+  const saveGrp=()=>{
+    if(editGrp){setGroups(gs=>gs.map(g=>g.id===editGrp?{...g,...f}:g));}
+    else{setGroups(gs=>[...gs,{id:'g'+Date.now(),specId:'s1',...f}]);}
+    setShowModal(false);setEditGrp(null);
+  };
+  const toggleCli=id=>setF(n=>({...n,clientIds:n.clientIds.includes(id)?n.clientIds.filter(x=>x!==id):[...n.clientIds,id]}));
+
+  return(
+    <div className="fdi">
+{!hidePH&&<div className="ph">
+        <div><div className="pt">Grupos de clientes</div><div className="ps">{groups.length} grupos</div></div>
+        <button className="btn bp bsm" onClick={openNew}>+ Nuevo grupo</button>
+      </div>}
+      {hidePH&&<div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
+        <button className="btn bp bsm" onClick={openNew}>+ Nuevo grupo</button>
+      </div>}
+      {groups.length===0&&<div style={{textAlign:'center',padding:'40px',color:'var(--tx3)'}}>
+        <div style={{fontSize:'2.5em',marginBottom:10}}>👥</div>
+        <div style={{fontWeight:700}}>Sin grupos aún</div>
+        <div style={{fontSize:'.85em',marginTop:4}}>Crea grupos para asignar actividades a varios clientes a la vez</div>
+      </div>}
+      {groups.map(g=>{
+        const members=clients.filter(c=>g.clientIds.includes(c.id));
+        return(
+          <div key={g.id} className="crow" style={{borderLeft:`4px solid ${g.color}`}}>
+            <div style={{width:36,height:36,borderRadius:'50%',background:g.color,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:900,fontSize:'.85em',flexShrink:0}}>
+              {g.clientIds.length}
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700}}>{g.name}</div>
+              <div style={{fontSize:'.78em',color:'var(--tx2)'}}>
+                {members.length>0?members.map(c=>c.child).join(', '):'Sin miembros'}
+              </div>
+            </div>
+            <div style={{display:'flex',gap:5}}>
+              <button className="btn bs bsm" onClick={()=>openEdit(g)}>✏️ Editar</button>
+              <button className="btn ber2 bsm" onClick={()=>setDelGrp(g.id)}>🗑</button>
+            </div>
+          </div>
+        );
+      })}
+      {showModal&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setShowModal(false)}>
+          <div className="modal" style={{maxWidth:500}}>
+            <div className="stitle">{editGrp?'Editar grupo':'Nuevo grupo'}</div>
+            <div className="fg"><label className="fl">Nombre del grupo</label>
+              <input className="fi" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Ej: Grupo A – Mañanas"/>
+            </div>
+            <div className="fg"><label className="fl">Color identificativo</label>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {COLORS.map(c=>(
+                  <div key={c} onClick={()=>setF({...f,color:c})}
+                    style={{width:28,height:28,borderRadius:'50%',background:c,cursor:'pointer',border:`3px solid ${f.color===c?'var(--tx)':'transparent'}`,transition:'border .12s'}}/>
+                ))}
+              </div>
+            </div>
+            <div className="fg"><label className="fl">Miembros</label>
+              <div className="cbl">
+                {clients.map(c=>(
+                  <div key={c.id} className="cbi" onClick={()=>toggleCli(c.id)}>
+                    <input type="checkbox" checked={f.clientIds.includes(c.id)} onChange={()=>{}}/>
+                    <div className="cav" style={{width:26,height:26,fontSize:'.78em',background:f.color}}>{c.av}</div>
+                    <div style={{flex:1}}><div style={{fontWeight:700}}>{c.child}</div><div style={{fontSize:'.75em',color:'var(--tx3)'}}>{c.age}</div></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button className="btn bs" onClick={()=>setShowModal(false)}>Cancelar</button>
+              <button className="btn bp" disabled={!f.name} onClick={saveGrp}>{editGrp?'Guardar':'Crear grupo'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {delGrp&&<DeleteConfirm msg="Se eliminará el grupo. Los clientes no se verán afectados." onConfirm={()=>{setGroups(gs=>gs.filter(g=>g.id!==delGrp));setDelGrp(null);}} onCancel={()=>setDelGrp(null)}/>}
+    </div>
+  );
+}
+
+/* ── SpecialistView ── */
+function SpecialistView(){
+  const [page,setPage]=useState('clients');
+  const [clients,setClients]=useState(INIT_CLIENTS.filter(c=>c.specId==='s1'));
+  const [groups,setGroups]=useState(INIT_GROUPS.filter(g=>g.specId==='s1'));
+  const [acts,setActs]=useState(INIT_ACTIVITIES.filter(a=>a.specId==='s1'));
+  const [showNC,setShowNC]=useState(false);
+  const [editC,setEditC]=useState(null);
+  const [delC,setDelC]=useState(null);
+  const [showNA,setShowNA]=useState(false);
+  const [editActId,setEditActId]=useState(null);
+  const [delA,setDelA]=useState(null);
+  const [subTarget,setSubTarget]=useState(null);
+  // search states
+  const [searchC,setSearchC]=useState('');
+  const [searchA,setSearchA]=useState('');
+
+  const SPEC_TABS=[
+    {id:'clients', ic:'👶',l:'Clientes'},
+    {id:'activities',ic:'📋',l:'Actividades'},
+    {id:'objects',  ic:'📦',l:'Objetos'},
+    {id:'groups',   ic:'👥',l:'Grupos'},
+  ];
+
+  const saveClient=f=>{
+    const av=f.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    if(editC){setClients(cs=>cs.map(c=>c.id===editC?{...c,...f,av}:c));}
+    else{setClients(cs=>[...cs,{id:'c'+Date.now(),av,specId:'s1',groupIds:[],prog:{l1:false,l2:false,l3:false},sub:{plan:'basic',billing:'month',status:'trial',expires:new Date(Date.now()+15*86400000).toISOString().split('T')[0]},...f}]);}
+    setShowNC(false);setEditC(null);
+  };
+  const saveAct=f=>{
+    if(editActId){setActs(as=>as.map(a=>a.id===editActId?{...a,...f}:a));setEditActId(null);}
+    else{setActs(as=>[...as,{id:'a'+Date.now(),specId:'s1',...f}]);}
+    setShowNA(false);
+  };
+  const assignLabel=a=>{
+    if(a.assignedTo==='all')return'Todos';
+    if(Array.isArray(a.assignedTo)){if(a.assignedTo.length===0)return'Sin asignar';return a.assignedTo.map(id=>clients.find(c=>c.id===id)?.child||'?').join(', ');}
+    if(a.assignedTo?.groups){return a.assignedTo.groups.map(gid=>groups.find(g=>g.id===gid)?.name||'?').join(', ');}
+    return'—';
+  };
+  const OBJECTS_STATE=INIT_OBJECTS;
+  const filtClients=clients.filter(c=>!searchC||c.name.toLowerCase().includes(searchC.toLowerCase())||c.child.toLowerCase().includes(searchC.toLowerCase()));
+  const filtActs=acts.filter(a=>!searchA||a.title.toLowerCase().includes(searchA.toLowerCase()));
+
+  return(
+    <div className="fdi">
+      {/* Top tab nav */}
+      <div className="tabrow">
+        {SPEC_TABS.map(t=>(
+          <button key={t.id} className={`btn ${page===t.id?'bp':'bs'} bsm`} onClick={()=>setPage(t.id)}>
+            {t.ic} {t.l}
+          </button>
+        ))}
+        <div style={{flex:1}}/>
+        {page==='clients'&&<button className="btn bp bsm" onClick={()=>{setEditC(null);setShowNC(true);}}>+ Nuevo cliente</button>}
+        {page==='activities'&&<button className="btn bp bsm" onClick={()=>{setEditActId(null);setShowNA(true);}}>+ Nueva actividad</button>}
+      </div>
+
+      {/* Stats bar */}
+      {page==='clients'&&(
+        <div className="sgrid">
+          {[[''+clients.length,'Alumnos'],[''+acts.length,'Actividades'],[''+groups.length,'Grupos'],[''+clients.filter(c=>subStatus(c.sub).label==='Activa').length,'Activos']].map(([n,l])=>(
+            <div key={l} className="sc"><div className="sn">{n}</div><div className="sl">{l}</div></div>
+          ))}
+        </div>
+      )}
+
+      {/* Clients tab */}
+      {page==='clients'&&(
+        <>
+          <div className="srch2">
+            <input className="fi" style={{maxWidth:320}} placeholder="🔍 Buscar cliente..." value={searchC} onChange={e=>setSearchC(e.target.value)}/>
+            <span style={{fontSize:'.8em',color:'var(--tx3)'}}>{filtClients.length} resultado{filtClients.length!==1?'s':''}</span>
+          </div>
+          {filtClients.map(c=>{
+            const st=subStatus(c.sub);
+            return(
+              <div key={c.id} className="crow">
+                <div className="cav">{c.av}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:'.95em'}}>{c.child}</div>
+                  <div style={{fontSize:'.78em',color:'var(--tx2)'}}>{c.name} · {c.age}{c.groupIds?.length>0&&' · '+c.groupIds.map(gid=>groups.find(g=>g.id===gid)?.name||'?').join(', ')}</div>
+                </div>
+                <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}>
+                  {LEVELS.map(l=><span key={l.id} className={`badge ${c.prog?.[l.id]?'bok':'bg3'}`}>{c.prog?.[l.id]?'✓':l.num}</span>)}
+                  <span className={`badge ${st.cls}`} style={{cursor:'pointer'}} onClick={()=>setSubTarget({entity:c,type:'client'})}>{st.label}</span>
+                  <button className="btn bs bsm" onClick={()=>{setEditC(c.id);setShowNC(true);}}>✏️</button>
+                  <button className="btn ber2 bsm" onClick={()=>setDelC(c.id)}>🗑</button>
+                </div>
+              </div>
+            );
+          })}
+          {filtClients.length===0&&<div style={{textAlign:'center',padding:'32px',color:'var(--tx3)'}}>Sin resultados para "{searchC}"</div>}
+        </>
+      )}
+
+      {/* Activities tab */}
+      {page==='activities'&&(
+        <>
+          <div className="srch2">
+            <input className="fi" style={{maxWidth:320}} placeholder="🔍 Buscar actividad..." value={searchA} onChange={e=>setSearchA(e.target.value)}/>
+            <span style={{fontSize:'.8em',color:'var(--tx3)'}}>{filtActs.length} resultado{filtActs.length!==1?'s':''}</span>
+          </div>
+          {filtActs.map(a=>(
+            <div key={a.id} style={{display:'flex',alignItems:'center',gap:9,padding:'9px 13px',background:'var(--sf)',border:'1.5px solid var(--bd)',borderRadius:'var(--r)',marginBottom:6}}>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:'.9em'}}>{a.title}</div>
+                <div style={{fontSize:'.75em',color:'var(--tx3)'}}>{a.objects.map(id=>OBJECTS_STATE.find(o=>o.id===id)?.em||'📦').join(' ')} · {assignLabel(a)}</div>
+              </div>
+              {LEVELS.map(l=><span key={l.id} className={`badge ${a.done?.[l.id]?'bok':'bg3'}`}>{l.icon}</span>)}
+              <button className="btn bs bsm" onClick={()=>{setEditActId(a.id);setShowNA(true);}}>✏️</button>
+              <button className="btn ber2 bsm" onClick={()=>setDelA(a.id)}>🗑</button>
+            </div>
+          ))}
+          {filtActs.length===0&&<div style={{textAlign:'center',padding:'32px',color:'var(--tx3)'}}>Sin actividades{searchA?' para "'+searchA+'"':''}</div>}
+        </>
+      )}
+
+      {page==='objects'&&<ObjectsPage specId="s1"/>}
+      {page==='groups'&&<GroupsPage clients={clients} groups={groups} setGroups={setGroups}/>}
+
+      {showNC&&<SpecClientModal clients={clients} groups={groups}
+        editData={editC?clients.find(c=>c.id===editC):null}
+        onSave={saveClient} onClose={()=>{setShowNC(false);setEditC(null);}}/>}
+      {showNA&&<ActivityModal clients={clients} groups={groups} objects={OBJECTS_STATE}
+        initialData={editActId?acts.find(a=>a.id===editActId):null}
+        onSave={saveAct} onClose={()=>{setShowNA(false);setEditActId(null);}}/>}
+      {delC&&<DeleteConfirm msg="Se eliminará el cliente y sus asignaciones." onConfirm={()=>{setClients(cs=>cs.filter(c=>c.id!==delC));setDelC(null);}} onCancel={()=>setDelC(null)}/>}
+      {delA&&<DeleteConfirm msg="Se eliminará la actividad y sus asignaciones." onConfirm={()=>{setActs(as=>as.filter(a=>a.id!==delA));setDelA(null);}} onCancel={()=>setDelA(null)}/>}
+      {subTarget&&<SubscriptionModal entity={subTarget.entity} entityType={subTarget.type}
+        onClose={()=>setSubTarget(null)}
+        onSave={sub=>{if(subTarget.type==='client')setClients(cs=>cs.map(c=>c.id===subTarget.entity.id?{...c,sub}:c));setSubTarget(null);}}/>}
+    </div>
+  );
+}
+
+/* ── AdminView ── */
+function AdminView(){
+  const [page,setPage]=useState('dash');
+  const [specialists,setSpecialists]=useState(INIT_SPECIALISTS);
+  const [clients,setClients]=useState(INIT_CLIENTS);
+  const [acts,setActs]=useState(INIT_ACTIVITIES);
+  const [groups,setGroups]=useState(INIT_GROUPS);
+  const [delSpec,setDelSpec]=useState(null);
+  const [delCli,setDelCli]=useState(null);
+  const [delAct,setDelAct]=useState(null);
+  const [subTarget,setSubTarget]=useState(null);
+  const [showEditSpec,setShowEditSpec]=useState(null);
+  const [showEditCli,setShowEditCli]=useState(null);
+  const [specF,setSpecF]=useState({name:'',email:'',bio:''});
+  const [cliF,setCliF]=useState({name:'',child:'',age:'',email:''});
+  // search
+  const [srchSpec,setSrchSpec]=useState('');
+  const [srchCli,setSrchCli]=useState('');
+  const [srchAct,setSrchAct]=useState('');
+  const [srchSub,setSrchSub]=useState('');
+  const [srchGrp,setSrchGrp]=useState('');
+  const [filterSubStatus,setFilterSubStatus]=useState('all');
+
+  const ADMIN_TABS=[
+    {id:'dash',         ic:'📊',l:'Panel'},
+    {id:'specialists',  ic:'🧑‍⚕️',l:'Especialistas'},
+    {id:'clients',      ic:'👶',l:'Clientes'},
+    {id:'activities',   ic:'📋',l:'Actividades'},
+    {id:'objects',      ic:'📦',l:'Objetos'},
+    {id:'groups',       ic:'👥',l:'Grupos'},
+    {id:'subscriptions',ic:'💳',l:'Suscripciones'},
+  ];
+
+  const saveSpec=()=>{
+    const av=specF.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    if(showEditSpec==='new'){setSpecialists(ss=>[...ss,{id:'s'+Date.now(),av,active:true,sub:{plan:'basic',billing:'month',status:'trial',expires:new Date(Date.now()+15*86400000).toISOString().split('T')[0]},...specF}]);}
+    else{setSpecialists(ss=>ss.map(s=>s.id===showEditSpec?{...s,...specF,av}:s));}
+    setShowEditSpec(null);
+  };
+  const saveCli=()=>{
+    const av=cliF.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    if(showEditCli==='new'){setClients(cs=>[...cs,{id:'c'+Date.now(),av,specId:'s1',groupIds:[],prog:{l1:false,l2:false,l3:false},sub:{plan:'basic',billing:'month',status:'trial',expires:new Date(Date.now()+15*86400000).toISOString().split('T')[0]},...cliF}]);}
+    else{setClients(cs=>cs.map(c=>c.id===showEditCli?{...c,...cliF,av}:c));}
+    setShowEditCli(null);
+  };
+
+  const fSpec=specialists.filter(s=>!srchSpec||s.name.toLowerCase().includes(srchSpec.toLowerCase())||s.email.toLowerCase().includes(srchSpec.toLowerCase()));
+  const fCli=clients.filter(c=>{
+    const q=srchCli.toLowerCase();
+    return !q||(c.child+c.name).toLowerCase().includes(q);
+  });
+  const fAct=acts.filter(a=>!srchAct||a.title.toLowerCase().includes(srchAct.toLowerCase()));
+  const allSubs=[...specialists,...clients];
+  const fSub=allSubs.filter(e=>{
+    const q=srchSub.toLowerCase();
+    const nm=(e.name||e.child||'').toLowerCase();
+    const matchQ=!q||nm.includes(q);
+    const st=subStatus(e.sub).label;
+    const matchSt=filterSubStatus==='all'||st===filterSubStatus;
+    return matchQ&&matchSt;
+  });
+  const fGrp=groups.filter(g=>!srchGrp||g.name.toLowerCase().includes(srchGrp.toLowerCase()));
+
+  return(
+    <div className="fdi">
+      <div className="tabrow">
+        {ADMIN_TABS.map(t=>(
+          <button key={t.id} className={`btn ${page===t.id?'bp':'bs'} bsm`} onClick={()=>setPage(t.id)}>
+            {t.ic} {t.l}
+          </button>
+        ))}
+        <div style={{flex:1}}/>
+        {page==='specialists'&&<button className="btn bp bsm" onClick={()=>{setSpecF({name:'',email:'',bio:''});setShowEditSpec('new');}}>+ Nuevo</button>}
+        {page==='clients'&&<button className="btn bp bsm" onClick={()=>{setCliF({name:'',child:'',age:'',email:''});setShowEditCli('new');}}>+ Nuevo</button>}
+      </div>
+
+      {/* DASHBOARD */}
+      {page==='dash'&&(
+        <>
+          <div className="sgrid">
+            {[[''+specialists.length,'Especialistas'],[''+clients.length,'Clientes'],[''+acts.length,'Actividades'],[''+INIT_OBJECTS.length,'Objetos'],
+              [''+specialists.filter(s=>subStatus(s.sub).label==='Activa').length,'Esp. activos'],
+              [''+clients.filter(c=>subStatus(c.sub).label==='Activa').length,'Cli. activos']].map(([n,l])=>(
+              <div key={l} className="sc"><div className="sn">{n}</div><div className="sl">{l}</div></div>
+            ))}
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+            <div className="card">
+              <div className="stitle">⏳ Próximos a vencer (15d)</div>
+              {allSubs.filter(e=>{
+                const st=subStatus(e.sub);
+                return st.label==='Activa'&&new Date(e.sub?.expires)-new Date()<15*86400000;
+              }).slice(0,5).map(e=>(
+                <div key={e.id} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 0',borderBottom:'1px solid var(--bg3)'}}>
+                  <div className="cav" style={{width:32,height:32,fontSize:'.75em'}}>{e.av}</div>
+                  <div style={{flex:1}}><div style={{fontWeight:700,fontSize:'.88em'}}>{e.name||e.child}</div>
+                    <div style={{fontSize:'.75em',color:'var(--tx3)'}}>Vence: {e.sub?.expires}</div></div>
+                  <button className="btn bp bsm" onClick={()=>setSubTarget({entity:e,type:e.specId?'client':'specialist'})}>Renovar</button>
+                </div>
+              ))}
+            </div>
+            <div className="card">
+              <div className="stitle">📊 Estado suscripciones</div>
+              {[['Activa','bok'],['Prueba 15d','bb'],['Gracia 15d','bwa'],['Caducada','ber']].map(([label,cls])=>{
+                const total=allSubs.filter(e=>subStatus(e.sub).label===label).length;
+                return <div key={label} style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid var(--bg3)',fontSize:'.88em'}}>
+                  <span className={`badge ${cls}`}>{label}</span><strong>{total}</strong>
+                </div>;
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* SPECIALISTS */}
+      {page==='specialists'&&(
+        <>
+          <div className="srch2">
+            <input className="fi" style={{maxWidth:320}} placeholder="🔍 Buscar especialista..." value={srchSpec} onChange={e=>setSrchSpec(e.target.value)}/>
+            <span style={{fontSize:'.8em',color:'var(--tx3)'}}>{fSpec.length} resultado{fSpec.length!==1?'s':''}</span>
+          </div>
+          {fSpec.map(s=>{
+            const st=subStatus(s.sub);
+            return(
+              <div key={s.id} className="crow">
+                <div className="cav">{s.av}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700}}>{s.name}</div>
+                  <div style={{fontSize:'.78em',color:'var(--tx2)'}}>{s.email}</div>
+                  {s.bio&&<div style={{fontSize:'.75em',color:'var(--tx3)',marginTop:2}}>{s.bio}</div>}
+                </div>
+                <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}>
+                  <span className={`badge ${s.active?'bok':'bg3'}`}>{s.active?'Activo':'Inactivo'}</span>
+                  <span className={`badge ${st.cls}`} style={{cursor:'pointer'}} onClick={()=>setSubTarget({entity:s,type:'specialist'})}>{st.label}</span>
+                  <button className="btn bs bsm" onClick={()=>{setSpecF({name:s.name,email:s.email,bio:s.bio||''});setShowEditSpec(s.id);}}>✏️</button>
+                  <button className="btn ber2 bsm" onClick={()=>setDelSpec(s.id)}>🗑</button>
+                </div>
+              </div>
+            );
+          })}
+          {fSpec.length===0&&<div style={{textAlign:'center',padding:'32px',color:'var(--tx3)'}}>Sin resultados</div>}
+        </>
+      )}
+
+      {/* CLIENTS */}
+      {page==='clients'&&(
+        <>
+          <div className="srch2">
+            <input className="fi" style={{maxWidth:320}} placeholder="🔍 Buscar cliente..." value={srchCli} onChange={e=>setSrchCli(e.target.value)}/>
+            <span style={{fontSize:'.8em',color:'var(--tx3)'}}>{fCli.length} resultado{fCli.length!==1?'s':''}</span>
+          </div>
+          {fCli.map(c=>{
+            const st=subStatus(c.sub);
+            const spec=specialists.find(s=>s.id===c.specId);
+            return(
+              <div key={c.id} className="crow">
+                <div className="cav">{c.av}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700}}>{c.child}</div>
+                  <div style={{fontSize:'.78em',color:'var(--tx2)'}}>{c.name} · {c.age} · Esp: {spec?.name||'—'}</div>
+                </div>
+                <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}>
+                  <span className={`badge ${st.cls}`}>{st.label}</span>
+                  <button className="btn bs bsm" onClick={()=>{setCliF({name:c.name,child:c.child,age:c.age,email:c.email||''});setShowEditCli(c.id);}}>✏️</button>
+                  <button className="btn ber2 bsm" onClick={()=>setDelCli(c.id)}>🗑</button>
+                </div>
+              </div>
+            );
+          })}
+          {fCli.length===0&&<div style={{textAlign:'center',padding:'32px',color:'var(--tx3)'}}>Sin resultados</div>}
+        </>
+      )}
+
+      {/* ACTIVITIES */}
+      {page==='activities'&&(
+        <>
+          <div className="srch2">
+            <input className="fi" style={{maxWidth:320}} placeholder="🔍 Buscar actividad..." value={srchAct} onChange={e=>setSrchAct(e.target.value)}/>
+            <span style={{fontSize:'.8em',color:'var(--tx3)'}}>{fAct.length} resultado{fAct.length!==1?'s':''}</span>
+          </div>
+          {fAct.map(a=>{
+            const spec=specialists.find(s=>s.id===a.specId);
+            return(
+              <div key={a.id} style={{display:'flex',alignItems:'center',gap:9,padding:'9px 13px',background:'var(--sf)',border:'1.5px solid var(--bd)',borderRadius:'var(--r)',marginBottom:6}}>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:'.9em'}}>{a.title}</div>
+                  <div style={{fontSize:'.75em',color:'var(--tx3)'}}>Esp: {spec?.name||'—'} · {a.objects.length} objetos</div>
+                </div>
+                {LEVELS.map(l=><span key={l.id} className={`badge ${a.done?.[l.id]?'bok':'bg3'}`}>{l.icon}</span>)}
+                <button className="btn ber2 bsm" onClick={()=>setDelAct(a.id)}>🗑</button>
+              </div>
+            );
+          })}
+          {fAct.length===0&&<div style={{textAlign:'center',padding:'32px',color:'var(--tx3)'}}>Sin resultados</div>}
+        </>
+      )}
+
+      {/* OBJECTS */}
+      {page==='objects'&&<ObjectsPage specId="admin"/>}
+
+      {/* GROUPS */}
+      {page==='groups'&&(
+        <>
+          <div className="srch2">
+            <input className="fi" style={{maxWidth:320}} placeholder="🔍 Buscar grupo..." value={srchGrp} onChange={e=>setSrchGrp(e.target.value)}/>
+            <span style={{fontSize:'.8em',color:'var(--tx3)'}}>{fGrp.length} grupo{fGrp.length!==1?'s':''}</span>
+          </div>
+          <GroupsPage clients={clients} groups={fGrp} setGroups={setGroups}
+            showSearch={false} hidePH={true}/>
+        </>
+      )}
+
+      {/* SUBSCRIPTIONS */}
+      {page==='subscriptions'&&(
+        <>
+          <div className="srch2">
+            <input className="fi" style={{maxWidth:260}} placeholder="🔍 Buscar..." value={srchSub} onChange={e=>setSrchSub(e.target.value)}/>
+            <select className="fi fsel" style={{maxWidth:160}} value={filterSubStatus} onChange={e=>setFilterSubStatus(e.target.value)}>
+              <option value="all">Todos los estados</option>
+              <option value="Activa">Activa</option>
+              <option value="Prueba 15d">Prueba</option>
+              <option value="Gracia 15d">Gracia</option>
+              <option value="Caducada">Caducada</option>
+            </select>
+            <span style={{fontSize:'.8em',color:'var(--tx3)'}}>{fSub.length} resultado{fSub.length!==1?'s':''}</span>
+          </div>
+          <div className="stitle">Especialistas</div>
+          {fSub.filter(e=>!e.specId).map(s=>{
+            const st=subStatus(s.sub);
+            return(
+              <div key={s.id} className="crow">
+                <div className="cav">{s.av}</div>
+                <div style={{flex:1}}><div style={{fontWeight:700}}>{s.name}</div>
+                  <div style={{fontSize:'.78em',color:'var(--tx2)'}}>{s.sub?.plan||'—'} · {s.sub?.billing==='month'?'Mensual':'Anual'} · Vence: {s.sub?.expires||'—'}</div>
+                </div>
+                <span className={`badge ${st.cls}`}>{st.label}</span>
+                <button className="btn bp bsm" onClick={()=>setSubTarget({entity:s,type:'specialist'})}>💳</button>
+              </div>
+            );
+          })}
+          <div className="sep"/>
+          <div className="stitle">Clientes</div>
+          {fSub.filter(e=>!!e.specId).map(c=>{
+            const st=subStatus(c.sub);
+            return(
+              <div key={c.id} className="crow">
+                <div className="cav">{c.av}</div>
+                <div style={{flex:1}}><div style={{fontWeight:700}}>{c.child}</div>
+                  <div style={{fontSize:'.78em',color:'var(--tx2)'}}>{c.sub?.plan||'—'} · {c.sub?.billing==='month'?'Mensual':'Anual'} · Vence: {c.sub?.expires||'—'}</div>
+                </div>
+                <span className={`badge ${st.cls}`}>{st.label}</span>
+                <button className="btn bp bsm" onClick={()=>setSubTarget({entity:c,type:'client'})}>💳</button>
+              </div>
+            );
+          })}
+          {fSub.length===0&&<div style={{textAlign:'center',padding:'32px',color:'var(--tx3)'}}>Sin resultados</div>}
+        </>
+      )}
+
+      {/* Modals */}
+      {showEditSpec&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setShowEditSpec(null)}>
+          <div className="modal" style={{maxWidth:480}}>
+            <div className="stitle">{showEditSpec==='new'?'Nuevo especialista':'Editar especialista'}</div>
+            <div className="fg"><label className="fl">Nombre</label><input className="fi" value={specF.name} onChange={e=>setSpecF({...specF,name:e.target.value})} placeholder="Nombre y apellidos"/></div>
+            <div className="fg"><label className="fl">Email</label><input className="fi" type="email" value={specF.email} onChange={e=>setSpecF({...specF,email:e.target.value})} placeholder="email@ejemplo.com"/></div>
+            <div className="fg"><label className="fl">Bio</label><textarea className="fi" rows={2} value={specF.bio} onChange={e=>setSpecF({...specF,bio:e.target.value})} placeholder="Especialidad..."/></div>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button className="btn bs" onClick={()=>setShowEditSpec(null)}>Cancelar</button>
+              <button className="btn bp" disabled={!specF.name} onClick={saveSpec}>{showEditSpec==='new'?'Crear':'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showEditCli&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setShowEditCli(null)}>
+          <div className="modal" style={{maxWidth:480}}>
+            <div className="stitle">{showEditCli==='new'?'Nuevo cliente':'Editar cliente'}</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              <div className="fg"><label className="fl">Tutor</label><input className="fi" value={cliF.name} onChange={e=>setCliF({...cliF,name:e.target.value})} placeholder="Nombre y apellidos"/></div>
+              <div className="fg"><label className="fl">Alumno</label><input className="fi" value={cliF.child} onChange={e=>setCliF({...cliF,child:e.target.value})} placeholder="Nombre"/></div>
+              <div className="fg"><label className="fl">Edad</label><input className="fi" value={cliF.age} onChange={e=>setCliF({...cliF,age:e.target.value})} placeholder="5 años"/></div>
+              <div className="fg"><label className="fl">Email</label><input className="fi" value={cliF.email} onChange={e=>setCliF({...cliF,email:e.target.value})} placeholder="tutor@email.com"/></div>
+            </div>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button className="btn bs" onClick={()=>setShowEditCli(null)}>Cancelar</button>
+              <button className="btn bp" disabled={!cliF.name||!cliF.child} onClick={saveCli}>{showEditCli==='new'?'Crear':'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {delSpec&&<DeleteConfirm msg="Se eliminará el especialista y todos sus datos." onConfirm={()=>{setSpecialists(ss=>ss.filter(s=>s.id!==delSpec));setDelSpec(null);}} onCancel={()=>setDelSpec(null)}/>}
+      {delCli&&<DeleteConfirm msg="Se eliminará el cliente y sus asignaciones." onConfirm={()=>{setClients(cs=>cs.filter(c=>c.id!==delCli));setDelCli(null);}} onCancel={()=>setDelCli(null)}/>}
+      {delAct&&<DeleteConfirm msg="Se eliminará la actividad." onConfirm={()=>{setActs(as=>as.filter(a=>a.id!==delAct));setDelAct(null);}} onCancel={()=>setDelAct(null)}/>}
+      {subTarget&&<SubscriptionModal entity={subTarget.entity} entityType={subTarget.type}
+        onClose={()=>setSubTarget(null)}
+        onSave={sub=>{
+          if(subTarget.type==='specialist')setSpecialists(ss=>ss.map(s=>s.id===subTarget.entity.id?{...s,sub}:s));
+          else setClients(cs=>cs.map(c=>c.id===subTarget.entity.id?{...c,sub}:c));
+          setSubTarget(null);
+        }}/>}
+    </div>
+  );
+}
+
+/* ── Settings ── */
+function Settings({palette,setPalette,tts,setTts,fontSize,setFontSize,clientId}){
+  const applyFont=id=>{
+    setFontSize(id);
+    applyZoom(id);
+    savePrefs(clientId,{palette,tts,fontSize:id});
+  };
+  return(
+    <div className="fdi">
+      <div className="ph"><div><div className="pt">Configuración</div></div></div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
+        <div className="card">
+          <div className="stitle">🎨 Paleta de alto contraste</div>
+          {PALETTES.map(p=>(
+            <div key={p.id} onClick={()=>setPalette(p.id)}
+              style={{display:'flex',alignItems:'center',gap:10,padding:'9px 11px',borderRadius:8,cursor:'pointer',marginBottom:5,border:`2px solid ${palette===p.id?'var(--ac)':'var(--bd)'}`,background:palette===p.id?'var(--acb)':'var(--sf)'}}>
+              <div style={{width:28,height:28,borderRadius:'50%',background:p.bg,border:`3px solid ${p.ac}`,flexShrink:0}}/>
+              <span style={{fontWeight:700,fontSize:'.9em',flex:1}}>{p.l}</span>
+              {palette===p.id&&<span style={{color:'var(--ac)',fontWeight:900}}>✓</span>}
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <div className="stitle">📏 Tamaño del texto</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:16}}>
+            {FONT_SIZES.map(f=>(
+              <div key={f.id} onClick={()=>applyFont(f.id)}
+                style={{padding:'10px',borderRadius:8,textAlign:'center',cursor:'pointer',border:`2px solid ${fontSize===f.id?'var(--ac)':'var(--bd)'}`,background:fontSize===f.id?'var(--acb)':'var(--sf)',fontWeight:900,fontSize:f.px}}>
+                {f.label}
+              </div>
+            ))}
+          </div>
+          <div className="sep"/>
+          <div className="stitle">🔊 Ayuda auditiva (TTS)</div>
+          <div style={{display:'flex',alignItems:'center',gap:12,padding:'11px',background:'var(--bg2)',borderRadius:8}}>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700}}>Texto a voz</div>
+              <div style={{fontSize:'.82em',color:'var(--tx2)'}}>{tts?'Activa — lee nombres y feedback':'Desactivada'}</div>
+            </div>
+            <div style={{width:44,height:24,background:tts?'var(--ac)':'var(--bd)',borderRadius:12,cursor:'pointer',position:'relative',transition:'background .15s'}} onClick={()=>{setTts(!tts);savePrefs(clientId,{palette,tts:!tts,fontSize});}}>
+              <div style={{position:'absolute',top:3,left:tts?22:3,width:18,height:18,borderRadius:'50%',background:'#fff',transition:'left .15s'}}/>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── App ── */
+function App(){
+  const [role,setRole]=useState(null);
+  const [selRole,setSelRole]=useState('client');
+  const [page,setPage]=useState('home');
+  const [palette,setPaletteState]=useState('def');
+  const [tts,setTts]=useState(true);
+  const [fontSize,setFontSize]=useState('m');
+  const clientId='demo_client';
+
+  useEffect(()=>{
+    const p=loadPrefs(clientId);
+    if(p.palette)setPaletteState(p.palette);
+    if(p.tts!==undefined)setTts(p.tts);
+    if(p.fontSize){setFontSize(p.fontSize);applyZoom(p.fontSize);}
+  },[]);
+
+  const setPalette=id=>{
+    setPaletteState(id);
+    document.body.className=PALETTES.find(p=>p.id===id)?.cls||'';
+    savePrefs(clientId,{palette:id,tts,fontSize});
+  };
+
+  const navMap={
+    client:[{id:'home',ic:'🏠',l:'Actividades'},{id:'settings',ic:'⚙️',l:'Config.'}],
+    specialist:[{id:'home',ic:'👥',l:'Clientes'},{id:'settings',ic:'⚙️',l:'Config.'}],
+    admin:[{id:'home',ic:'📊',l:'Panel'},{id:'settings',ic:'⚙️',l:'Config.'}],
+  };
+
+  const fsIdx=FONT_SIZES.findIndex(f=>f.id===fontSize);
+  const decFont=()=>{if(fsIdx>0){const nf=FONT_SIZES[fsIdx-1];setFontSize(nf.id);applyZoom(nf.id);savePrefs(clientId,{palette,tts,fontSize:nf.id});}};
+  const incFont=()=>{if(fsIdx<FONT_SIZES.length-1){const nf=FONT_SIZES[fsIdx+1];setFontSize(nf.id);applyZoom(nf.id);savePrefs(clientId,{palette,tts,fontSize:nf.id});}};
+
+  if(!role)return(
+    <div className="lw">
+      <div className="lc">
+        <div className="ll">Proyecto<b>Gigi</b></div>
+        <div style={{fontSize:'.82em',color:'var(--tx2)',textAlign:'center',marginBottom:14}}>Pulsa un rol para entrar</div>
+        <div className="rpick">
+          {[['client','👶','Cliente','Padre/tutor'],['specialist','🧑‍⚕️','Especialista',''],['admin','⚙️','Admin','']].map(([r,ic,lb,sub])=>(
+            <div key={r} className={`ro ${selRole===r?'on':''}`}
+              onClick={()=>{setRole(r);setPage('home');}}>
+              <span className="rico">{ic}</span>{lb}{sub&&<div style={{fontSize:'.75em',color:'var(--tx3)'}}>{sub}</div>}
+            </div>
+          ))}
+        </div>
+        <div className="fg"><label className="fl">Email</label><input className="fi" defaultValue="demo@proyectogigi.com"/></div>
+        <div className="fg" style={{marginBottom:14}}><label className="fl">Contraseña</label><input className="fi" type="password" defaultValue="••••••••"/></div>
+        <div><div className="fl" style={{marginBottom:6}}>Paleta de accesibilidad</div>
+          <div className="pstrip">{PALETTES.map(p=>(
+            <div key={p.id} className={`pbtn ${palette===p.id?'on':''}`}
+              style={{background:p.bg,border:`3px solid ${p.ac}`}} title={p.l} onClick={()=>setPalette(p.id)}/>
+          ))}</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const nav=navMap[role]||[];
+  return(
+    <div className="app">
+      <div className="topbar">
+        <div className="brand">Proyecto<b>Gigi</b></div>
+        <div className="topact">
+          <button className="fsbtn" onClick={decFont} title="Reducir texto">A-</button>
+          <button className="fsbtn" onClick={incFont} title="Ampliar texto">A+</button>
+          <div className={`ttsbtn ${tts?'on':''}`} onClick={()=>{setTts(!tts);savePrefs(clientId,{palette,tts:!tts,fontSize});}}>
+            {tts?'🔊':'🔇'}
+          </div>
+          <div className="pstrip">{PALETTES.map(p=>(
+            <div key={p.id} className={`pbtn ${palette===p.id?'on':''}`}
+              style={{background:p.bg,border:`2.5px solid ${p.ac}`}}
+              title={p.l} onClick={()=>setPalette(p.id)}/>
+          ))}</div>
+          <span className="badge bb">{role==='client'?'👶':role==='specialist'?'🧑‍⚕️':'⚙️'} {role==='client'?'Cliente':role==='specialist'?'Especialista':'Admin'}</span>
+          <button className="btn bg bsm" onClick={()=>{setRole(null);setPage('home');}}>Salir</button>
+        </div>
+      </div>
+      <div className="ml">
+        <div className="sidebar">
+          <div className="nsec">Menú</div>
+          {nav.map(n=><div key={n.id} className={`ni ${page===n.id?'on':''}`} onClick={()=>setPage(n.id)}><span className="nico">{n.ic}</span>{n.l}</div>)}
+        </div>
+        <div className="content">
+          {page==='settings'
+            ?<Settings palette={palette} setPalette={setPalette} tts={tts} setTts={setTts} fontSize={fontSize} setFontSize={setFontSize} clientId={clientId}/>
+            :role==='client'?<ClientView tts={tts} clientId={clientId} fontSize={fontSize} setFontSize={setFontSize} palette={palette} setPalette={setPalette}/>
+            :role==='specialist'?<SpecialistView/>
+            :<AdminView/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

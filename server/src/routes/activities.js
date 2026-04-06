@@ -121,7 +121,7 @@ router.delete('/:id', authenticateJWT, async (req, res, next) => {
     if (!act) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
     if (!canModify(req.user, act)) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
     await prisma.activity.delete({ where: { id: req.params.id } });
-    res.status(204).send();
+    res.json({ success: true, data: { id: req.params.id, deleted: true } });
   } catch (e) { next(e); }
 });
 

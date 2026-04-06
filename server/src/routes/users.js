@@ -1,6 +1,6 @@
 // src/routes/users.js
 const router = require('express').Router();
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const { prisma } = require('../lib/prisma');
 const { assertStrongPassword } = require('../lib/password');
 const { authenticateJWT, authorizeRole, paginateQuery, paginatedResponse } = require('../middleware/auth');
@@ -36,8 +36,41 @@ router.post('/', authenticateJWT, authorizeRole('admin'), async (req, res, next)
   } catch (e) { next(e); }
 });
 
+router.patch('/:id', authenticateJWT, authorizeRole('admin'), async (req, res, next) => {
+  try {
+    const { name, bio } = req.body;
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      include: { specialistProfile: true },
+    });
+    if (!user) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
+
+    const updated = await prisma.user.update({
+      where: { id: req.params.id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(bio !== undefined && user.specialistProfile && {
+          specialistProfile: { update: { bio } },
+        }),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        active: true,
+        specialistProfile: { select: { id: true, bio: true } },
+      },
+    });
+    res.json({ success: true, data: updated });
+  } catch (e) { next(e); }
+});
+
 router.get('/:id/preferences', authenticateJWT, async (req, res, next) => {
   try {
+    if (req.user.role !== 'admin' && req.user.sub !== req.params.id) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
     const prefs = await prisma.userPreference.findUnique({ where: { userId: req.params.id } });
     res.json({ success: true, data: prefs });
   } catch (e) { next(e); }
@@ -45,6 +78,9 @@ router.get('/:id/preferences', authenticateJWT, async (req, res, next) => {
 
 router.patch('/:id/preferences', authenticateJWT, async (req, res, next) => {
   try {
+    if (req.user.role !== 'admin' && req.user.sub !== req.params.id) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
     const { color_profile_id, tts_enabled, text_size, sequential_mode } = req.body;
     const prefs = await prisma.userPreference.upsert({
       where: { userId: req.params.id },
@@ -57,8 +93,10 @@ router.patch('/:id/preferences', authenticateJWT, async (req, res, next) => {
 
 router.delete('/:id', authenticateJWT, authorizeRole('admin'), async (req, res, next) => {
   try {
+    const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!user) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
     await prisma.user.update({ where: { id: req.params.id }, data: { active: false } });
-    res.status(204).send();
+    res.json({ success: true, data: { id: req.params.id, active: false } });
   } catch (e) { next(e); }
 });
 

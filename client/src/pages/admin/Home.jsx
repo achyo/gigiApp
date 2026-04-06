@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router';
 import {
   adminApi, specialistsApi, clientsApi, activitiesApi, assignmentsApi,
   objectsApi, categoriesApi, groupsApi, subscriptionsApi, usersApi,
@@ -19,11 +19,18 @@ function getApiErrorMessage(error, fallback) {
 function Dashboard() {
   const [stats,   setStats]   = useState(null);
   const [pending, setPending] = useState({ objects: [], categories: [] });
+  const [specialists, setSpecialists] = useState([]);
+  const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([adminApi.stats(), adminApi.pendingApprovals()])
-      .then(([sr, pr]) => { setStats(sr.data.data); setPending(pr.data.data); })
+    Promise.all([adminApi.stats(), adminApi.pendingApprovals(), specialistsApi.list(), clientsApi.list()])
+      .then(([sr, pr, specRes, clientRes]) => {
+        setStats(sr.data.data);
+        setPending(pr.data.data);
+        setSpecialists(specRes.data.data);
+        setClients(clientRes.data.data);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -52,6 +59,32 @@ function Dashboard() {
     ...pending.categories.map(x => ({ ...x, _type: 'category' })),
   ];
 
+  const allSubscriptions = [
+    ...specialists.map(item => item.subscription).filter(Boolean),
+    ...clients.map(item => item.subscription).filter(Boolean),
+  ];
+
+  const getSubState = (sub) => {
+    if (!sub) return 'none';
+    const diffDays = (new Date(sub.expires) - new Date()) / 864e5;
+    if (sub.status === 'trial') return 'trial';
+    if (diffDays > 15) return 'active';
+    if (diffDays > 0) return 'expiring';
+    if (diffDays > -15) return 'grace';
+    return 'expired';
+  };
+
+  const expiringSoon = allSubscriptions.filter(sub => {
+    const diffDays = Math.ceil((new Date(sub.expires) - new Date()) / 864e5);
+    return diffDays >= 0 && diffDays <= 15;
+  }).length;
+
+  const subCounts = allSubscriptions.reduce((acc, sub) => {
+    const key = getSubState(sub);
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, { active: 0, trial: 0, grace: 0, expired: 0, expiring: 0 });
+
   return (
     <div className="max-h-dvh overflow-auto animate-in">
       <h1 className="text-2xl font-black">Panel global</h1>
@@ -66,6 +99,24 @@ function Dashboard() {
             </div>
           </Card>
         ))}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <Card>
+          <h2 className="mb-2 font-bold">⏰ Próximos a vencer</h2>
+          <p className="text-3xl font-black text-[var(--wa)]">{expiringSoon}</p>
+          <p className="text-sm text-[var(--tx2)]">Suscripciones que vencen en los próximos 15 días.</p>
+        </Card>
+        <Card>
+          <h2 className="mb-2 font-bold">💳 Estado de suscripciones</h2>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="green">Activas {subCounts.active || 0}</Badge>
+            <Badge variant="blue">Prueba {subCounts.trial || 0}</Badge>
+            <Badge variant="amber">Por vencer {subCounts.expiring || 0}</Badge>
+            <Badge variant="gold">Cortesía {subCounts.grace || 0}</Badge>
+            <Badge variant="red">Caducadas {subCounts.expired || 0}</Badge>
+          </div>
+        </Card>
       </div>
 
       <Card>

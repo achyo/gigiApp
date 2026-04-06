@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import useAuthStore  from '../stores/authStore';
 import usePrefsStore from '../stores/prefsStore';
 import { Button, Input } from '../components/ui';
 
 export default function Login() {
+  // 🔧 CORREGIDO: pantalla de acceso ajustada al mockup con paletas visibles y accesos demo.
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [error,    setError]    = useState('');
@@ -29,11 +30,14 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--bg)]">
-      <div className="w-full max-w-sm bg-[var(--sf)] border border-[var(--bd)] rounded-[var(--rl)] p-8 scale-in">
-        <h1 className="text-2xl font-black text-center mb-6">
-          Proyecto<span className="text-[var(--ac)]">Gigi</span>
+    <div className="lw">
+      <div className="lc scale-in shadow-soft">
+        <h1 className="ll">
+          Proyecto<b>Gigi</b>
         </h1>
+        <p className="mb-5 text-center text-sm text-[var(--tx2)]">
+          Acceso adaptado para administracion, especialistas y familias.
+        </p>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <Input
@@ -49,42 +53,48 @@ export default function Login() {
             placeholder="••••••••"
           />
           {error && (
-            <p className="text-xs text-[var(--er)] bg-[var(--erb)] border border-[var(--erbd)] rounded p-2 text-center">
+            <p className="rounded-[var(--r)] border border-[var(--erbd)] bg-[var(--erb)] p-2 text-center text-xs text-[var(--er)]">
               {error}
             </p>
           )}
-          <Button type="submit" disabled={loading} className="w-full justify-center mt-1">
+          <Button type="submit" disabled={loading} className="mt-1 w-full justify-center" size="lg">
             {loading ? 'Entrando…' : 'Entrar'}
           </Button>
         </form>
 
-        {/* Accessibility palette */}
-        <div className="mt-6 pt-4 border-t border-[var(--bd)]">
-          <p className="text-xs text-[var(--tx3)] mb-2 font-bold">Paleta de accesibilidad</p>
-          <div className="flex gap-2 flex-wrap">
+        <div className="mt-6 border-t border-[var(--bd)] pt-4">
+          <p className="mb-2 text-xs font-bold text-[var(--tx3)]">Paleta de accesibilidad</p>
+          <div className="pstrip justify-center">
             {PALETTES.map(p => (
-              <button key={p.id} title={p.label} onClick={() => setPalette(p.id)}
-                className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110
-                  ${paletteId === p.id ? 'ring-2 ring-offset-1 ring-[var(--ac)]' : ''}`}
+              <button
+                key={p.id}
+                title={p.label}
+                onClick={() => setPalette(p.id)}
+                className={`pbtn ${paletteId === p.id ? 'on' : ''}`}
                 style={{ background: p.bg, borderColor: p.ac }}
               />
             ))}
           </div>
+          <p className="mt-2 text-center text-[11px] text-[var(--tx3)]">Puedes cambiar la paleta antes de iniciar sesion.</p>
         </div>
 
-        {/* Demo quick-login */}
-        <div className="mt-4 text-center text-xs text-[var(--tx3)]">
-          <p className="font-bold mb-1">Demo rápido:</p>
+        <div className="mt-5 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3 text-center text-xs text-[var(--tx3)]">
+          <p className="mb-2 font-bold text-[var(--tx2)]">Demo rapido</p>
+          <div className="flex flex-wrap justify-center gap-2">
           {[
             ['Admin', 'admin@proyectogigi.com', 'Admin1234!'],
             ['Especialista', 'especialista@proyectogigi.com', 'Spec1234!'],
             ['Cliente', 'familia@ejemplo.com', 'Client1234!'],
           ].map(([label, em, pw]) => (
-            <button key={label} onClick={() => { setEmail(em); setPassword(pw); }}
-              className="mr-2 underline text-[var(--ac)] hover:opacity-80">
+            <button
+              key={label}
+              onClick={() => { setEmail(em); setPassword(pw); }}
+              className="tag"
+            >
               {label}
             </button>
           ))}
+          </div>
         </div>
       </div>
     </div>

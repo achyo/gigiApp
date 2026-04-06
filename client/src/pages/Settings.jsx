@@ -5,6 +5,7 @@ import { authApi } from '../api';
 import { getPasswordStrengthError, PASSWORD_RULE_HINT } from '../lib/password';
 
 export default function Settings() {
+  // 🔧 CORREGIDO: preferencias visuales y de voz alineadas con el panel de configuracion del mockup.
   const { PALETTES, FONT_SIZES, paletteId, fontSizeId, ttsEnabled,
           setPalette, setFontSize, setTts } = usePrefsStore();
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
@@ -32,8 +33,9 @@ export default function Settings() {
     <div className="max-w-2xl mx-auto space-y-6 animate-in">
       <h1 className="text-2xl font-black">Configuración</h1>
 
-      <Card>
-        <h2 className="font-bold mb-3">🎨 Paleta de accesibilidad</h2>
+      <Card className="shadow-soft">
+        <h2 className="mb-1 font-bold">🎨 Paleta de accesibilidad</h2>
+        <p className="mb-3 text-sm text-[var(--tx2)]">Se aplica a toda la interfaz y mantiene el contraste alto en todas las vistas.</p>
         <div className="space-y-2">
           {PALETTES.map(p => (
             <div key={p.id} onClick={() => setPalette(p.id)}
@@ -48,8 +50,9 @@ export default function Settings() {
         </div>
       </Card>
 
-      <Card>
-        <h2 className="font-bold mb-3">📏 Tamaño de texto</h2>
+      <Card className="shadow-soft">
+        <h2 className="mb-1 font-bold">📏 Tamaño de texto</h2>
+        <p className="mb-3 text-sm text-[var(--tx2)]">El zoom modifica tarjetas, iconos, imagenes y espaciados de toda la aplicacion.</p>
         <div className="grid grid-cols-4 gap-3">
           {FONT_SIZES.map(f => (
             <div key={f.id} onClick={() => setFontSize(f.id)}
@@ -62,7 +65,7 @@ export default function Settings() {
         </div>
       </Card>
 
-      <Card>
+      <Card className="shadow-soft">
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <h2 className="font-bold">🔊 Texto a voz (TTS)</h2>
@@ -77,8 +80,9 @@ export default function Settings() {
         </div>
       </Card>
 
-      <Card>
-        <h2 className="font-bold mb-3">🔑 Cambiar contraseña</h2>
+      <Card className="shadow-soft">
+        <h2 className="mb-1 font-bold">🔑 Cambiar contraseña</h2>
+        <p className="mb-3 text-sm text-[var(--tx2)]">Se valida la nueva clave antes de enviarla para evitar errores de confirmacion.</p>
         <form onSubmit={changePassword} className="space-y-3">
           <Input label="Contraseña actual" type="password" value={pwForm.current} onChange={e=>setPwForm({...pwForm,current:e.target.value})} required />
           <Input label="Nueva contraseña" type="password" value={pwForm.next} error={passwordError || undefined} onChange={e=>setPwForm({...pwForm,next:e.target.value})} required minLength={8} />

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router';
 import { clientsApi, activitiesApi, groupsApi, assignmentsApi, objectsApi, categoriesApi } from '../../api';
 import useAuthStore from '../../stores/authStore';
 import { Button, Badge, Card, Input, Select, Textarea, SearchBar, TabBar, Confirm, Modal, Empty, Spinner, SubBadge, Notice } from '../../components/ui';
+import SubscriptionModal from '../../components/modals/SubscriptionModal';
 import { getPasswordStrengthError, PASSWORD_RULE_HINT } from '../../lib/password';
 
 function getApiErrorMessage(error, fallback) {
@@ -20,6 +21,7 @@ function Clients() {
   const [form,     setForm]     = useState({});
   const [saving,   setSaving]   = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [subTarget, setSubTarget] = useState(null);
   const passwordError = getPasswordStrengthError(form.password || '', { required: modal === 'new' });
   const passwordConfirmError = (form.password || '') && form.password !== form.confirm_password
     ? 'Las contrasenas no coinciden.'
@@ -31,8 +33,8 @@ function Clients() {
       .finally(() => setLoading(false));
   }, []);
 
-  const openNew  = ()  => { setForm({ name:'', email:'', child_name:'', age:'', groupIds:[], password:'', confirm_password:'' }); setFeedback(null); setModal('new'); };
-  const openEdit = (c) => { setForm({ name: c.user?.name, email: c.user?.email, child_name: c.childName, diagnosisNotes: c.diagnosisNotes, groupIds: [], password:'', confirm_password:'' }); setFeedback(null); setModal(c); };
+  const openNew  = ()  => { setForm({ name:'', email:'', child_name:'', age:'', group_ids:[], password:'', confirm_password:'' }); setFeedback(null); setModal('new'); };
+  const openEdit = (c) => { setForm({ name: c.user?.name, email: c.user?.email, child_name: c.childName, diagnosis_notes: c.diagnosisNotes, group_ids: c.groups?.map(group => group.id) || [], password:'', confirm_password:'' }); setFeedback(null); setModal(c); };
 
   const save = async () => {
     setSaving(true);
@@ -67,6 +69,24 @@ function Clients() {
   const filtered = clients.filter(c => !search ||
     (c.childName + (c.user?.name||'')).toLowerCase().includes(search.toLowerCase()));
 
+  const renderClientGroups = (client) => {
+    if (!client?.groups?.length) return <p className="text-xs text-[var(--tx3)]">Sin grupos</p>;
+
+    return (
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        {client.groups.map(group => (
+          <span
+            key={group.id}
+            className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold"
+            style={{ borderColor: group.color, backgroundColor: `${group.color}1A`, color: 'var(--tx2)' }}
+          >
+            {group.name}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32}/></div>;
 
   return (
@@ -86,8 +106,11 @@ function Clients() {
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm truncate">{c.childName}</p>
                 <p className="text-xs text-[var(--tx2)] truncate">{c.user?.name}</p>
+                {renderClientGroups(c)}
               </div>
-              <SubBadge sub={c.subscription} />
+              <span className="cursor-pointer" onClick={() => setSubTarget({ entity: c, type: 'client' })}>
+                <SubBadge sub={c.subscription} />
+              </span>
               <Button size="sm" variant="secondary" onClick={() => openEdit(c)}>✏️</Button>
               <Button size="sm" variant="danger"    onClick={() => setDelId(c.id)}>🗑</Button>
             </div>
@@ -118,13 +141,35 @@ function Clients() {
           />
         </div>
         <p className="mt-2 text-xs text-[var(--tx3)]">{PASSWORD_RULE_HINT}</p>
-        <div className="mt-3"><Textarea label="Notas clínicas" rows={2} value={form.diagnosisNotes||''} onChange={e=>setForm({...form,diagnosisNotes:e.target.value})} /></div>
+        <div className="mt-3"><Textarea label="Notas clínicas" rows={2} value={form.diagnosis_notes||''} onChange={e=>setForm({...form,diagnosis_notes:e.target.value})} /></div>
+        <div className="mt-3">
+          <p className="mb-2 text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Grupos</p>
+          <div className="max-h-40 overflow-y-auto rounded-[var(--r)] border border-[var(--bd)]">
+            {groups.map(group => (
+              <label key={group.id} className="flex cursor-pointer items-center gap-2 border-b border-[var(--bd)] p-2 last:border-0 hover:bg-[var(--acb)]">
+                <input
+                  type="checkbox"
+                  checked={(form.group_ids || []).includes(group.id)}
+                  onChange={() => setForm(current => ({
+                    ...current,
+                    group_ids: (current.group_ids || []).includes(group.id)
+                      ? current.group_ids.filter(id => id !== group.id)
+                      : [...(current.group_ids || []), group.id],
+                  }))}
+                />
+                <span className="text-sm font-bold">{group.name}</span>
+              </label>
+            ))}
+            {groups.length === 0 && <p className="p-3 text-sm text-[var(--tx3)]">No hay grupos disponibles.</p>}
+          </div>
+        </div>
         <div className="flex gap-2 justify-end mt-4">
           <Button variant="secondary" onClick={() => setModal(null)} disabled={saving}>Cancelar</Button>
           <Button disabled={saving || !form.child_name || !form.email || !!passwordError || !!passwordConfirmError} onClick={save}>{saving ? 'Guardando...' : modal === 'new' ? 'Crear' : 'Guardar'}</Button>
         </div>
       </Modal>
       <Confirm open={!!delId} message="Se eliminará el cliente y sus asignaciones." onConfirm={del} onCancel={() => setDelId(null)} />
+      {subTarget && <SubscriptionModal entity={subTarget.entity} entityType={subTarget.type} onClose={() => setSubTarget(null)} onSave={() => { clientsApi.list().then(r => setClients(r.data.data)); setSubTarget(null); }} />}
     </div>
   );
 }
@@ -140,7 +185,7 @@ function Activities() {
   const [modal,    setModal]   = useState(false);
   const [editAct,  setEditAct] = useState(null);
   const [delId,    setDelId]   = useState(null);
-  const [form,     setForm]    = useState({ title:'', selObjs:[], assignMode:'all', selClients:[], selGroups:[] });
+  const [form,     setForm]    = useState({ title:'', instructions:'', selObjs:[], assignMode:'all', selClients:[], selGroups:[] });
   const [saving,   setSaving]  = useState(false);
   const [feedback, setFeedback] = useState(null);
 
@@ -202,7 +247,7 @@ function Activities() {
 
   const openNew  = () => {
     setEditAct(null);
-    setForm({ title:'', selObjs:[], assignMode:'all', selClients:[], selGroups:[] });
+    setForm({ title:'', instructions:'', selObjs:[], assignMode:'all', selClients:[], selGroups:[] });
     setFeedback(null);
     setModal(true);
   };
@@ -213,6 +258,7 @@ function Activities() {
     setEditAct(a);
     setForm({
       title: a.title,
+      instructions: a.instructions || '',
       selObjs: a.activityObjects?.map(ao=>ao.objectId)||[],
       assignMode,
       selClients: audience?.mode === 'clients' ? (audience.clientIds || []) : assignedClientIds,
@@ -226,7 +272,7 @@ function Activities() {
     setSaving(true);
     setFeedback(null);
     try {
-      const payload = { title: form.title, objects: form.selObjs.map((id,i)=>({ object_id:id, sort_order:i })) };
+      const payload = { title: form.title, instructions: form.instructions, objects: form.selObjs.map((id,i)=>({ object_id:id, sort_order:i })) };
       if (editAct) {
         await activitiesApi.update(editAct.id, payload);
         await assignmentsApi.bulk({
@@ -295,6 +341,9 @@ function Activities() {
       <Modal open={modal} onClose={() => setModal(false)} title={editAct ? 'Editar actividad' : 'Nueva actividad'} maxWidth={720}>
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
         <Input label="Título" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} className="mb-3" placeholder="Ej: Animales del campo" />
+        <div className="mb-3">
+          <Textarea label="Instrucciones" rows={2} value={form.instructions} onChange={e => setForm({ ...form, instructions: e.target.value })} placeholder="Describe la actividad para el alumno y la familia" />
+        </div>
         <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tx3)]">Objetos</div>
         <div className="flex gap-1.5 flex-wrap mb-2">
           {['Todos',...cats].map(c=>(

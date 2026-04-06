@@ -39,6 +39,11 @@ router.patch('/:id', authenticateJWT, authorizeRole('admin','specialist'), async
   try {
     const { name, color, client_ids, specialist_id } = req.body;
     const specId = req.user.role === 'admin' ? specialist_id : req.user.specialist_id;
+    const existing = await prisma.group.findUnique({ where: { id: req.params.id }, select: { id: true, specId: true } });
+    if (!existing) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
+    if (req.user.role === 'specialist' && existing.specId !== req.user.specialist_id) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
     const group = await prisma.group.update({
       where: { id: req.params.id },
       data: { ...(name&&{name: name.trim()}), ...(color&&{color}),
@@ -53,8 +58,13 @@ router.patch('/:id', authenticateJWT, authorizeRole('admin','specialist'), async
 
 router.delete('/:id', authenticateJWT, async (req, res, next) => {
   try {
+    const group = await prisma.group.findUnique({ where: { id: req.params.id }, select: { id: true, specId: true } });
+    if (!group) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
+    if (req.user.role !== 'admin' && group.specId !== req.user.specialist_id) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
     await prisma.group.delete({ where: { id: req.params.id } });
-    res.status(204).send();
+    res.json({ success: true, data: { id: req.params.id, deleted: true } });
   } catch(e){ next(e); }
 });
 

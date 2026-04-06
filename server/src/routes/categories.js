@@ -37,10 +37,13 @@ router.patch('/:id', authenticateJWT, async (req, res, next) => {
 
 router.delete('/:id', authenticateJWT, async (req, res, next) => {
   try {
+    const category = await prisma.category.findUnique({ where: { id: req.params.id } });
+    if (!category) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
+    if (!canModify(req.user, category)) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
     const inUse = await prisma.object.count({ where: { categoryId: req.params.id } });
     if (inUse > 0) return res.status(409).json({ success: false, error: { code: 'CATEGORY_IN_USE' } });
     await prisma.category.delete({ where: { id: req.params.id } });
-    res.status(204).send();
+    res.json({ success: true, data: { id: req.params.id, deleted: true } });
   } catch(e){ next(e); }
 });
 

@@ -1,6 +1,6 @@
 // src/routes/specialists.js
 const router = require('express').Router();
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const { prisma } = require('../lib/prisma');
 const { assertStrongPassword } = require('../lib/password');
 const { authenticateJWT, authorizeRole } = require('../middleware/auth');

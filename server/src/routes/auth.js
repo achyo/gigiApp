@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { prisma } = require('../lib/prisma');
@@ -26,7 +26,6 @@ function signRefresh(userId) {
 // POST /api/auth/login
 router.post('/login', async (req, res, next) => {
   try {
-    console.log('AUTH LOGIN REQ', { body: req.body, ip: req.ip, ua: req.headers['user-agent'] });
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS' } });
 
@@ -60,12 +59,19 @@ router.post('/login', async (req, res, next) => {
       data: {
         access_token: accessToken,
         refresh_token: refreshToken,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role },
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          active: user.active,
+          specialist_id: user.specialistProfile?.id ?? null,
+          client_id: user.clientProfile?.id ?? null,
+        },
         preferences: prefs,
       },
     });
   } catch (e) {
-    console.error('AUTH LOGIN ERROR', e && e.stack ? e.stack : e, { body: req.body, ip: req.ip });
     next(e);
   }
 });
@@ -89,6 +95,9 @@ router.post('/refresh', async (req, res, next) => {
       where: { id: payload.sub },
       include: { specialistProfile: true, clientProfile: true },
     });
+    if (!user || !user.active) {
+      return res.status(401).json({ success: false, error: { code: 'TOKEN_INVALID' } });
+    }
     res.json({ success: true, data: { access_token: signAccess(user) } });
   } catch (e) {
     res.status(401).json({ success: false, error: { code: 'TOKEN_INVALID' } });
@@ -99,7 +108,7 @@ router.post('/refresh', async (req, res, next) => {
 router.post('/logout', authenticateJWT, async (req, res, next) => {
   try {
     const token = req.headers.authorization.slice(7);
-    await redis.setEx(`blacklist:${token}`, 60 * 20, '1'); // TTL = access token lifetime
+    await redis.setEx(`blacklist:${token}`, 60 * 15, '1');
 
     const { refresh_token } = req.body;
     if (refresh_token) {
@@ -108,7 +117,7 @@ router.post('/logout', authenticateJWT, async (req, res, next) => {
         where: { tokenHash: hash }, data: { revokedAt: new Date() },
       });
     }
-    res.json({ success: true });
+    res.json({ success: true, data: { logged_out: true } });
   } catch (e) { next(e); }
 });
 
@@ -117,13 +126,14 @@ router.post('/change-password', authenticateJWT, async (req, res, next) => {
   try {
     const { current_password, new_password } = req.body;
     const user = await prisma.user.findUnique({ where: { id: req.user.sub } });
+    if (!user) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
     const valid = await bcrypt.compare(current_password, user.passwordHash);
     if (!valid) return res.status(400).json({ success: false, error: { code: 'WRONG_PASSWORD' } });
 
     assertStrongPassword(new_password);
     const hash = await bcrypt.hash(new_password, 12);
     await prisma.user.update({ where: { id: user.id }, data: { passwordHash: hash } });
-    res.json({ success: true });
+    res.json({ success: true, data: { password_changed: true } });
   } catch (e) { next(e); }
 });
 

@@ -1,9 +1,9 @@
 const router = require('express').Router();
 const { prisma } = require('../lib/prisma');
-const { makeUploader, deleteByPublicId } = require('../lib/cloudinary');
+const { makeUploader, uploadBufferToCloudinary, deleteByPublicId } = require('../lib/cloudinary');
 const { authenticateJWT, authorizeRole, scopeFilter, canModify, paginateQuery, paginatedResponse } = require('../middleware/auth');
 
-const upload = makeUploader('representations');
+const upload = makeUploader();
 
 // GET /api/objects
 router.get('/', authenticateJWT, authorizeRole('admin', 'specialist'), scopeFilter('objects'), async (req, res, next) => {
@@ -94,7 +94,7 @@ router.delete('/:id', authenticateJWT, authorizeRole('admin', 'specialist'), asy
       if (rep.cloudinaryPublicId) await deleteByPublicId(rep.cloudinaryPublicId);
     }
     await prisma.object.delete({ where: { id: req.params.id } });
-    res.status(204).send();
+    res.json({ success: true, data: { id: req.params.id, deleted: true } });
   } catch (e) { next(e); }
 });
 
@@ -117,22 +117,32 @@ router.post('/:id/representations', authenticateJWT, authorizeRole('admin', 'spe
   upload.single('file')(req, res, next);
 }, async (req, res, next) => {
   try {
+    // ✅ IMPLEMENTADO: representaciones con memoryStorage + upload_stream a Cloudinary.
     const obj = await prisma.object.findUnique({ where: { id: req.params.id } });
     if (!obj) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
     if (!canModify(req.user, obj)) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
 
     const { level, model_3d_url } = req.body;
-    const lvlEnum = level === '1' ? 'model_3d' : level === '2' ? 'photo' : 'drawing';
+    const levelMap = { '1': 'model_3d', '2': 'photo', '3': 'drawing' };
+    const lvlEnum = levelMap[level];
+    if (!lvlEnum) return res.status(400).json({ success: false, error: { code: 'INVALID_LEVEL' } });
 
     let data = { objectId: obj.id, level: lvlEnum };
 
     if (level === '1') {
+      if (!model_3d_url) return res.status(400).json({ success: false, error: { code: 'MISSING_URL' } });
       data.mediaType = 'model_3d_url';
       data.model3dUrl = model_3d_url;
     } else if (req.file) {
+      const uploaded = await uploadBufferToCloudinary(req.file.buffer, 'representations');
+      const existing = await prisma.objectRepresentation.findUnique({
+        where: { objectId_level: { objectId: obj.id, level: lvlEnum } },
+      });
+      if (existing?.cloudinaryPublicId) await deleteByPublicId(existing.cloudinaryPublicId);
+
       data.mediaType = 'image_upload';
-      data.fileUrl   = req.file.path;
-      data.cloudinaryPublicId = req.file.filename;
+      data.fileUrl = uploaded.secure_url;
+      data.cloudinaryPublicId = uploaded.public_id;
     } else {
       return res.status(400).json({ success: false, error: { code: 'NO_FILE' } });
     }
@@ -164,7 +174,7 @@ router.delete('/:id/representations/:level', authenticateJWT, authorizeRole('adm
     await prisma.objectRepresentation.deleteMany({
       where: { objectId: req.params.id, level: lvlEnum },
     });
-    res.status(204).send();
+    res.json({ success: true, data: { object_id: req.params.id, level: lvlEnum, deleted: true } });
   } catch (e) { next(e); }
 });
 

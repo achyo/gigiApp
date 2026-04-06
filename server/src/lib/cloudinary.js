@@ -1,5 +1,4 @@
 const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
 
 function normalizeCloudName(value) {
@@ -14,16 +13,30 @@ cloudinary.config({
 
 const folder = process.env.CLOUDINARY_FOLDER || 'proyecto-gigi';
 
-function makeUploader(subfolder, allowedFormats = ['jpg', 'jpeg', 'png', 'webp']) {
-  const storage = new CloudinaryStorage({
-    cloudinary,
-    params: {
-      folder: `${folder}/${subfolder}`,
-      allowed_formats: allowedFormats,
-      transformation: [{ quality: 'auto', fetch_format: 'auto' }],
-    },
+function makeUploader() {
+  return multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
   });
-  return multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB
+}
+
+function uploadBufferToCloudinary(buffer, subfolder, allowedFormats = ['jpg', 'jpeg', 'png', 'webp']) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: `${folder}/${subfolder}`,
+        allowed_formats: allowedFormats,
+        transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+        resource_type: 'image',
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      }
+    );
+
+    stream.end(buffer);
+  });
 }
 
 async function deleteByPublicId(publicId) {
@@ -31,4 +44,4 @@ async function deleteByPublicId(publicId) {
   return cloudinary.uploader.destroy(publicId);
 }
 
-module.exports = { cloudinary, makeUploader, deleteByPublicId };
+module.exports = { cloudinary, makeUploader, uploadBufferToCloudinary, deleteByPublicId };

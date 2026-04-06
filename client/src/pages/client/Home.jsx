@@ -5,6 +5,7 @@ import { Spinner, Badge, Button, Empty } from '../../components/ui';
 import GameEngine from '../../components/game/GameEngine';
 
 export default function ClientHome() {
+  // 🔧 CORREGIDO: vista de cliente adaptada a las tarjetas y estados del mockup.
   const { user } = useAuthStore();
   const [assignments, setAssignments] = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -12,7 +13,7 @@ export default function ClientHome() {
 
   useEffect(() => {
     if (!user) return;
-    assignmentsApi.forClient(user.clientProfile?.id || user.id)
+    assignmentsApi.forClient(user.client_id || user.clientProfile?.id || user.id)
       .then(r => setAssignments(r.data.data || []))
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -47,24 +48,27 @@ export default function ClientHome() {
   const done     = assignments.filter(a =>  a.completedAt);
 
   return (
-    <div className="max-w-2xl mx-auto animate-in">
-      <div className="mb-6">
-        <h1 className="text-2xl font-black">Mis actividades</h1>
-        <p className="text-sm text-[var(--tx2)] mt-1">{active.length} en curso · {done.length} completadas</p>
+    <div className="mx-auto max-w-3xl animate-in">
+      <div className="ph">
+        <div>
+          <h1 className="pt">Mis actividades</h1>
+          <p className="ps">{active.length} en curso · {done.length} completadas</p>
+        </div>
+        <Badge variant="blue">👶 Modo cliente</Badge>
       </div>
 
       {active.length === 0 && done.length === 0 && (
         <Empty icon="📋" title="Sin actividades" subtitle="Tu especialista aún no te ha asignado ninguna actividad" />
       )}
 
-      <div className="space-y-3">
+      <div className="cgrid">
         {active.map(a => <ActivityCard key={a.id} assignment={a} onStart={startActivity} />)}
       </div>
 
       {done.length > 0 && (
         <>
-          <h2 className="text-base font-bold mt-8 mb-3 text-[var(--tx2)]">Completadas</h2>
-          <div className="space-y-3 opacity-70">
+          <h2 className="mt-8 mb-3 text-base font-bold text-[var(--tx2)]">Completadas</h2>
+          <div className="cgrid opacity-70">
             {done.map(a => <ActivityCard key={a.id} assignment={a} onStart={startActivity} done />)}
           </div>
         </>
@@ -73,16 +77,14 @@ export default function ClientHome() {
   );
 }
 
-// dev-trigger: updated component to test hot-reload
 function ActivityCard({ assignment, onStart, done }) {
   const act  = assignment.activity;
   const objs = act?.activityObjects || [];
   return (
-    <div className="bg-[var(--sf)] border-2 border-[var(--bd)] rounded-[var(--rl)] p-4 hover:border-[var(--ac)] transition-all cursor-pointer"
+    <div className="ac-card"
       onClick={() => !done && onStart(assignment.id)}>
-      {/* Thumbnail strip */}
-      <div className="flex gap-1 mb-3 text-2xl">{objs.slice(0,5).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div>
-      <h3 className="font-black text-base mb-1">{act?.title}</h3>
+      <div className="ac-thumb">{objs.slice(0, 5).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div>
+      <h3 className="text-base font-black">{act?.title}</h3>
       {act?.instructions && <p className="text-xs text-[var(--tx2)] mb-2">{act.instructions}</p>}
       <div className="flex items-center gap-2 flex-wrap">
         <Badge variant="default">{objs.length} objeto{objs.length !== 1 ? 's' : ''}</Badge>

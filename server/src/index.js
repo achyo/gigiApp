@@ -14,8 +14,8 @@ app.use(cors({
 }));
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
-app.use('/api/auth', rateLimit({ windowMs: 60_000, max: 20, standardHeaders: true }));
-app.use('/api', rateLimit({ windowMs: 60_000, max: 200, standardHeaders: true }));
+app.use('/api/auth', rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true }));
+app.use('/api', rateLimit({ windowMs: 60_000, limit: 200, standardHeaders: true }));
 
 // ── Body parsing ──────────────────────────────────────────────────────────────
 app.use(express.json());

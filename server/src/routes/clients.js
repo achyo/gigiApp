@@ -1,6 +1,6 @@
 // src/routes/clients.js
 const router = require('express').Router();
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const { prisma } = require('../lib/prisma');
 const { assertStrongPassword } = require('../lib/password');
 const { authenticateJWT, authorizeRole, scopeFilter, paginateQuery, paginatedResponse } = require('../middleware/auth');
@@ -26,7 +26,7 @@ router.get('/', authenticateJWT, scopeFilter('clients'), async (req, res, next) 
 
 router.post('/', authenticateJWT, authorizeRole('admin','specialist'), async (req, res, next) => {
   try {
-    const { child_name, child_birth_date, diagnosis_notes, specialist_id, email, name, password } = req.body;
+    const { child_name, child_birth_date, diagnosis_notes, specialist_id, email, name, password, group_ids = [] } = req.body;
     assertStrongPassword(password || 'Client1234!');
     const hash = await bcrypt.hash(password || 'Client1234!', 12);
     const specId = specialist_id || req.user.specialist_id;
@@ -38,6 +38,7 @@ router.post('/', authenticateJWT, authorizeRole('admin','specialist'), async (re
         childName: child_name, childBirthDate: child_birth_date ? new Date(child_birth_date) : null,
         diagnosisNotes: diagnosis_notes,
         specialist: { connect: { id: specId } },
+        ...(group_ids.length && { groups: { connect: group_ids.map(id => ({ id })) } }),
         user: { create: { name: name || child_name, email, passwordHash: hash, role: 'client',
           preferences: { create: { ttsEnabled: true, textSize: 1 } },
         }},
@@ -50,7 +51,7 @@ router.post('/', authenticateJWT, authorizeRole('admin','specialist'), async (re
 
 router.patch('/:id', authenticateJWT, authorizeRole('admin','specialist'), async (req, res, next) => {
   try {
-    const { child_name, diagnosis_notes, specialist_id, name, email, password } = req.body;
+    const { child_name, diagnosis_notes, specialist_id, name, email, password, group_ids } = req.body;
     const client = await prisma.client.findUnique({ where: { id: req.params.id }, select: { specialistId: true } });
     if (!client) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
     if (req.user.role === 'specialist' && client.specialistId !== req.user.specialist_id) {
@@ -69,6 +70,7 @@ router.patch('/:id', authenticateJWT, authorizeRole('admin','specialist'), async
         ...(child_name && { childName: child_name }),
         ...(diagnosis_notes !== undefined && { diagnosisNotes: diagnosis_notes }),
         ...(specialist_id && { specialist: { connect: { id: specialist_id } } }),
+        ...(Array.isArray(group_ids) && { groups: { set: group_ids.map(id => ({ id })) } }),
         ...((name !== undefined || email !== undefined || passwordHash) && {
           user: {
             update: {
@@ -85,10 +87,19 @@ router.patch('/:id', authenticateJWT, authorizeRole('admin','specialist'), async
   } catch (e) { next(e); }
 });
 
-router.delete('/:id', authenticateJWT, authorizeRole('admin'), async (req, res, next) => {
+router.delete('/:id', authenticateJWT, authorizeRole('admin', 'specialist'), async (req, res, next) => {
   try {
-    await prisma.client.update({ where: { id: req.params.id }, data: {} }); // soft via user.active
-    res.status(204).send();
+    const client = await prisma.client.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, specialistId: true, userId: true },
+    });
+    if (!client) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
+    if (req.user.role === 'specialist' && client.specialistId !== req.user.specialist_id) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
+
+    await prisma.user.update({ where: { id: client.userId }, data: { active: false } });
+    res.json({ success: true, data: { id: client.id, active: false } });
   } catch (e) { next(e); }
 });
 
