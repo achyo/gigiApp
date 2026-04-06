@@ -43,6 +43,9 @@ router.patch('/:id', authenticateJWT, authorizeRole('admin'), async (req, res, n
 
 router.get('/:id/clients', authenticateJWT, async (req, res, next) => {
   try {
+    if (req.user.role !== 'admin' && !(req.user.role === 'specialist' && req.user.specialist_id === req.params.id)) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
     const data = await prisma.client.findMany({ where: { specialistId: req.params.id } });
     res.json({ success: true, data });
   } catch(e){ next(e); }

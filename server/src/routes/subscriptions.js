@@ -2,36 +2,92 @@ const router = require('express').Router();
 const { prisma } = require('../lib/prisma');
 const { authenticateJWT, authorizeRole } = require('../middleware/auth');
 
+const VALID_ENTITY_TYPES = new Set(['specialist', 'client']);
+const VALID_PLANS = new Set(['basic', 'premium']);
+const VALID_BILLING = new Set(['month', 'year']);
+const VALID_METHODS = new Set(['card', 'paypal', 'bizum']);
+
+async function loadSubscriptionTarget(entityType, entityId) {
+  if (entityType === 'specialist') {
+    return prisma.specialist.findUnique({
+      where: { id: entityId },
+      include: { user: { select: { id: true, email: true, name: true } } },
+    });
+  }
+
+  return prisma.client.findUnique({
+    where: { id: entityId },
+    include: { user: { select: { id: true, email: true, name: true } } },
+  });
+}
+
+function canAccessSubscriptionTarget(user, entityType, target) {
+  if (user.role === 'admin') return true;
+  if (entityType === 'specialist') {
+    return user.role === 'specialist' && target.id === user.specialist_id;
+  }
+
+  if (user.role === 'specialist') {
+    return target.specialistId === user.specialist_id;
+  }
+
+  return user.role === 'client' && target.id === user.client_id;
+}
+
+function serializeSubscription(target, entityType) {
+  return {
+    entity_id: target.id,
+    entity_type: entityType,
+    subscription: target.subscription,
+  };
+}
+
 // POST /api/subscriptions  — activate/renew a subscription
 router.post('/', authenticateJWT, authorizeRole('admin','specialist'), async (req, res, next) => {
   try {
     const { entity_id, entity_type, plan, billing, method } = req.body;
+    if (!VALID_ENTITY_TYPES.has(entity_type)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_ENTITY_TYPE' } });
+    }
+    if (!VALID_PLANS.has(plan) || !VALID_BILLING.has(billing) || !VALID_METHODS.has(method)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_SUBSCRIPTION_REQUEST' } });
+    }
+
+    const target = await loadSubscriptionTarget(entity_type, entity_id);
+    if (!target) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
+    }
+    if (!canAccessSubscriptionTarget(req.user, entity_type, target)) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
+
     // Calculate expiry
     const expires = new Date();
     expires.setMonth(expires.getMonth() + (billing === 'year' ? 12 : 1));
+    const subscription = {
+      plan,
+      billing,
+      method,
+      status: 'active',
+      expires: expires.toISOString().split('T')[0],
+    };
 
     if (entity_type === 'specialist') {
-      const existing = await prisma.specialist.findUnique({ where: { id: entity_id } });
-      if (!existing) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
       const s = await prisma.specialist.update({
         where: { id: entity_id },
-        data: { subscription: { plan, billing, status: 'active', expires: expires.toISOString().split('T')[0] } },
+        data: { subscription },
       });
       // Schedule expiry email (in production use a queue; here we simulate)
       _scheduleExpiryAlert(entity_id, 'specialist', expires);
-      return res.json({ success: true, data: s });
+      return res.json({ success: true, data: serializeSubscription(s, 'specialist') });
     }
-    if (entity_type === 'client') {
-      const existing = await prisma.client.findUnique({ where: { id: entity_id } });
-      if (!existing) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
-      const c = await prisma.client.update({
-        where: { id: entity_id },
-        data: { subscription: { plan, billing, status: 'active', expires: expires.toISOString().split('T')[0] } },
-      });
-      _scheduleExpiryAlert(entity_id, 'client', expires);
-      return res.json({ success: true, data: c });
-    }
-    res.status(400).json({ success: false, error: { code: 'INVALID_ENTITY_TYPE' } });
+
+    const c = await prisma.client.update({
+      where: { id: entity_id },
+      data: { subscription },
+    });
+    _scheduleExpiryAlert(entity_id, 'client', expires);
+    return res.json({ success: true, data: serializeSubscription(c, 'client') });
   } catch(e){ next(e); }
 });
 
@@ -39,14 +95,17 @@ router.post('/', authenticateJWT, authorizeRole('admin','specialist'), async (re
 router.get('/status/:entityType/:entityId', authenticateJWT, async (req, res, next) => {
   try {
     const { entityType, entityId } = req.params;
-    let sub = null;
-    if (entityType === 'specialist') {
-      const s = await prisma.specialist.findUnique({ where:{ id:entityId } });
-      sub = s?.subscription;
-    } else {
-      const c = await prisma.client.findUnique({ where:{ id:entityId } });
-      sub = c?.subscription;
+    if (!VALID_ENTITY_TYPES.has(entityType)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_ENTITY_TYPE' } });
     }
+
+    const target = await loadSubscriptionTarget(entityType, entityId);
+    if (!target) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
+    if (!canAccessSubscriptionTarget(req.user, entityType, target)) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
+
+    const sub = target.subscription;
     if (!sub) return res.json({ success: true, data: { status: 'none' } });
 
     const now = new Date();
@@ -56,7 +115,16 @@ router.get('/status/:entityType/:entityId', authenticateJWT, async (req, res, ne
     if (status === 'active' && diffDays < 0 && diffDays > -15) status = 'grace';
     if (diffDays < -15) status = 'expired';
 
-    res.json({ success: true, data: { ...sub, status, daysLeft: Math.ceil(diffDays) } });
+    res.json({
+      success: true,
+      data: {
+        entity_id: target.id,
+        entity_type: entityType,
+        ...sub,
+        status,
+        daysLeft: Math.ceil(diffDays),
+      },
+    });
   } catch(e){ next(e); }
 });
 

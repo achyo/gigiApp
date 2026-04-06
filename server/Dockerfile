@@ -4,7 +4,7 @@ RUN apk add --no-cache openssl
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
 COPY prisma prisma
-RUN npx prisma@5 generate
+RUN npx prisma generate
 COPY . .
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma@5 migrate deploy && npm run dev"]
+CMD ["sh", "-c", "npm run db:generate && npm run db:migrate:prod && npm run dev"]

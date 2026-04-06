@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
 
   postgres:
@@ -46,9 +44,9 @@ services:
       REDIS_URL: redis://redis:6379
     env_file: ./server/.env
     volumes:
-      - ./server/src:/gigiapp/src                # hot-reload del código fuente
+      - ./server:/gigiapp                        # hot-reload del backend completo
       - server_node_modules:/gigiapp/node_modules # evita que el bind mount machaque node_modules del contenedor
-    command: npm run dev
+    command: sh -c "npm install --legacy-peer-deps && npm run db:generate && npm run db:migrate:prod && npm run dev"
 
   client:
     build: ./client
@@ -64,7 +62,7 @@ services:
       - PROXY_TARGET=http://server:3000
       - CHOKIDAR_USEPOLLING=true                # enable polling for file watchers on Windows/WSL
       - VITE_USE_POLLING=true                   # optional: used if Vite config checks this var
-    command: npm run dev -- --host
+    command: sh -c "npm install --legacy-peer-deps && npm run dev -- --host"
 
     # Notes:
     # - Rebuild the image when you change the Dockerfile or install native
