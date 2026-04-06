@@ -15,6 +15,6 @@
     "install:all": "npm install && npm install --workspace=server && npm install --workspace=client"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^9.2.1"
   }
 }

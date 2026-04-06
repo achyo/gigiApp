@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /gigiapp
 RUN apk add --no-cache openssl
 COPY package*.json ./
