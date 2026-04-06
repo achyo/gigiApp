@@ -7,7 +7,7 @@ Aplicación web fullstack para trabajar la conceptualización del lenguaje en ni
 | Capa | Tecnología |
 | --- | --- |
 | Frontend | React 19 · Vite 8 · React Router 7 · Zustand 5 · Tailwind CSS 4 |
-| Backend | Node.js 20+ · Express 5 · Prisma 7 |
+| Backend | Node.js 22 · Express 5 · Prisma 7 |
 | Base de datos | PostgreSQL 16 |
 | Caché | Redis 7 |
 | Media | Cloudinary |
@@ -16,7 +16,7 @@ Aplicación web fullstack para trabajar la conceptualización del lenguaje en ni
 
 ## Requisitos
 
-- Node.js 20.19 o superior
+- Node.js 22 o superior
 - npm 10 o superior
 - Docker Desktop si vas a usar el flujo con contenedores
 - Cuenta de Cloudinary para subida de imágenes
@@ -87,6 +87,7 @@ El flujo Docker del repositorio está preparado para:
 - persistir PostgreSQL en el volumen `postgres_data`
 - persistir Redis en `redis_data` con AOF habilitado
 - mantener `node_modules` de frontend y backend en volúmenes separados
+- ejecutar frontend y backend sobre imágenes Docker basadas en Node 22
 - regenerar Prisma y aplicar migraciones al arrancar el backend
 - refrescar dependencias dentro de los contenedores cuando cambia `package.json`
 
@@ -170,6 +171,7 @@ Sobre el stack Docker levantado se verificó correctamente:
 
 - `GET /api/health`
 - login de admin, especialista y cliente
+- apertura de actividades del cliente y arranque de sesión de juego
 - CRUD representativo de grupos, clientes, categorías, objetos y actividades
 - activación y consulta de suscripciones para especialista y cliente
 - sesión de juego y guardado de resultados
@@ -206,6 +208,8 @@ El resultado queda en `client/dist`.
 - Si el frontend o el backend parecen ignorar cambios de `package.json`, reinicia los servicios con `docker compose up -d server client`. El `docker-compose.yml` ya fuerza `npm install` al arrancar para resincronizar los volúmenes de `node_modules`.
 - Si quieres reiniciar desde cero dependencias, base de datos y caché, usa `docker compose down -v` y luego `docker compose up -d --build postgres redis server client`.
 - Si Vite no detecta bien cambios de archivos en Windows, el contenedor del cliente ya arranca con `CHOKIDAR_USEPOLLING=true` y `VITE_USE_POLLING=true`.
+- El layout principal colapsa la sidebar antes en anchos intermedios para evitar que listados, modales y editores queden comprimidos dentro de los contenedores.
+- La pantalla de login usa selector visual de rol con precarga de credenciales demo y la vista de cliente muestra estado de carga/error al abrir una actividad.
 
 ### Prisma 7
 

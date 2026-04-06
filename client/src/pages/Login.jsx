@@ -4,15 +4,30 @@ import useAuthStore  from '../stores/authStore';
 import usePrefsStore from '../stores/prefsStore';
 import { Button, Input } from '../components/ui';
 
+const ROLE_PRESETS = [
+  { id: 'client', label: 'Cliente', icon: '👶', hint: 'Padre/tutor', email: 'familia@ejemplo.com', password: 'Client1234!' },
+  { id: 'specialist', label: 'Especialista', icon: '🧑‍⚕️', hint: 'Profesional', email: 'especialista@proyectogigi.com', password: 'Spec1234!' },
+  { id: 'admin', label: 'Admin', icon: '⚙️', hint: 'Gestión', email: 'admin@proyectogigi.com', password: 'Admin1234!' },
+];
+
 export default function Login() {
-  // 🔧 CORREGIDO: pantalla de acceso ajustada al mockup con paletas visibles y accesos demo.
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [error,    setError]    = useState('');
-  const [loading,  setLoading]  = useState(false);
+  const [selectedRole, setSelectedRole] = useState('client');
+  const [email,        setEmail]        = useState(ROLE_PRESETS[0].email);
+  const [password,     setPassword]     = useState(ROLE_PRESETS[0].password);
+  const [error,        setError]        = useState('');
+  const [loading,      setLoading]      = useState(false);
   const { login } = useAuthStore();
   const { PALETTES, paletteId, setPalette } = usePrefsStore();
   const navigate = useNavigate();
+
+  const pickRole = (roleId) => {
+    const preset = ROLE_PRESETS.find(role => role.id === roleId);
+    if (!preset) return;
+    setSelectedRole(roleId);
+    setEmail(preset.email);
+    setPassword(preset.password);
+    setError('');
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -31,20 +46,35 @@ export default function Login() {
 
   return (
     <div className="lw">
-      <div className="lc scale-in shadow-soft">
-        <h1 className="ll">
+      <div className="lc login-card scale-in shadow-soft">
+        <h1 className="ll login-title">
           Proyecto<b>Gigi</b>
         </h1>
-        <p className="mb-5 text-center text-sm text-[var(--tx2)]">
-          Acceso adaptado para administracion, especialistas y familias.
+        <p className="login-subtitle">
+          Pulsa un rol para entrar
         </p>
+
+        <div className="login-role-grid" role="tablist" aria-label="Seleccionar rol de acceso">
+          {ROLE_PRESETS.map(role => (
+            <button
+              key={role.id}
+              type="button"
+              className={`login-role-btn ${selectedRole === role.id ? 'is-active' : ''}`}
+              onClick={() => pickRole(role.id)}
+            >
+              <span className="login-role-icon">{role.icon}</span>
+              <span className="login-role-label">{role.label}</span>
+              <span className="login-role-hint">{role.hint}</span>
+            </button>
+          ))}
+        </div>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <Input
-            label="Correo electrónico"
+            label="Email"
             type="email" value={email} required autoFocus
             onChange={e => setEmail(e.target.value)}
-            placeholder="tu@email.com"
+            placeholder="demo@proyectogigi.com"
           />
           <Input
             label="Contraseña"
@@ -57,45 +87,28 @@ export default function Login() {
               {error}
             </p>
           )}
-          <Button type="submit" disabled={loading} className="mt-1 w-full justify-center" size="lg">
-            {loading ? 'Entrando…' : 'Entrar'}
-          </Button>
-        </form>
-
-        <div className="mt-6 border-t border-[var(--bd)] pt-4">
-          <p className="mb-2 text-xs font-bold text-[var(--tx3)]">Paleta de accesibilidad</p>
-          <div className="pstrip justify-center">
+          <div className="login-palette-block">
+            <p className="login-section-label">Paleta de accesibilidad</p>
+            <div className="pstrip">
             {PALETTES.map(p => (
               <button
                 key={p.id}
+                type="button"
                 title={p.label}
                 onClick={() => setPalette(p.id)}
                 className={`pbtn ${paletteId === p.id ? 'on' : ''}`}
                 style={{ background: p.bg, borderColor: p.ac }}
               />
             ))}
+            </div>
           </div>
-          <p className="mt-2 text-center text-[11px] text-[var(--tx3)]">Puedes cambiar la paleta antes de iniciar sesion.</p>
-        </div>
-
-        <div className="mt-5 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3 text-center text-xs text-[var(--tx3)]">
-          <p className="mb-2 font-bold text-[var(--tx2)]">Demo rapido</p>
-          <div className="flex flex-wrap justify-center gap-2">
-          {[
-            ['Admin', 'admin@proyectogigi.com', 'Admin1234!'],
-            ['Especialista', 'especialista@proyectogigi.com', 'Spec1234!'],
-            ['Cliente', 'familia@ejemplo.com', 'Client1234!'],
-          ].map(([label, em, pw]) => (
-            <button
-              key={label}
-              onClick={() => { setEmail(em); setPassword(pw); }}
-              className="tag"
-            >
-              {label}
-            </button>
-          ))}
+          <Button type="submit" disabled={loading} className="mt-1 w-full justify-center" size="lg">
+            {loading ? 'Entrando…' : 'Entrar'}
+          </Button>
+          <div className="text-center text-[11px] text-[var(--tx3)]">
+            Usa el rol superior para rellenar automáticamente las credenciales demo.
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

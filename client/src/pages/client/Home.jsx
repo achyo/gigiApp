@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useAuthStore from '../../stores/authStore';
 import { assignmentsApi, gameApi } from '../../api';
-import { Spinner, Badge, Button, Empty } from '../../components/ui';
+import { Spinner, Badge, Button, Empty, Notice } from '../../components/ui';
 import GameEngine from '../../components/game/GameEngine';
 
 export default function ClientHome() {
@@ -10,20 +10,28 @@ export default function ClientHome() {
   const [assignments, setAssignments] = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [session,     setSession]     = useState(null); // { assignmentId, gameData }
+  const [startingId,  setStartingId]  = useState(null);
+  const [startError,  setStartError]  = useState('');
 
   useEffect(() => {
     if (!user) return;
-    assignmentsApi.forClient(user.client_id || user.clientProfile?.id || user.id)
+    assignmentsApi.list()
       .then(r => setAssignments(r.data.data || []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [user]);
 
   const startActivity = async (assignmentId) => {
+    setStartingId(assignmentId);
+    setStartError('');
     try {
       const r = await gameApi.session(assignmentId);
       setSession({ assignmentId, gameData: r.data.data });
-    } catch(e) { alert('Error al cargar la actividad'); }
+    } catch(e) {
+      setStartError('No se pudo abrir la actividad. Recarga la página e inténtalo de nuevo.');
+    } finally {
+      setStartingId(null);
+    }
   };
 
   const handleResult = (result) => {
@@ -48,7 +56,7 @@ export default function ClientHome() {
   const done     = assignments.filter(a =>  a.completedAt);
 
   return (
-    <div className="mx-auto max-w-3xl animate-in">
+    <div className="mx-auto max-w-4xl animate-in">
       <div className="ph">
         <div>
           <h1 className="pt">Mis actividades</h1>
@@ -57,12 +65,14 @@ export default function ClientHome() {
         <Badge variant="blue">👶 Modo cliente</Badge>
       </div>
 
+      {startError && <Notice variant="error" className="mb-4">{startError}</Notice>}
+
       {active.length === 0 && done.length === 0 && (
         <Empty icon="📋" title="Sin actividades" subtitle="Tu especialista aún no te ha asignado ninguna actividad" />
       )}
 
       <div className="cgrid">
-        {active.map(a => <ActivityCard key={a.id} assignment={a} onStart={startActivity} />)}
+        {active.map(a => <ActivityCard key={a.id} assignment={a} onStart={startActivity} starting={startingId === a.id} />)}
       </div>
 
       {done.length > 0 && (
@@ -77,12 +87,28 @@ export default function ClientHome() {
   );
 }
 
-function ActivityCard({ assignment, onStart, done }) {
+function ActivityCard({ assignment, onStart, done, starting }) {
   const act  = assignment.activity;
   const objs = act?.activityObjects || [];
+
+  const handleStart = () => {
+    if (!done && !starting) onStart(assignment.id);
+  };
+
   return (
-    <div className="ac-card"
-      onClick={() => !done && onStart(assignment.id)}>
+    <div
+      className="ac-card"
+      role={done ? undefined : 'button'}
+      tabIndex={done ? -1 : 0}
+      onClick={handleStart}
+      onKeyDown={(event) => {
+        if (done) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          handleStart();
+        }
+      }}
+    >
       <div className="ac-thumb">{objs.slice(0, 5).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div>
       <h3 className="text-base font-black">{act?.title}</h3>
       {act?.instructions && <p className="text-xs text-[var(--tx2)] mb-2">{act.instructions}</p>}
@@ -94,8 +120,8 @@ function ActivityCard({ assignment, onStart, done }) {
         }
       </div>
       {!done && (
-        <Button className="w-full justify-center mt-3" size="lg">
-          ▶ Empezar
+        <Button className="w-full justify-center mt-3" size="lg" type="button" onClick={handleStart} disabled={starting}>
+          {starting ? 'Cargando…' : '▶ Empezar'}
         </Button>
       )}
     </div>

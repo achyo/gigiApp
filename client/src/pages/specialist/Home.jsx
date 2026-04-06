@@ -117,9 +117,9 @@ function Clients() {
           ))}
         </div>
       }
-      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nuevo cliente' : 'Editar cliente'} maxWidth={480}>
+      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nuevo cliente' : 'Editar cliente'} maxWidth={640}>
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Input label="Nombre tutor"   value={form.name||''}        onChange={e=>setForm({...form,name:e.target.value})}       />
           <Input label="Nombre alumno"  value={form.child_name||''}  onChange={e=>setForm({...form,child_name:e.target.value})} />
           <Input label="Email"          value={form.email||''}       onChange={e=>setForm({...form,email:e.target.value})}      />
@@ -338,7 +338,7 @@ function Activities() {
           ))}
         </div>
       }
-      <Modal open={modal} onClose={() => setModal(false)} title={editAct ? 'Editar actividad' : 'Nueva actividad'} maxWidth={720}>
+      <Modal open={modal} onClose={() => setModal(false)} title={editAct ? 'Editar actividad' : 'Nueva actividad'} maxWidth={860}>
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
         <Input label="Título" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} className="mb-3" placeholder="Ej: Animales del campo" />
         <div className="mb-3">
@@ -350,7 +350,7 @@ function Activities() {
             <button key={c} onClick={()=>setCat(c)} className={`px-2 py-0.5 rounded text-xs font-bold border ${cat===c?'bg-[var(--ac)] text-white border-[var(--ac)]':'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>{c}</button>
           ))}
         </div>
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-4 max-h-48 overflow-y-auto p-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 max-h-56 overflow-y-auto p-1">
           {visObjs.map(o=>(
             <div key={o.id} onClick={()=>setForm(f=>({...f,selObjs:f.selObjs.includes(o.id)?f.selObjs.filter(x=>x!==o.id):[...f.selObjs,o.id]}))}
               className={`flex flex-col items-center gap-1 p-2 border-2 rounded-lg cursor-pointer transition-all text-center ${form.selObjs.includes(o.id)?'border-[var(--ac)] bg-[var(--acb)]':'border-[var(--bd)] hover:border-[var(--ac)]'}`}>
@@ -360,7 +360,7 @@ function Activities() {
           ))}
         </div>
         <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tx3)]">Asignar a</div>
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
           {[['all','🌐','Todos los usuarios'],['clients','👤','Clientes'],['groups','👥','Grupos']].map(([m,ic,lb])=>(
             <div key={m} onClick={()=>setForm({...form,assignMode:m})}
               className={`p-2 border-2 rounded-[var(--r)] cursor-pointer text-center text-xs font-bold ${form.assignMode===m?'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]':'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}>
@@ -607,9 +607,9 @@ function Objects() {
           const hasDraw  = reps.some(r=>r.level==='drawing');
           return (
             <div key={o.id} className={`bg-[var(--sf)] border-2 rounded-[var(--rl)] overflow-hidden transition-colors ${expanded===o.id?'border-[var(--ac)]':'border-[var(--bd)]'}`}>
-              <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={()=>setExpanded(expanded===o.id?null:o.id)}>
+              <div className="flex flex-wrap items-center gap-2 md:gap-3 p-4 cursor-pointer" onClick={()=>setExpanded(expanded===o.id?null:o.id)}>
                 <span className="text-2xl">{o.em}</span>
-                <div className="flex-1"><p className="font-bold text-sm">{o.name}</p><p className="text-xs text-[var(--tx3)]">{o.category?.name}</p></div>
+                <div className="min-w-0 flex-1"><p className="font-bold text-sm">{o.name}</p><p className="text-xs text-[var(--tx3)]">{o.category?.name}</p></div>
                 <Badge variant={has3d?'green':'amber'}>🧊{has3d?'✓':'✗'}</Badge>
                 <Badge variant={hasPhoto?'green':'amber'}>📷{hasPhoto?'✓':'✗'}</Badge>
                 <Badge variant={hasDraw?'green':'amber'}>📝{hasDraw?'✓':'✗'}</Badge>
@@ -618,7 +618,7 @@ function Objects() {
                 <span className="text-[var(--tx3)]">{expanded===o.id?'▲':'▼'}</span>
               </div>
               {expanded===o.id && (
-                <div className="border-t border-[var(--bd)] p-4 grid gap-4 md:grid-cols-3">
+                <div className="border-t border-[var(--bd)] p-4 grid gap-4 xl:grid-cols-3">
                   {[['model_3d','🧊 Nivel 1','1'],['photo','📷 Nivel 2','2'],['drawing','📝 Nivel 3','3']].map(([lvl,label,n])=>{
                     const rep = reps.find(r=>r.level===lvl);
                     const draftKey = repDraftKey(o.id, lvl);
@@ -681,10 +681,10 @@ function Objects() {
           );
         })}
       </div>}
-      <Modal open={modal} onClose={closeModal} title={editObj?'Editar objeto':'Nuevo objeto'} maxWidth={720}>
+      <Modal open={modal} onClose={closeModal} title={editObj?'Editar objeto':'Nuevo objeto'} maxWidth={860}>
         <div className="space-y-3">
           {feedback && <Notice variant={feedback.type}>{feedback.message}</Notice>}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Input label="Nombre" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} />
             <Input label="Emoji"  value={form.em}   onChange={e=>setForm({...form,em:e.target.value})} />
             <Select label="Categoría" value={form.category_id} onChange={e=>setForm({...form,category_id:e.target.value})}>

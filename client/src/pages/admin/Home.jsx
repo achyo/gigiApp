@@ -86,7 +86,7 @@ function Dashboard() {
   }, { active: 0, trial: 0, grace: 0, expired: 0, expiring: 0 });
 
   return (
-    <div className="max-h-dvh overflow-auto animate-in">
+    <div className="animate-in">
       <h1 className="text-2xl font-black">Panel global</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -202,7 +202,7 @@ function Specialists() {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
 
   return (
-    <div className="max-h-dvh overflow-auto animate-in">
+    <div className="animate-in">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="text-xl font-black">Especialistas</h1>
         <Button onClick={openNew}>+ Nuevo</Button>
@@ -363,7 +363,7 @@ function Clients() {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
 
   return (
-    <div className="max-h-dvh overflow-auto animate-in">
+    <div className="animate-in">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-black">Todos los clientes</h1>
         <Button onClick={openNew}>+ Nuevo</Button>
@@ -393,7 +393,7 @@ function Clients() {
           })}
         </div>
       }
-      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nuevo cliente' : 'Editar cliente'} maxWidth={520}>
+      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nuevo cliente' : 'Editar cliente'} maxWidth={640}>
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input label="Nombre tutor" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} />
@@ -624,7 +624,7 @@ function Activities() {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
 
   return (
-    <div className="max-h-dvh overflow-auto animate-in">
+    <div className="animate-in">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="text-xl font-black">Todas las actividades</h1>
         <Button onClick={openNew}>+ Nueva</Button>
@@ -646,7 +646,7 @@ function Activities() {
           ))}
         </div>
       }
-      <Modal open={modal} onClose={() => setModal(false)} title={editAct ? 'Editar actividad' : 'Nueva actividad'} maxWidth={720}>
+      <Modal open={modal} onClose={() => setModal(false)} title={editAct ? 'Editar actividad' : 'Nueva actividad'} maxWidth={860}>
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <Input label="Título" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
@@ -663,7 +663,7 @@ function Activities() {
             </button>
           ))}
         </div>
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-4 max-h-48 overflow-y-auto p-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 max-h-56 overflow-y-auto p-1">
           {visibleObjects.map(object => (
             <div
               key={object.id}
@@ -681,7 +681,7 @@ function Activities() {
           ))}
         </div>
         <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tx3)]">Asignar a</div>
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
           {[['all','🌐','Todos los usuarios'],['clients','👤','Clientes'],['groups','👥','Grupos']].map(([mode, icon, label]) => (
             <div
               key={mode}
@@ -918,7 +918,7 @@ function Objects() {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
 
   return (
-    <div className="max-h-dvh overflow-auto animate-in">
+    <div className="animate-in">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="text-xl font-black">Objetos públicos</h1>
         <Button onClick={openNew}>+ Nuevo</Button>
@@ -941,7 +941,7 @@ function Objects() {
 
             return (
               <div key={o.id} className={`bg-[var(--sf)] border-2 rounded-[var(--rl)] overflow-hidden transition-colors ${expanded === o.id ? 'border-[var(--ac)]' : 'border-[var(--bd)]'}`}>
-                <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => setExpanded(expanded === o.id ? null : o.id)}>
+                <div className="flex flex-wrap items-center gap-2 md:gap-3 p-4 cursor-pointer" onClick={() => setExpanded(expanded === o.id ? null : o.id)}>
                   <span className="text-2xl">{o.em}</span>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-sm">{o.name}</p>
@@ -956,7 +956,7 @@ function Objects() {
                   <Button size="sm" variant="danger" onClick={(event) => { event.stopPropagation(); setDelId(o.id); }}>🗑</Button>
                 </div>
                 {expanded === o.id && (
-                  <div className="border-t border-[var(--bd)] p-4 grid gap-4 md:grid-cols-3">
+                  <div className="border-t border-[var(--bd)] p-4 grid gap-4 xl:grid-cols-3">
                     {[
                       ['model_3d', 'URL 3D', reps.find(rep => rep.level === 'model_3d')],
                       ['photo', 'Foto', reps.find(rep => rep.level === 'photo')],
@@ -1015,10 +1015,10 @@ function Objects() {
           })}
         </div>
       }
-      <Modal open={modal} onClose={closeModal} title={editObj ? 'Editar objeto' : 'Nuevo objeto (público)'} maxWidth={720}>
+      <Modal open={modal} onClose={closeModal} title={editObj ? 'Editar objeto' : 'Nuevo objeto (público)'} maxWidth={860}>
         <div className="space-y-3">
           {feedback && <Notice variant={feedback.type}>{feedback.message}</Notice>}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Input label="Nombre" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
             <Input label="Emoji"  value={form.em}   onChange={e => setForm({ ...form, em: e.target.value })} />
             <Select label="Categoría" value={form.category_id} onChange={e => setForm({ ...form, category_id: e.target.value })}>
@@ -1256,7 +1256,7 @@ function Subscriptions() {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
 
   return (
-    <div className="max-h-dvh overflow-auto animate-in">
+    <div className="animate-in">
       <h1 className="text-xl font-black mb-4">Gestión de suscripciones</h1>
       <SearchBar value={search} onChange={setSearch} placeholder="Buscar..."
         extra={

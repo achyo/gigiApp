@@ -36,7 +36,7 @@ export default function Layout() {
   return (
     <div id="app" className="app-shell">
       <header className="topbar">
-        <button className="menu-toggle md:hidden" onClick={() => setSidebarOpen(o => !o)} aria-label="Abrir menu">
+        <button className="menu-toggle lg:hidden" onClick={() => setSidebarOpen(o => !o)} aria-label="Abrir menu">
           ☰
         </button>
         <button className="brand" onClick={() => navigate('/')}>
@@ -80,7 +80,7 @@ export default function Layout() {
       </header>
 
       <div className="ml">
-        {sidebarOpen && <button className="mobile-backdrop md:hidden" onClick={() => setSidebarOpen(false)} aria-label="Cerrar menu" />}
+        {sidebarOpen && <button className="mobile-backdrop lg:hidden" onClick={() => setSidebarOpen(false)} aria-label="Cerrar menu" />}
         <aside className={`sidebar ${sidebarOpen ? 'is-open' : ''}`}>
           <p className="nsec">Menu</p>
           {navItems.map(n => (

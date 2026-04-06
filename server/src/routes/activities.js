@@ -25,6 +25,15 @@ const activityInclude = {
   },
 };
 
+function normalizeActivityObjects(objects = []) {
+  const seen = new Set();
+  return objects.filter((item) => {
+    if (!item?.object_id || seen.has(item.object_id)) return false;
+    seen.add(item.object_id);
+    return true;
+  });
+}
+
 router.get('/', authenticateJWT, scopeFilter('activities'), async (req, res, next) => {
   try {
     const { page, limit, skip, take } = paginateQuery(req.query);
@@ -88,7 +97,59 @@ router.patch('/:id', authenticateJWT, async (req, res, next) => {
     const { title, instructions, objects, specialist_id } = req.body;
     const updated = await prisma.$transaction(async (tx) => {
       if (Array.isArray(objects)) {
-        await tx.activityObject.deleteMany({ where: { activityId: req.params.id } });
+        const nextObjects = normalizeActivityObjects(objects);
+        const existingActivityObjects = await tx.activityObject.findMany({
+          where: { activityId: req.params.id },
+          include: {
+            object: { select: { name: true } },
+            _count: { select: { results: true } },
+          },
+          orderBy: { sortOrder: 'asc' },
+        });
+
+        const existingByObjectId = new Map(existingActivityObjects.map((item) => [item.objectId, item]));
+        const nextObjectIds = new Set(nextObjects.map((item) => item.object_id));
+        const removable = existingActivityObjects.filter((item) => !nextObjectIds.has(item.objectId));
+        const blocked = removable.filter((item) => item._count.results > 0);
+
+        if (blocked.length > 0) {
+          const names = blocked.map((item) => item.object?.name || 'objeto').join(', ');
+          const error = new Error(`No se pueden quitar objetos con resultados guardados: ${names}.`);
+          error.status = 409;
+          error.code = 'ACTIVITY_OBJECT_HAS_RESULTS';
+          throw error;
+        }
+
+        if (removable.length > 0) {
+          await tx.activityObject.deleteMany({
+            where: { id: { in: removable.map((item) => item.id) } },
+          });
+        }
+
+        for (const [index, item] of nextObjects.entries()) {
+          const payload = {
+            activityType: item.activity_type || 'show',
+            difficultyLevel: item.difficulty_level || 'photo',
+            sortOrder: item.sort_order ?? index,
+          };
+          const existing = existingByObjectId.get(item.object_id);
+
+          if (existing) {
+            await tx.activityObject.update({
+              where: { id: existing.id },
+              data: payload,
+            });
+            continue;
+          }
+
+          await tx.activityObject.create({
+            data: {
+              activityId: req.params.id,
+              objectId: item.object_id,
+              ...payload,
+            },
+          });
+        }
       }
 
       return tx.activity.update({
@@ -97,16 +158,6 @@ router.patch('/:id', authenticateJWT, async (req, res, next) => {
           ...(title && { title }),
           ...(instructions !== undefined && { instructions }),
           ...(specialist_id && { specialistId: specialist_id }),
-          ...(Array.isArray(objects) && {
-            activityObjects: {
-              create: objects.map((o, i) => ({
-                objectId: o.object_id,
-                activityType: o.activity_type || 'show',
-                difficultyLevel: o.difficulty_level || 'photo',
-                sortOrder: o.sort_order ?? i,
-              })),
-            },
-          }),
         },
         include: activityInclude,
       });

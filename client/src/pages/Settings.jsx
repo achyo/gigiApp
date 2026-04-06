@@ -53,7 +53,7 @@ export default function Settings() {
       <Card className="shadow-soft">
         <h2 className="mb-1 font-bold">📏 Tamaño de texto</h2>
         <p className="mb-3 text-sm text-[var(--tx2)]">El zoom modifica tarjetas, iconos, imagenes y espaciados de toda la aplicacion.</p>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {FONT_SIZES.map(f => (
             <div key={f.id} onClick={() => setFontSize(f.id)}
               className={`p-3 rounded-[var(--r)] text-center cursor-pointer border-2 font-black transition-all

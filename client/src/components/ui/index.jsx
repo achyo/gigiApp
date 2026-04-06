@@ -3,7 +3,7 @@ import React from 'react';
 /* ── Button ──────────────────────────────────────────────────────────────── */
 export function Button({ variant = 'primary', size = 'md', className = '', children, ...props }) {
   const base = 'inline-flex items-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap';
-  const sizes = { sm: 'px-2.5 py-1 text-xs', md: 'px-3.5 py-2 text-sm', lg: 'px-5 py-3 text-base' };
+  const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2.5 text-sm', lg: 'px-5 py-3 text-base' };
   const variants = {
     primary: 'bg-[var(--ac)] text-white border-[var(--ac)] hover:brightness-110',
     secondary: 'bg-[var(--sf)] text-[var(--tx)] border-[var(--bd)] hover:bg-[var(--bg2)]',
@@ -64,7 +64,7 @@ export function Input({ label, error, className = '', ...props }) {
     <div className="flex flex-col gap-1">
       {label && <label className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">{label}</label>}
       <input
-        className={`w-full px-3 py-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)] focus:bg-[var(--sf)] transition-colors ${className}`}
+        className={`w-full px-3.5 py-2.5 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)] focus:bg-[var(--sf)] transition-colors ${className}`}
         {...props}
       />
       {error && <span className="text-xs text-[var(--er)]">{error}</span>}
@@ -78,7 +78,7 @@ export function Select({ label, className = '', children, ...props }) {
     <div className="flex flex-col gap-1">
       {label && <label className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">{label}</label>}
       <select
-        className={`w-full px-3 py-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)] appearance-none cursor-pointer ${className}`}
+        className={`w-full px-3.5 py-2.5 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)] appearance-none cursor-pointer ${className}`}
         {...props}
       >
         {children}
@@ -93,7 +93,7 @@ export function Textarea({ label, className = '', ...props }) {
     <div className="flex flex-col gap-1">
       {label && <label className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">{label}</label>}
       <textarea
-        className={`w-full px-3 py-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)] focus:bg-[var(--sf)] transition-colors resize-y ${className}`}
+        className={`w-full px-3.5 py-2.5 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)] focus:bg-[var(--sf)] transition-colors resize-y ${className}`}
         {...props}
       />
     </div>
@@ -109,7 +109,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 640, classNam
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div
-        className={`bg-[var(--sf)] rounded-[var(--rl)] p-6 w-full scale-in ${className}`}
+        className={`bg-[var(--sf)] rounded-[var(--rl)] p-4 sm:p-6 w-full scale-in ${className}`}
         style={{ maxWidth }}
       >
         {title && (
@@ -151,7 +151,7 @@ export function SearchBar({ value, onChange, placeholder = 'Buscar...', extra })
         <input
           value={value} onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full pl-8 pr-3 py-1.5 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)]"
+          className="w-full pl-8 pr-3.5 py-2.5 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)]"
         />
       </div>
       {extra}
