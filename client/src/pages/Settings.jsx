@@ -2,17 +2,23 @@ import React, { useState } from 'react';
 import usePrefsStore from '../stores/prefsStore';
 import { Button, Card, Input } from '../components/ui';
 import { authApi } from '../api';
+import { getPasswordStrengthError, PASSWORD_RULE_HINT } from '../lib/password';
 
 export default function Settings() {
   const { PALETTES, FONT_SIZES, paletteId, fontSizeId, ttsEnabled,
           setPalette, setFontSize, setTts } = usePrefsStore();
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
   const [pwMsg,  setPwMsg]  = useState(null);
+  const passwordError = getPasswordStrengthError(pwForm.next, { required: true });
+  const passwordConfirmError = pwForm.next && pwForm.next !== pwForm.confirm
+    ? 'Las contrasenas no coinciden.'
+    : '';
 
   const changePassword = async e => {
     e.preventDefault();
     setPwMsg(null);
-    if (pwForm.next !== pwForm.confirm) { setPwMsg({ type: 'error', text: 'Las contraseñas no coinciden' }); return; }
+    if (passwordError) { setPwMsg({ type: 'error', text: passwordError }); return; }
+    if (passwordConfirmError) { setPwMsg({ type: 'error', text: passwordConfirmError }); return; }
     try {
       await authApi.changePassword(pwForm.current, pwForm.next);
       setPwMsg({ type: 'ok', text: 'Contraseña actualizada ✓' });
@@ -75,10 +81,11 @@ export default function Settings() {
         <h2 className="font-bold mb-3">🔑 Cambiar contraseña</h2>
         <form onSubmit={changePassword} className="space-y-3">
           <Input label="Contraseña actual" type="password" value={pwForm.current} onChange={e=>setPwForm({...pwForm,current:e.target.value})} required />
-          <Input label="Nueva contraseña" type="password" value={pwForm.next} onChange={e=>setPwForm({...pwForm,next:e.target.value})} required minLength={8} />
-          <Input label="Confirmar nueva contraseña" type="password" value={pwForm.confirm} onChange={e=>setPwForm({...pwForm,confirm:e.target.value})} required />
+          <Input label="Nueva contraseña" type="password" value={pwForm.next} error={passwordError || undefined} onChange={e=>setPwForm({...pwForm,next:e.target.value})} required minLength={8} />
+          <Input label="Confirmar nueva contraseña" type="password" value={pwForm.confirm} error={passwordConfirmError || undefined} onChange={e=>setPwForm({...pwForm,confirm:e.target.value})} required />
+          <p className="text-xs text-[var(--tx3)]">{PASSWORD_RULE_HINT}</p>
           {pwMsg && <p className={`text-xs p-2 rounded ${pwMsg.type==='ok'?'bg-[var(--okb)] text-[var(--ok)]':'bg-[var(--erb)] text-[var(--er)]'}`}>{pwMsg.text}</p>}
-          <Button type="submit">Actualizar contraseña</Button>
+          <Button type="submit" disabled={!pwForm.current || !pwForm.next || !pwForm.confirm || !!passwordError || !!passwordConfirmError}>Actualizar contraseña</Button>
         </form>
       </Card>
     </div>

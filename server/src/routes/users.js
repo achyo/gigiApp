@@ -2,6 +2,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcrypt');
 const { prisma } = require('../lib/prisma');
+const { assertStrongPassword } = require('../lib/password');
 const { authenticateJWT, authorizeRole, paginateQuery, paginatedResponse } = require('../middleware/auth');
 
 router.get('/', authenticateJWT, authorizeRole('admin'), async (req, res, next) => {
@@ -23,6 +24,7 @@ router.get('/', authenticateJWT, authorizeRole('admin'), async (req, res, next) 
 router.post('/', authenticateJWT, authorizeRole('admin'), async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
+    assertStrongPassword(password);
     const hash = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({
       data: { name, email, passwordHash: hash, role,

@@ -3,6 +3,28 @@ const router = require('express').Router();
 const { prisma } = require('../lib/prisma');
 const { authenticateJWT, authorizeRole, scopeFilter, canModify, paginateQuery, paginatedResponse } = require('../middleware/auth');
 
+const activityInclude = {
+  specialist: { include: { user: { select: { id: 1, name: 1, email: 1 } } } },
+  activityObjects: {
+    include: { object: { include: { representations: true } } },
+    orderBy: { sortOrder: 'asc' },
+  },
+  assignments: {
+    where: { isActive: true },
+    include: {
+      client: {
+        select: {
+          id: true,
+          childName: true,
+          specialistId: true,
+          user: { select: { id: true, name: true, email: true } },
+        },
+      },
+    },
+    orderBy: { assignedAt: 'desc' },
+  },
+};
+
 router.get('/', authenticateJWT, scopeFilter('activities'), async (req, res, next) => {
   try {
     const { page, limit, skip, take } = paginateQuery(req.query);
@@ -11,7 +33,7 @@ router.get('/', authenticateJWT, scopeFilter('activities'), async (req, res, nex
     const [data, total] = await Promise.all([
       prisma.activity.findMany({
         where, skip, take,
-        include: { activityObjects: { include: { object: { include: { representations: true } } } } },
+        include: activityInclude,
         orderBy: { createdAt: 'desc' },
       }),
       prisma.activity.count({ where }),
@@ -24,7 +46,7 @@ router.get('/:id', authenticateJWT, async (req, res, next) => {
   try {
     const act = await prisma.activity.findUnique({
       where: { id: req.params.id },
-      include: { activityObjects: { include: { object: { include: { representations: true } } }, orderBy: { sortOrder: 'asc' } } },
+      include: activityInclude,
     });
     if (!act) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
     res.json({ success: true, data: act });
@@ -52,10 +74,7 @@ router.post('/', authenticateJWT, authorizeRole('admin', 'specialist'), async (r
           })),
         },
       },
-      include: {
-        specialist: { include: { user: { select: { id:1,name:1,email:1 } } } },
-        activityObjects: { include: { object: true }, orderBy: { sortOrder: 'asc' } },
-      },
+      include: activityInclude,
     });
     res.status(201).json({ success: true, data: act });
   } catch (e) { next(e); }
@@ -89,10 +108,7 @@ router.patch('/:id', authenticateJWT, async (req, res, next) => {
             },
           }),
         },
-        include: {
-          specialist: { include: { user: { select: { id:1,name:1,email:1 } } } },
-          activityObjects: { include: { object: true }, orderBy: { sortOrder: 'asc' } },
-        },
+        include: activityInclude,
       });
     });
     res.json({ success: true, data: updated });

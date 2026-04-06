@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import {
   adminApi, specialistsApi, clientsApi, activitiesApi, assignmentsApi,
-  objectsApi, categoriesApi, groupsApi, subscriptionsApi,
+  objectsApi, categoriesApi, groupsApi, subscriptionsApi, usersApi,
 } from '../../api';
 import {
   Button, Badge, Card, Input, Select, Textarea,
   SearchBar, Confirm, Modal, Empty, Spinner, SubBadge, Divider, Notice,
 } from '../../components/ui';
 import SubscriptionModal from '../../components/modals/SubscriptionModal';
+import { getPasswordStrengthError, PASSWORD_RULE_HINT } from '../../lib/password';
 
 function getApiErrorMessage(error, fallback) {
   return error?.response?.data?.error?.message || error?.message || fallback;
@@ -94,7 +95,13 @@ function Specialists() {
   const [modal,       setModal]       = useState(null);
   const [delId,       setDelId]       = useState(null);
   const [subTarget,   setSubTarget]   = useState(null);
-  const [form,        setForm]        = useState({ name: '', email: '', bio: '', password: '' });
+  const [form,        setForm]        = useState({ name: '', email: '', bio: '', password: '', confirm_password: '' });
+  const [saving,      setSaving]      = useState(false);
+  const [feedback,    setFeedback]    = useState(null);
+  const passwordError = getPasswordStrengthError(form.password, { required: modal === 'new' });
+  const passwordConfirmError = form.password && form.password !== form.confirm_password
+    ? 'Las contrasenas no coinciden.'
+    : '';
 
   useEffect(() => {
     specialistsApi.list()
@@ -102,21 +109,39 @@ function Specialists() {
       .finally(() => setLoading(false));
   }, []);
 
-  const openNew  = ()  => { setModal('new'); setForm({ name:'',email:'',bio:'',password:'' }); };
-  const openEdit = (s) => { setModal(s.id);  setForm({ name:s.user?.name||'', email:s.user?.email||'', bio:s.bio||'' }); };
+  const openNew  = ()  => { setModal('new'); setFeedback(null); setForm({ name:'',email:'',bio:'',password:'',confirm_password:'' }); };
+  const openEdit = (s) => { setModal(s); setFeedback(null); setForm({ name:s.user?.name||'', email:s.user?.email||'', bio:s.bio||'', password:'', confirm_password:'' }); };
 
   const save = async () => {
-    // Create user via /users then specialist profile is auto-created
-    const { default: api } = await import('../../api');
-    if (modal === 'new') {
-      const r = await api.default.post('/users', { ...form, role: 'specialist' });
-      const spec = await specialistsApi.list();
-      setSpecialists(spec.data.data);
-    } else {
-      await api.default.patch(`/users/${modal}`, { name: form.name, bio: form.bio });
-      setSpecialists(p => p.map(s => s.userId === modal ? { ...s, user: { ...s.user, name: form.name }, bio: form.bio } : s));
+    setSaving(true);
+    setFeedback(null);
+    try {
+      if (modal === 'new') {
+        await usersApi.create({ ...form, role: 'specialist' });
+        const spec = await specialistsApi.list();
+        setSpecialists(spec.data.data);
+        setFeedback({ type: 'success', message: 'Especialista creado correctamente.' });
+      } else {
+        const response = await specialistsApi.update(modal.id, {
+          name: form.name,
+          email: form.email,
+          bio: form.bio,
+          ...(form.password ? { password: form.password } : {}),
+        });
+        setSpecialists(prev => prev.map(spec => spec.id === modal.id ? response.data.data : spec));
+        setFeedback({ type: 'success', message: form.password ? 'Especialista y contraseña actualizados.' : 'Especialista actualizado correctamente.' });
+      }
+
+      window.setTimeout(() => {
+        setModal(null);
+        setFeedback(null);
+        setForm({ name:'',email:'',bio:'',password:'',confirm_password:'' });
+      }, 800);
+    } catch (error) {
+      setFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudo guardar el especialista.') });
+    } finally {
+      setSaving(false);
     }
-    setModal(null);
   };
 
   const filtered = specialists.filter(s =>
@@ -155,18 +180,35 @@ function Specialists() {
         </div>
       }
       <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nuevo especialista' : 'Editar especialista'} maxWidth={480}>
+        {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
         <div className="space-y-3">
           <Input label="Nombre completo" value={form.name}  onChange={e => setForm({ ...form, name: e.target.value })} />
           <Input label="Email"           value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-          {modal === 'new' && <Input label="Contraseña" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />}
+          <Input
+            label={modal === 'new' ? 'Contraseña' : 'Nueva contraseña'}
+            type="password"
+            value={form.password}
+            error={passwordError || undefined}
+            placeholder={modal === 'new' ? '' : 'Déjala vacía para no cambiarla'}
+            onChange={e => setForm({ ...form, password: e.target.value })}
+          />
+          <Input
+            label={modal === 'new' ? 'Confirmar contraseña' : 'Confirmar nueva contraseña'}
+            type="password"
+            value={form.confirm_password}
+            error={passwordConfirmError || undefined}
+            placeholder={modal === 'new' ? '' : 'Repítela solo si vas a cambiarla'}
+            onChange={e => setForm({ ...form, confirm_password: e.target.value })}
+          />
+          <p className="text-xs text-[var(--tx3)]">{PASSWORD_RULE_HINT}</p>
           <Textarea label="Bio / especialidad" rows={2} value={form.bio} onChange={e => setForm({ ...form, bio: e.target.value })} />
         </div>
         <div className="flex gap-2 justify-end mt-4">
-          <Button variant="secondary" onClick={() => setModal(null)}>Cancelar</Button>
-          <Button disabled={!form.name || !form.email} onClick={save}>{modal === 'new' ? 'Crear' : 'Guardar'}</Button>
+          <Button variant="secondary" onClick={() => setModal(null)} disabled={saving}>Cancelar</Button>
+          <Button disabled={saving || !form.name || !form.email || !!passwordError || !!passwordConfirmError} onClick={save}>{saving ? 'Guardando...' : modal === 'new' ? 'Crear' : 'Guardar'}</Button>
         </div>
       </Modal>
-      <Confirm open={!!delId} message="Se desactivará el especialista." onConfirm={async () => { await import('../../api').then(m => m.default.delete(`/users/${delId}`)); setSpecialists(p => p.filter(s => s.id !== delId)); setDelId(null); }} onCancel={() => setDelId(null)} />
+      <Confirm open={!!delId} message="Se desactivará el especialista." onConfirm={async () => { await usersApi.delete(delId); setSpecialists(p => p.filter(s => s.id !== delId)); setDelId(null); }} onCancel={() => setDelId(null)} />
       {subTarget && <SubscriptionModal entity={subTarget.entity} entityType={subTarget.type} onClose={() => setSubTarget(null)} onSave={() => { specialistsApi.list().then(r => setSpecialists(r.data.data)); setSubTarget(null); }} />}
     </div>
   );
@@ -184,6 +226,10 @@ function Clients() {
   const [form,    setForm]    = useState({});
   const [saving,  setSaving]  = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const passwordError = getPasswordStrengthError(form.password || '', { required: modal === 'new' });
+  const passwordConfirmError = (form.password || '') && form.password !== form.confirm_password
+    ? 'Las contrasenas no coinciden.'
+    : '';
 
   useEffect(() => {
     Promise.all([clientsApi.list(), specialistsApi.list()])
@@ -192,7 +238,7 @@ function Clients() {
   }, []);
 
   const openNew = () => {
-    setForm({ name: '', email: '', password: '', child_name: '', diagnosis_notes: '', specialist_id: '' });
+    setForm({ name: '', email: '', password: '', confirm_password: '', child_name: '', diagnosis_notes: '', specialist_id: '' });
     setFeedback(null);
     setModal('new');
   };
@@ -204,6 +250,8 @@ function Clients() {
       child_name: client.childName || '',
       diagnosis_notes: client.diagnosisNotes || '',
       specialist_id: client.specialistId || '',
+      password: '',
+      confirm_password: '',
     });
     setFeedback(null);
     setModal(client);
@@ -220,7 +268,7 @@ function Clients() {
       } else {
         const response = await clientsApi.update(modal.id, form);
         setClients(prev => prev.map(client => client.id === modal.id ? response.data.data : client));
-        setFeedback({ type: 'success', message: 'Cliente actualizado correctamente.' });
+        setFeedback({ type: 'success', message: form.password ? 'Cliente y contraseña actualizados.' : 'Cliente actualizado correctamente.' });
       }
       window.setTimeout(() => {
         setModal(null);
@@ -300,12 +348,28 @@ function Clients() {
           <Input label="Nombre tutor" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} />
           <Input label="Nombre alumno" value={form.child_name || ''} onChange={e => setForm({ ...form, child_name: e.target.value })} />
           <Input label="Email" value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value })} />
-          {modal === 'new' && <Input label="Contraseña" type="password" value={form.password || ''} onChange={e => setForm({ ...form, password: e.target.value })} />}
+          <Input
+            label={modal === 'new' ? 'Contraseña' : 'Nueva contraseña'}
+            type="password"
+            value={form.password || ''}
+            error={passwordError || undefined}
+            placeholder={modal === 'new' ? '' : 'Déjala vacía para no cambiarla'}
+            onChange={e => setForm({ ...form, password: e.target.value })}
+          />
+          <Input
+            label={modal === 'new' ? 'Confirmar contraseña' : 'Confirmar nueva contraseña'}
+            type="password"
+            value={form.confirm_password || ''}
+            error={passwordConfirmError || undefined}
+            placeholder={modal === 'new' ? '' : 'Repítela solo si vas a cambiarla'}
+            onChange={e => setForm({ ...form, confirm_password: e.target.value })}
+          />
           <Select label="Especialista" value={form.specialist_id || ''} onChange={e => setForm({ ...form, specialist_id: e.target.value })} className="sm:col-span-2">
             <option value="">Selecciona…</option>
             {specs.map(spec => <option key={spec.id} value={spec.id}>{spec.user?.name || 'Sin nombre'}</option>)}
           </Select>
         </div>
+        <p className="mt-2 text-xs text-[var(--tx3)]">{PASSWORD_RULE_HINT}</p>
         <div className="mt-3">
           <Textarea label="Notas clínicas" rows={3} value={form.diagnosis_notes || ''} onChange={e => setForm({ ...form, diagnosis_notes: e.target.value })} />
         </div>
@@ -317,7 +381,7 @@ function Clients() {
         )}
         <div className="flex gap-2 justify-end mt-4">
           <Button variant="secondary" onClick={() => setModal(null)} disabled={saving}>Cancelar</Button>
-          <Button disabled={saving || !form.child_name || !form.email || !form.specialist_id || (modal === 'new' && !form.password)} onClick={save}>{saving ? 'Guardando...' : modal === 'new' ? 'Crear' : 'Guardar'}</Button>
+          <Button disabled={saving || !form.child_name || !form.email || !form.specialist_id || !!passwordError || !!passwordConfirmError} onClick={save}>{saving ? 'Guardando...' : modal === 'new' ? 'Crear' : 'Guardar'}</Button>
         </div>
       </Modal>
       <Confirm open={!!delId} message="Se desactivará el cliente." onConfirm={async () => { await clientsApi.delete(delId); setClients(p => p.filter(c => c.id !== delId)); setDelId(null); }} onCancel={() => setDelId(null)} />
@@ -343,6 +407,62 @@ function Activities() {
   const [saving,  setSaving]  = useState(false);
   const [feedback, setFeedback] = useState(null);
 
+  const getAudience = (activity) => activity?.audience || null;
+  const getVisibleClientsForSpecialist = (specialistId) => clients.filter(client => !specialistId || client.specialistId === specialistId);
+  const getVisibleGroupsForSpecialist = (specialistId) => groups.filter(group => !specialistId || group.specId === specialistId);
+
+  const visibleClients = clients.filter(client => !form.specialist_id || client.specialistId === form.specialist_id);
+  const visibleGroups = groups.filter(group => !form.specialist_id || group.specId === form.specialist_id);
+  const getAssignedClientIds = (activity) => [...new Set((activity.assignments || []).map(assignment => assignment.clientId))];
+  const getAssignmentSummary = (activity) => {
+    const audience = getAudience(activity);
+    if (audience?.mode === 'all') {
+      return 'Todos los usuarios';
+    }
+    if (audience?.mode === 'groups') {
+      const matchedGroups = getVisibleGroupsForSpecialist(activity.specialistId).filter(group => (audience.groupIds || []).includes(group.id));
+      if (matchedGroups.length === 1) {
+        return `Grupo: ${matchedGroups[0].name}`;
+      }
+      if (matchedGroups.length > 1) {
+        return `Grupos: ${matchedGroups.slice(0, 2).map(group => group.name).join(', ')}${matchedGroups.length > 2 ? '…' : ''}`;
+      }
+      return `${(audience.groupIds || []).length} grupos`;
+    }
+    if (audience?.mode === 'clients') {
+      return `${(audience.clientIds || []).length} clientes individuales`;
+    }
+
+    const assignedClientIds = getAssignedClientIds(activity);
+    const scopedClients = getVisibleClientsForSpecialist(activity.specialistId);
+    if (assignedClientIds.length && scopedClients.length && assignedClientIds.length === scopedClients.length) {
+      return 'Todos los clientes';
+    }
+    return `${assignedClientIds.length} clientes asignados`;
+  };
+
+  const getAssignmentDetail = (activity) => {
+    const audience = getAudience(activity);
+    if (audience?.mode === 'all') {
+      return 'Destino: todos los usuarios del especialista';
+    }
+    if (audience?.mode === 'groups') {
+      const matchedGroups = getVisibleGroupsForSpecialist(activity.specialistId).filter(group => (audience.groupIds || []).includes(group.id));
+      if (matchedGroups.length) {
+        return `Destino: ${matchedGroups.map(group => group.name).join(', ')}`;
+      }
+      return 'Destino: grupos';
+    }
+    if (audience?.mode === 'clients') {
+      const matchedClients = getVisibleClientsForSpecialist(activity.specialistId).filter(client => (audience.clientIds || []).includes(client.id));
+      if (matchedClients.length) {
+        return `Destino: ${matchedClients.slice(0, 3).map(client => client.childName).join(', ')}${matchedClients.length > 3 ? '…' : ''}`;
+      }
+      return 'Destino: clientes individuales';
+    }
+    return 'Destino: asignación heredada';
+  };
+
   useEffect(() => {
     Promise.all([activitiesApi.list(), clientsApi.list(), groupsApi.list(), objectsApi.list(), specialistsApi.list()])
       .then(([ar, cr, gr, or, sr]) => {
@@ -355,6 +475,20 @@ function Activities() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    setForm(current => {
+      if (!current.specialist_id) return current;
+      const allowedClientIds = new Set(clients.filter(client => client.specialistId === current.specialist_id).map(client => client.id));
+      const allowedGroupIds = new Set(groups.filter(group => group.specId === current.specialist_id).map(group => group.id));
+      const nextSelClients = current.selClients.filter(id => allowedClientIds.has(id));
+      const nextSelGroups = current.selGroups.filter(id => allowedGroupIds.has(id));
+      if (nextSelClients.length === current.selClients.length && nextSelGroups.length === current.selGroups.length) {
+        return current;
+      }
+      return { ...current, selClients: nextSelClients, selGroups: nextSelGroups };
+    });
+  }, [clients, groups, form.specialist_id]);
+
   const openNew = () => {
     setEditAct(null);
     setForm({ title:'', specialist_id:'', selObjs:[], assignMode:'all', selClients:[], selGroups:[] });
@@ -364,14 +498,20 @@ function Activities() {
   };
 
   const openEdit = (activity) => {
+    const assignedClientIds = getAssignedClientIds(activity);
+    const scopedClients = getVisibleClientsForSpecialist(activity.specialistId);
+    const audience = getAudience(activity);
+    const assignMode = audience?.mode || (assignedClientIds.length && scopedClients.length && assignedClientIds.length === scopedClients.length
+      ? 'all'
+      : 'clients');
     setEditAct(activity);
     setForm({
       title: activity.title,
       specialist_id: activity.specialistId || '',
       selObjs: activity.activityObjects?.map(activityObject => activityObject.objectId) || [],
-      assignMode: 'all',
-      selClients: [],
-      selGroups: [],
+      assignMode,
+      selClients: audience?.mode === 'clients' ? (audience.clientIds || []) : assignedClientIds,
+      selGroups: audience?.mode === 'groups' ? (audience.groupIds || []) : [],
     });
     setCat('Todos');
     setFeedback(null);
@@ -390,8 +530,17 @@ function Activities() {
 
       if (editAct) {
         const response = await activitiesApi.update(editAct.id, payload);
-        setActs(prev => prev.map(activity => activity.id === editAct.id ? response.data.data : activity));
-        setFeedback({ type: 'success', message: 'Actividad actualizada correctamente.' });
+        await assignmentsApi.bulk({
+          activity_id: editAct.id,
+          specialist_id: form.specialist_id,
+          assign_all: form.assignMode === 'all',
+          client_ids: form.assignMode === 'clients' ? form.selClients : [],
+          group_ids: form.assignMode === 'groups' ? form.selGroups : [],
+          replace_existing: true,
+        });
+        const refreshed = await activitiesApi.list();
+        setActs(refreshed.data.data);
+        setFeedback({ type: 'success', message: 'Actividad actualizada y reasignada correctamente.' });
       } else {
         const response = await activitiesApi.create(payload);
         const newActivity = response.data.data;
@@ -402,7 +551,8 @@ function Activities() {
           client_ids: form.assignMode === 'clients' ? form.selClients : [],
           group_ids: form.assignMode === 'groups' ? form.selGroups : [],
         });
-        setActs(prev => [newActivity, ...prev]);
+        const refreshed = await activitiesApi.list();
+        setActs(refreshed.data.data);
         setFeedback({ type: 'success', message: 'Actividad creada y asignada correctamente.' });
       }
 
@@ -436,7 +586,8 @@ function Activities() {
               <div className="flex gap-0.5 text-lg">{a.activityObjects?.slice(0,4).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm">{a.title}</p>
-                <p className="text-xs text-[var(--tx3)]">{a.activityObjects?.length || 0} objetos</p>
+                <p className="text-xs text-[var(--tx3)]">{a.activityObjects?.length || 0} objetos · {getAssignmentSummary(a)}</p>
+                <p className="text-[11px] text-[var(--tx3)] mt-0.5">{getAssignmentDetail(a)}</p>
               </div>
               <Button size="sm" variant="secondary" onClick={() => openEdit(a)}>✏️</Button>
               <Button size="sm" variant="danger" onClick={() => setDelId(a.id)}>🗑</Button>
@@ -478,49 +629,48 @@ function Activities() {
             </div>
           ))}
         </div>
-        {!editAct && (
-          <>
-            <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tx3)]">Asignar a</div>
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              {[['all','🌐','Todos'],['clients','👤','Clientes'],['groups','👥','Grupos']].map(([mode, icon, label]) => (
-                <div
-                  key={mode}
-                  onClick={() => setForm({ ...form, assignMode: mode })}
-                  className={`p-2 border-2 rounded-[var(--r)] cursor-pointer text-center text-xs font-bold ${form.assignMode === mode ? 'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}
-                >
-                  <div className="text-lg">{icon}</div>{label}
-                </div>
-              ))}
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tx3)]">Asignar a</div>
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          {[['all','🌐','Todos los usuarios'],['clients','👤','Clientes'],['groups','👥','Grupos']].map(([mode, icon, label]) => (
+            <div
+              key={mode}
+              onClick={() => setForm({ ...form, assignMode: mode })}
+              className={`p-2 border-2 rounded-[var(--r)] cursor-pointer text-center text-xs font-bold ${form.assignMode === mode ? 'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}
+            >
+              <div className="text-lg">{icon}</div>{label}
             </div>
-            {form.assignMode === 'clients' && (
-              <div className="border border-[var(--bd)] rounded-[var(--r)] max-h-40 overflow-y-auto mb-3">
-                {clients.filter(client => !form.specialist_id || client.specialistId === form.specialist_id).map(client => (
-                  <label key={client.id} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-[var(--acb)] border-b border-[var(--bd)] last:border-0">
-                    <input type="checkbox" checked={form.selClients.includes(client.id)} onChange={() => setForm(current => ({ ...current, selClients: current.selClients.includes(client.id) ? current.selClients.filter(id => id !== client.id) : [...current.selClients, client.id] }))} />
-                    <span className="text-sm font-bold">{client.childName}</span>
-                    <span className="text-xs text-[var(--tx3)]">{client.user?.name}</span>
-                  </label>
-                ))}
+          ))}
+        </div>
+        {editAct && <p className="mb-3 text-xs text-[var(--tx3)]">Guardar actualizará también los destinatarios activos de esta actividad.</p>}
+        {form.assignMode === 'clients' && (
+          <div className="border border-[var(--bd)] rounded-[var(--r)] max-h-40 overflow-y-auto mb-3">
+            {visibleClients.map(client => (
+              <label key={client.id} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-[var(--acb)] border-b border-[var(--bd)] last:border-0">
+                <input type="checkbox" checked={form.selClients.includes(client.id)} onChange={() => setForm(current => ({ ...current, selClients: current.selClients.includes(client.id) ? current.selClients.filter(id => id !== client.id) : [...current.selClients, client.id] }))} />
+                <span className="text-sm font-bold">{client.childName}</span>
+                <span className="text-xs text-[var(--tx3)]">{client.user?.name}</span>
+              </label>
+            ))}
+            {visibleClients.length === 0 && <p className="p-3 text-sm text-[var(--tx3)]">No hay clientes disponibles para el especialista seleccionado.</p>}
+          </div>
+        )}
+        {form.assignMode === 'groups' && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {visibleGroups.map(group => (
+              <div
+                key={group.id}
+                onClick={() => setForm(current => ({ ...current, selGroups: current.selGroups.includes(group.id) ? current.selGroups.filter(id => id !== group.id) : [...current.selGroups, group.id] }))}
+                className={`px-3 py-1.5 rounded-full border-2 cursor-pointer text-xs font-bold ${form.selGroups.includes(group.id) ? 'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}
+              >
+                {group.name} ({group.clients?.length || 0})
               </div>
-            )}
-            {form.assignMode === 'groups' && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {groups.filter(group => !form.specialist_id || group.specId === form.specialist_id).map(group => (
-                  <div
-                    key={group.id}
-                    onClick={() => setForm(current => ({ ...current, selGroups: current.selGroups.includes(group.id) ? current.selGroups.filter(id => id !== group.id) : [...current.selGroups, group.id] }))}
-                    className={`px-3 py-1.5 rounded-full border-2 cursor-pointer text-xs font-bold ${form.selGroups.includes(group.id) ? 'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}
-                  >
-                    {group.name} ({group.clients?.length || 0})
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
+            ))}
+            {visibleGroups.length === 0 && <p className="text-sm text-[var(--tx3)]">No hay grupos disponibles para el especialista seleccionado.</p>}
+          </div>
         )}
         <div className="flex gap-2 justify-end mt-2">
           <Button variant="secondary" onClick={() => setModal(false)} disabled={saving}>Cancelar</Button>
-          <Button disabled={saving || !form.title || !form.specialist_id || form.selObjs.length === 0} onClick={save}>{saving ? 'Guardando...' : editAct ? 'Guardar' : 'Crear y asignar'}</Button>
+          <Button disabled={saving || !form.title || !form.specialist_id || form.selObjs.length === 0 || (form.assignMode === 'clients' && form.selClients.length === 0) || (form.assignMode === 'groups' && form.selGroups.length === 0)} onClick={save}>{saving ? 'Guardando...' : editAct ? 'Guardar y reasignar' : 'Crear y asignar'}</Button>
         </div>
       </Modal>
       <Confirm open={!!delId} message="Se eliminará la actividad." onConfirm={async () => { await activitiesApi.delete(delId); setActs(p => p.filter(a => a.id !== delId)); setDelId(null); }} onCancel={() => setDelId(null)} />
@@ -535,10 +685,26 @@ function Objects() {
   const [loading,  setLoading]  = useState(true);
   const [search,   setSearch]   = useState('');
   const [catF,     setCatF]     = useState('Todos');
+  const [expanded, setExpanded] = useState(null);
   const [modal,    setModal]    = useState(false);
   const [editObj,  setEditObj]  = useState(null);
   const [delId,    setDelId]    = useState(null);
-  const [form,     setForm]     = useState({ name:'', category_id:'', em:'📦', is_public: true });
+  const [saving,   setSaving]   = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [repActionKey, setRepActionKey] = useState('');
+  const [repDrafts, setRepDrafts] = useState({});
+  const emptyForm = {
+    name: '',
+    category_id: '',
+    em: '📦',
+    is_public: true,
+    model3d: '',
+    photoFile: null,
+    photoPreview: '',
+    drawingFile: null,
+    drawingPreview: '',
+  };
+  const [form, setForm] = useState(emptyForm);
 
   useEffect(() => {
     Promise.all([objectsApi.list(), categoriesApi.list()])
@@ -546,13 +712,151 @@ function Objects() {
       .finally(() => setLoading(false));
   }, []);
 
-  const openNew  = () => { setEditObj(null); setForm({ name:'', category_id:'', em:'📦', is_public:true }); setModal(true); };
-  const openEdit = o  => { setEditObj(o); setForm({ name:o.name, category_id:o.categoryId, em:o.em, is_public: !o.ownerId }); setModal(true); };
+  const revokePreview = (url) => {
+    if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+  };
+
+  const closeModal = () => {
+    revokePreview(form.photoPreview);
+    revokePreview(form.drawingPreview);
+    setFeedback(null);
+    setSaving(false);
+    setEditObj(null);
+    setForm(emptyForm);
+    setModal(false);
+  };
+
+  const getRepresentation = (object, level) => object.representations?.find(rep => rep.level === level);
+  const repDraftKey = (objectId, level) => `${objectId}:${level}`;
+  const apiLevelFor = (level) => ({ model_3d: '1', photo: '2', drawing: '3' }[level]);
+
+  const refreshObject = async (objectId) => {
+    const refreshed = await objectsApi.get(objectId);
+    setObjects(prev => prev.map(object => object.id === objectId ? refreshed.data.data : object));
+  };
+
+  const openNew = () => {
+    setEditObj(null);
+    setFeedback(null);
+    setForm(emptyForm);
+    setModal(true);
+  };
+
+  const openEdit = (object) => {
+    const model3d = getRepresentation(object, 'model_3d');
+    const photo = getRepresentation(object, 'photo');
+    const drawing = getRepresentation(object, 'drawing');
+
+    setEditObj(object);
+    setFeedback(null);
+    setForm({
+      name: object.name,
+      category_id: object.categoryId,
+      em: object.em,
+      is_public: !object.ownerId,
+      model3d: model3d?.model3dUrl || '',
+      photoFile: null,
+      photoPreview: photo?.fileUrl || '',
+      drawingFile: null,
+      drawingPreview: drawing?.fileUrl || '',
+    });
+    setModal(true);
+  };
+
+  const setFilePreview = (fileKey, previewKey, file) => {
+    setForm(prev => {
+      revokePreview(prev[previewKey]);
+      return {
+        ...prev,
+        [fileKey]: file,
+        [previewKey]: file ? URL.createObjectURL(file) : '',
+      };
+    });
+  };
+
+  const uploadRepresentation = async (objectId, level, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('level', level);
+    await objectsApi.uploadRepresentation(objectId, formData);
+  };
+
+  const saveRepUrl = async (objectId) => {
+    const key = repDraftKey(objectId, 'model_3d');
+    const value = (repDrafts[key] || '').trim();
+    if (!value) return;
+
+    setRepActionKey(key);
+    try {
+      await objectsApi.setModel3d(objectId, '1', value);
+      await refreshObject(objectId);
+      setRepDrafts(prev => ({ ...prev, [key]: value }));
+    } finally {
+      setRepActionKey('');
+    }
+  };
+
+  const replaceRep = async (objectId, level, file) => {
+    const key = repDraftKey(objectId, level);
+    setRepActionKey(key);
+    try {
+      await uploadRepresentation(objectId, apiLevelFor(level), file);
+      await refreshObject(objectId);
+    } finally {
+      setRepActionKey('');
+    }
+  };
+
+  const deleteRep = async (objectId, level) => {
+    const key = repDraftKey(objectId, level);
+    setRepActionKey(key);
+    try {
+      await objectsApi.deleteRepresentation(objectId, apiLevelFor(level));
+      setRepDrafts(prev => ({ ...prev, [key]: '' }));
+      await refreshObject(objectId);
+    } finally {
+      setRepActionKey('');
+    }
+  };
 
   const save = async () => {
-    if (editObj) { const r = await objectsApi.update(editObj.id, form); setObjects(p => p.map(o => o.id === editObj.id ? r.data.data : o)); }
-    else { const r = await objectsApi.create(form); setObjects(p => [...p, r.data.data]); }
-    setModal(false);
+    setSaving(true);
+    setFeedback(null);
+
+    try {
+      const payload = {
+        name: form.name,
+        category_id: form.category_id,
+        em: form.em,
+        is_public: form.is_public,
+      };
+
+      const response = editObj
+        ? await objectsApi.update(editObj.id, payload)
+        : await objectsApi.create(payload);
+
+      const objectId = response.data.data.id;
+
+      if (form.model3d.trim()) {
+        await objectsApi.setModel3d(objectId, '1', form.model3d.trim());
+      }
+      if (form.photoFile) {
+        await uploadRepresentation(objectId, '2', form.photoFile);
+      }
+      if (form.drawingFile) {
+        await uploadRepresentation(objectId, '3', form.drawingFile);
+      }
+
+      const refreshed = await objectsApi.get(objectId);
+      setObjects(prev => {
+        const next = prev.filter(object => object.id !== objectId);
+        return editObj ? [refreshed.data.data, ...next] : [refreshed.data.data, ...prev];
+      });
+      closeModal();
+    } catch (error) {
+      setFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudo guardar el objeto.') });
+      setSaving(false);
+    }
   };
   const del = async () => { await objectsApi.delete(delId); setObjects(p => p.filter(o => o.id !== delId)); setDelId(null); };
 
@@ -578,23 +882,91 @@ function Objects() {
       />
       {filtered.length === 0 ? <Empty icon="📦" title="Sin objetos" /> :
         <div className="space-y-2">
-          {filtered.map(o => (
-            <div key={o.id} className="flex items-center gap-3 p-3 bg-[var(--sf)] border border-[var(--bd)] rounded-[var(--r)]">
-              <span className="text-2xl">{o.em}</span>
-              <div className="flex-1">
-                <p className="font-bold text-sm">{o.name}</p>
-                <p className="text-xs text-[var(--tx3)]">{o.category?.name}</p>
+          {filtered.map(o => {
+            const reps = o.representations || [];
+            const has3d = reps.some(rep => rep.level === 'model_3d');
+            const hasPhoto = reps.some(rep => rep.level === 'photo');
+            const hasDrawing = reps.some(rep => rep.level === 'drawing');
+
+            return (
+              <div key={o.id} className={`bg-[var(--sf)] border-2 rounded-[var(--rl)] overflow-hidden transition-colors ${expanded === o.id ? 'border-[var(--ac)]' : 'border-[var(--bd)]'}`}>
+                <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => setExpanded(expanded === o.id ? null : o.id)}>
+                  <span className="text-2xl">{o.em}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm">{o.name}</p>
+                    <p className="text-xs text-[var(--tx3)]">{o.category?.name}</p>
+                  </div>
+                  <Badge variant={has3d ? 'green' : 'amber'}>🧊 {has3d ? '✓' : '✗'}</Badge>
+                  <Badge variant={hasPhoto ? 'green' : 'amber'}>📷 {hasPhoto ? '✓' : '✗'}</Badge>
+                  <Badge variant={hasDrawing ? 'green' : 'amber'}>✏️ {hasDrawing ? '✓' : '✗'}</Badge>
+                  <Badge variant={o.ownerId ? 'default' : 'green'}>{o.ownerId ? 'Privado' : 'Público'}</Badge>
+                  <Badge variant={o.status === 'approved' ? 'green' : o.status === 'pending' ? 'amber' : 'default'}>{o.status}</Badge>
+                  <Button size="sm" variant="secondary" onClick={(event) => { event.stopPropagation(); openEdit(o); }}>✏️</Button>
+                  <Button size="sm" variant="danger" onClick={(event) => { event.stopPropagation(); setDelId(o.id); }}>🗑</Button>
+                </div>
+                {expanded === o.id && (
+                  <div className="border-t border-[var(--bd)] p-4 grid gap-4 md:grid-cols-3">
+                    {[
+                      ['model_3d', 'URL 3D', reps.find(rep => rep.level === 'model_3d')],
+                      ['photo', 'Foto', reps.find(rep => rep.level === 'photo')],
+                      ['drawing', 'Dibujo', reps.find(rep => rep.level === 'drawing')],
+                    ].map(([level, label, rep]) => {
+                      const draftKey = repDraftKey(o.id, level);
+                      const isBusy = repActionKey === draftKey;
+                      const draftValue = repDrafts[draftKey] ?? rep?.model3dUrl ?? '';
+                      return (
+                      <div key={level} className="rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3 space-y-2">
+                        <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)] mb-2">{label}</p>
+                        {!rep && <p className="text-sm text-[var(--tx3)]">Sin contenido</p>}
+                        {rep?.mediaType === 'model_3d_url' && rep.model3dUrl && (
+                          <div className="space-y-2">
+                            <div className="relative aspect-video overflow-hidden rounded-[var(--r)] border border-[var(--bd)] bg-black/5">
+                              <iframe src={rep.model3dUrl} title={`${o.name} 3D`} className="absolute inset-0 h-full w-full" allowFullScreen />
+                            </div>
+                            <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
+                              <Button size="sm" variant="danger" onClick={() => deleteRep(o.id, level)} disabled={isBusy}>Eliminar</Button>
+                            </div>
+                            <a href={rep.model3dUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-[var(--ac)] break-all">{rep.model3dUrl}</a>
+                          </div>
+                        )}
+                        {rep?.mediaType !== 'model_3d_url' && rep?.fileUrl && (
+                          <>
+                            <img src={rep.fileUrl} alt={label} className="h-32 w-full rounded-[var(--r)] border border-[var(--bd)] object-cover bg-white" />
+                            <div className="flex gap-2">
+                              <label className="inline-flex items-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer whitespace-nowrap px-2.5 py-1 text-xs bg-[var(--sf)] text-[var(--tx)] border-[var(--bd)] hover:bg-[var(--bg2)]">
+                                Reemplazar
+                                <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && replaceRep(o.id, level, e.target.files[0])} />
+                              </label>
+                              <Button size="sm" variant="danger" onClick={() => deleteRep(o.id, level)} disabled={isBusy}>Eliminar</Button>
+                            </div>
+                          </>
+                        )}
+                        {!rep && level === 'model_3d' && (
+                          <>
+                            <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
+                            <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
+                          </>
+                        )}
+                        {!rep && level !== 'model_3d' && (
+                          <label className="inline-flex w-full items-center justify-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer whitespace-nowrap px-2.5 py-2 text-xs bg-[var(--sf)] text-[var(--tx)] border-[var(--bd)] hover:bg-[var(--bg2)]">
+                            Subir archivo
+                            <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && replaceRep(o.id, level, e.target.files[0])} />
+                          </label>
+                        )}
+                      </div>
+                    );})}
+                  </div>
+                )}
               </div>
-              <Badge variant={o.ownerId ? 'default' : 'green'}>{o.ownerId ? 'Privado' : 'Público'}</Badge>
-              <Badge variant={o.status === 'approved' ? 'green' : o.status === 'pending' ? 'amber' : 'default'}>{o.status}</Badge>
-              <Button size="sm" variant="secondary" onClick={() => openEdit(o)}>✏️</Button>
-              <Button size="sm" variant="danger"    onClick={() => setDelId(o.id)}>🗑</Button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       }
-      <Modal open={modal} onClose={() => setModal(false)} title={editObj ? 'Editar objeto' : 'Nuevo objeto (público)'} maxWidth={480}>
+      <Modal open={modal} onClose={closeModal} title={editObj ? 'Editar objeto' : 'Nuevo objeto (público)'} maxWidth={720}>
         <div className="space-y-3">
+          {feedback && <Notice variant={feedback.type}>{feedback.message}</Notice>}
           <div className="grid grid-cols-2 gap-3">
             <Input label="Nombre" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
             <Input label="Emoji"  value={form.em}   onChange={e => setForm({ ...form, em: e.target.value })} />
@@ -603,14 +975,54 @@ function Objects() {
               {cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
           </div>
+          <Input
+            label="URL del fichero 3D"
+            value={form.model3d}
+            onChange={e => setForm({ ...form, model3d: e.target.value })}
+            placeholder="https://sketchfab.com/models/.../embed"
+          />
+          {form.model3d && (
+            <div className="space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
+              <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Previsualización 3D</p>
+              <div className="relative aspect-video overflow-hidden rounded-[var(--r)] border border-[var(--bd)] bg-black/5">
+                <iframe src={form.model3d} title="Vista previa 3D" className="absolute inset-0 h-full w-full" allowFullScreen />
+              </div>
+            </div>
+          )}
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
+              <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Foto</p>
+              <label className="flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white px-3 py-2 text-sm font-bold text-[var(--ac)]">
+                Subir foto
+                <input type="file" accept="image/*" className="hidden" onChange={e => setFilePreview('photoFile', 'photoPreview', e.target.files?.[0] || null)} />
+              </label>
+              {form.photoPreview ? (
+                <img src={form.photoPreview} alt="Previsualización de foto" className="h-40 w-full rounded-[var(--r)] border border-[var(--bd)] object-cover bg-white" />
+              ) : (
+                <p className="text-sm text-[var(--tx3)]">Sin foto cargada</p>
+              )}
+            </div>
+            <div className="space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
+              <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Dibujo</p>
+              <label className="flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white px-3 py-2 text-sm font-bold text-[var(--ac)]">
+                Subir dibujo
+                <input type="file" accept="image/*" className="hidden" onChange={e => setFilePreview('drawingFile', 'drawingPreview', e.target.files?.[0] || null)} />
+              </label>
+              {form.drawingPreview ? (
+                <img src={form.drawingPreview} alt="Previsualización de dibujo" className="h-40 w-full rounded-[var(--r)] border border-[var(--bd)] object-cover bg-white" />
+              ) : (
+                <p className="text-sm text-[var(--tx3)]">Sin dibujo cargado</p>
+              )}
+            </div>
+          </div>
           <label className="flex items-center gap-2 cursor-pointer text-sm font-bold">
             <input type="checkbox" checked={form.is_public} onChange={e => setForm({ ...form, is_public: e.target.checked })} />
             Publicar (visible para todos los especialistas)
           </label>
         </div>
         <div className="flex gap-2 justify-end mt-4">
-          <Button variant="secondary" onClick={() => setModal(false)}>Cancelar</Button>
-          <Button disabled={!form.name || !form.category_id} onClick={save}>{editObj ? 'Guardar' : 'Crear'}</Button>
+          <Button variant="secondary" onClick={closeModal} disabled={saving}>Cancelar</Button>
+          <Button disabled={saving || !form.name || !form.category_id} onClick={save}>{saving ? 'Guardando...' : editObj ? 'Guardar' : 'Crear'}</Button>
         </div>
       </Modal>
       <Confirm open={!!delId} message="Se eliminará el objeto y todas sus representaciones." onConfirm={del} onCancel={() => setDelId(null)} />

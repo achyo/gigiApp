@@ -1,6 +1,8 @@
 // src/routes/clients.js
 const router = require('express').Router();
+const bcrypt = require('bcrypt');
 const { prisma } = require('../lib/prisma');
+const { assertStrongPassword } = require('../lib/password');
 const { authenticateJWT, authorizeRole, scopeFilter, paginateQuery, paginatedResponse } = require('../middleware/auth');
 
 const clientInclude = {
@@ -25,7 +27,7 @@ router.get('/', authenticateJWT, scopeFilter('clients'), async (req, res, next) 
 router.post('/', authenticateJWT, authorizeRole('admin','specialist'), async (req, res, next) => {
   try {
     const { child_name, child_birth_date, diagnosis_notes, specialist_id, email, name, password } = req.body;
-    const bcrypt = require('bcrypt');
+    assertStrongPassword(password || 'Client1234!');
     const hash = await bcrypt.hash(password || 'Client1234!', 12);
     const specId = specialist_id || req.user.specialist_id;
     if (!specId) {
@@ -48,18 +50,31 @@ router.post('/', authenticateJWT, authorizeRole('admin','specialist'), async (re
 
 router.patch('/:id', authenticateJWT, authorizeRole('admin','specialist'), async (req, res, next) => {
   try {
-    const { child_name, diagnosis_notes, specialist_id, name, email } = req.body;
+    const { child_name, diagnosis_notes, specialist_id, name, email, password } = req.body;
+    const client = await prisma.client.findUnique({ where: { id: req.params.id }, select: { specialistId: true } });
+    if (!client) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
+    if (req.user.role === 'specialist' && client.specialistId !== req.user.specialist_id) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
+
+    let passwordHash;
+    if (password) {
+      assertStrongPassword(password, { required: false });
+      passwordHash = await bcrypt.hash(password, 12);
+    }
+
     const updated = await prisma.client.update({
       where: { id: req.params.id },
       data: {
         ...(child_name && { childName: child_name }),
         ...(diagnosis_notes !== undefined && { diagnosisNotes: diagnosis_notes }),
         ...(specialist_id && { specialist: { connect: { id: specialist_id } } }),
-        ...((name !== undefined || email !== undefined) && {
+        ...((name !== undefined || email !== undefined || passwordHash) && {
           user: {
             update: {
               ...(name !== undefined && { name }),
               ...(email !== undefined && { email }),
+              ...(passwordHash && { passwordHash }),
             },
           },
         }),

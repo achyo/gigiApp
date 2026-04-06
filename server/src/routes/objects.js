@@ -44,12 +44,12 @@ router.get('/:id', authenticateJWT, authorizeRole('admin', 'specialist'), async 
 // POST /api/objects
 router.post('/', authenticateJWT, authorizeRole('admin', 'specialist'), async (req, res, next) => {
   try {
-    const { name, category_id, is_public } = req.body;
+    const { name, category_id, em, is_public } = req.body;
     const ownerId = req.user.role === 'admin' && is_public ? null : req.user.sub;
     const status  = req.user.role === 'admin' && is_public ? 'approved' : 'private';
 
     const obj = await prisma.object.create({
-      data: { name, categoryId: category_id, ownerId, status },
+      data: { name, em: em || '📦', categoryId: category_id, ownerId, status },
       include: { representations: true, category: { select: { id: true, name: true } } },
     });
     res.status(201).json({ success: true, data: obj });
@@ -63,10 +63,14 @@ router.patch('/:id', authenticateJWT, authorizeRole('admin', 'specialist'), asyn
     if (!obj) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
     if (!canModify(req.user, obj)) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
 
-    const { name, category_id } = req.body;
+    const { name, category_id, em } = req.body;
     const updated = await prisma.object.update({
       where: { id: req.params.id },
-      data: { ...(name && { name }), ...(category_id && { categoryId: category_id }) },
+      data: {
+        ...(name && { name }),
+        ...(category_id && { categoryId: category_id }),
+        ...(typeof em === 'string' && { em }),
+      },
       include: { representations: true, category: { select: { id: true, name: true } } },
     });
     res.json({ success: true, data: updated });
@@ -148,6 +152,10 @@ router.delete('/:id/representations/:level', authenticateJWT, authorizeRole('adm
     const lvlMap = { '1': 'model_3d', '2': 'photo', '3': 'drawing' };
     const lvlEnum = lvlMap[req.params.level];
     if (!lvlEnum) return res.status(400).json({ success: false, error: { code: 'INVALID_LEVEL' } });
+
+    const obj = await prisma.object.findUnique({ where: { id: req.params.id } });
+    if (!obj) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
+    if (!canModify(req.user, obj)) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
 
     const rep = await prisma.objectRepresentation.findUnique({
       where: { objectId_level: { objectId: req.params.id, level: lvlEnum } },

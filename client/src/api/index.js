@@ -71,20 +71,23 @@ export const authApi = {
 };
 
 export const usersApi = {
+  create:            (data)  => api.post('/users', data),
+  delete:            (id)    => api.delete(`/users/${id}`),
   preferences:       (id)    => api.get(`/users/${id}/preferences`),
   updatePreferences: (id, d) => api.patch(`/users/${id}/preferences`, d),
 };
 
 export const specialistsApi = {
-  list:    ()   => api.get('/specialists'),
-  clients: (id) => api.get(`/specialists/${id}/clients`),
+  list:    ()        => api.get('/specialists'),
+  update:  (id, d)   => api.patch(`/specialists/${id}`, d),
+  clients: (id)      => api.get(`/specialists/${id}/clients`),
 };
 
 export const clientsApi = {
-  list:   (params) => api.get('/clients', { params }),
-  create: (data)   => api.post('/clients', data),
-  update: (id, d)  => api.patch(`/clients/${id}`, d),
-  delete: (id)     => api.delete(`/clients/${id}`),
+  list:   (params)  => api.get('/clients', { params }),
+  create: (data)    => api.post('/clients', data),
+  update: (id, d)   => api.patch(`/clients/${id}`, d),
+  delete: (id)      => api.delete(`/clients/${id}`),
 };
 
 export const categoriesApi = {

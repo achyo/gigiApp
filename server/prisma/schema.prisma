@@ -188,6 +188,7 @@ model Activity {
   title        String
   instructions String?  @db.Text
   specialistId String   @map("specialist_id")
+  audience     Json?
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt      @map("updated_at")
 

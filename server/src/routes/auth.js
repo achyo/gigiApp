@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { prisma } = require('../lib/prisma');
 const { redis } = require('../lib/redis');
+const { assertStrongPassword } = require('../lib/password');
 const { authenticateJWT } = require('../middleware/auth');
 
 const ACCESS_TTL  = process.env.JWT_ACCESS_EXPIRES_IN  || '15m';
@@ -119,6 +120,7 @@ router.post('/change-password', authenticateJWT, async (req, res, next) => {
     const valid = await bcrypt.compare(current_password, user.passwordHash);
     if (!valid) return res.status(400).json({ success: false, error: { code: 'WRONG_PASSWORD' } });
 
+    assertStrongPassword(new_password);
     const hash = await bcrypt.hash(new_password, 12);
     await prisma.user.update({ where: { id: user.id }, data: { passwordHash: hash } });
     res.json({ success: true });
