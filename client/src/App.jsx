@@ -24,7 +24,7 @@ function RoleRedirect() {
   const { user } = useAuthStore();
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'admin')      return <Navigate to="/admin"      replace />;
-  if (user.role === 'specialist') return <Navigate to="/specialist/clients" replace />;
+  if (user.role === 'specialist') return <Navigate to="/specialist" replace />;
   return <Navigate to="/client" replace />;
 }
 

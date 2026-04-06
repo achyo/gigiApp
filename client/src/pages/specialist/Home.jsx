@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router';
+import { Routes, Route } from 'react-router';
 import { clientsApi, activitiesApi, groupsApi, assignmentsApi, objectsApi, categoriesApi } from '../../api';
 import useAuthStore from '../../stores/authStore';
 import { Button, Badge, Card, Input, Select, Textarea, SearchBar, TabBar, Confirm, Modal, Empty, Spinner, SubBadge, Notice } from '../../components/ui';
@@ -8,6 +8,112 @@ import { getPasswordStrengthError, PASSWORD_RULE_HINT } from '../../lib/password
 
 function getApiErrorMessage(error, fallback) {
   return error?.response?.data?.error?.message || error?.message || fallback;
+}
+
+function Dashboard() {
+  const [clients, setClients] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([clientsApi.list(), activitiesApi.list(), groupsApi.list()])
+      .then(([clientsResponse, activitiesResponse, groupsResponse]) => {
+        setClients(clientsResponse.data.data || []);
+        setActivities(activitiesResponse.data.data || []);
+        setGroups(groupsResponse.data.data || []);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
+
+  const activeUsers = clients.filter(client => client.user?.active !== false).length;
+  const latestClients = clients.slice(0, 3);
+  const latestActivities = activities.slice(0, 3);
+  const latestGroups = groups.slice(0, 3);
+
+  return (
+    <div className="animate-in space-y-5">
+      <div>
+        <h1 className="text-2xl font-black">Panel del especialista</h1>
+        <p className="mt-1 text-sm text-[var(--tx2)]">Resumen rápido de alumnos, actividades, grupos y cuentas activas.</p>
+      </div>
+
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        {[
+          ['Alumnos', clients.length, '👶'],
+          ['Actividades', activities.length, '📋'],
+          ['Grupos', groups.length, '👥'],
+          ['Usuarios activos', activeUsers, '✅'],
+        ].map(([label, value, icon]) => (
+          <Card key={label} className="flex items-center gap-3 py-3 shadow-soft">
+            <span className="text-2xl">{icon}</span>
+            <div>
+              <p className="text-2xl font-black leading-none">{value}</p>
+              <p className="mt-0.5 text-xs font-bold uppercase tracking-wide text-[var(--tx3)]">{label}</p>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <Card className="shadow-soft">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="font-black text-lg">Últimos alumnos</h2>
+            <Badge variant="blue">{clients.length}</Badge>
+          </div>
+          {latestClients.length === 0 ? <Empty icon="👶" title="Sin alumnos" subtitle="Crea tu primer cliente para empezar." /> : (
+            <div className="space-y-2">
+              {latestClients.map(client => (
+                <div key={client.id} className="rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-3 py-2">
+                  <p className="font-bold text-sm">{client.childName}</p>
+                  <p className="text-xs text-[var(--tx2)]">{client.user?.name || 'Sin tutor'}</p>
+                  <p className="text-[11px] text-[var(--tx3)]">{client.groups?.length ? client.groups.map(group => group.name).join(', ') : 'Sin grupos'}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card className="shadow-soft">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="font-black text-lg">Actividades creadas</h2>
+            <Badge variant="blue">{activities.length}</Badge>
+          </div>
+          {latestActivities.length === 0 ? <Empty icon="📋" title="Sin actividades" subtitle="Las actividades que crees aparecerán aquí." /> : (
+            <div className="space-y-2">
+              {latestActivities.map(activity => (
+                <div key={activity.id} className="rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-3 py-2">
+                  <p className="font-bold text-sm">{activity.title}</p>
+                  <p className="text-xs text-[var(--tx2)]">{activity.activityObjects?.length || 0} objetos</p>
+                  <p className="text-[11px] text-[var(--tx3)]">{activity.assignments?.length || 0} clientes asignados</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card className="shadow-soft">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="font-black text-lg">Grupos activos</h2>
+            <Badge variant="blue">{groups.length}</Badge>
+          </div>
+          {latestGroups.length === 0 ? <Empty icon="👥" title="Sin grupos" subtitle="Usa grupos para asignar actividades a varios alumnos." /> : (
+            <div className="space-y-2">
+              {latestGroups.map(group => (
+                <div key={group.id} className="rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-3 py-2" style={{ borderLeftWidth: 4, borderLeftColor: group.color }}>
+                  <p className="font-bold text-sm">{group.name}</p>
+                  <p className="text-xs text-[var(--tx2)]">{group.clients?.length || 0} alumnos</p>
+                  <p className="text-[11px] text-[var(--tx3)]">{group.clients?.length ? group.clients.map(client => client.childName).join(', ') : 'Sin miembros'}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
 }
 
 /* ── Clients page ──────────────────────────────────────────────────────── */
@@ -830,11 +936,12 @@ function Groups() {
 export default function SpecialistHome() {
   return (
     <Routes>
+      <Route index element={<Dashboard />} />
+      <Route path="panel"      element={<Dashboard />} />
       <Route path="clients"    element={<Clients />} />
       <Route path="activities" element={<Activities />} />
       <Route path="objects"    element={<Objects />} />
       <Route path="groups"     element={<Groups />} />
-      <Route index element={<Clients />} />
     </Routes>
   );
 }

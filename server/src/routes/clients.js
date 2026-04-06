@@ -6,7 +6,7 @@ const { assertStrongPassword } = require('../lib/password');
 const { authenticateJWT, authorizeRole, scopeFilter, paginateQuery, paginatedResponse } = require('../middleware/auth');
 
 const clientInclude = {
-  user: { select: { id: 1, name: 1, email: 1 } },
+  user: { select: { id: 1, name: 1, email: 1, active: 1 } },
   specialist: { include: { user: { select: { id: 1, name: 1, email: 1 } } } },
   groups: { select: { id: 1, name: 1, color: 1 } },
 };

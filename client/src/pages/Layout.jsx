@@ -6,6 +6,7 @@ import usePrefsStore from '../stores/prefsStore';
 const NAV = {
   client:     [{ to: '/client',     icon: '🏠', label: 'Actividades' }],
   specialist: [
+    { to: '/specialist',            icon: '📊', label: 'Panel'        },
     { to: '/specialist/clients',    icon: '👶', label: 'Clientes'     },
     { to: '/specialist/activities', icon: '📋', label: 'Actividades'  },
     { to: '/specialist/objects',    icon: '📦', label: 'Objetos'      },
