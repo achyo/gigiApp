@@ -61,6 +61,7 @@ router.post('/result', authenticateJWT, async (req, res, next) => {
     const { assignment_id, object_id, level, exercise, is_correct, time_ms } = req.body;
     // Find the activityObject
     const assignment = await prisma.assignment.findUnique({ where: { id: assignment_id }, select: { activityId: true } });
+    if (!assignment) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
     const ao = await prisma.activityObject.findFirst({
       where: { activityId: assignment.activityId, objectId: object_id },
     });

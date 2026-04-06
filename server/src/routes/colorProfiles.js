@@ -36,8 +36,10 @@ router.patch('/:id/set-default', authenticateJWT, authorizeRole('admin'), async 
 
 router.delete('/:id', authenticateJWT, authorizeRole('admin'), async (req, res, next) => {
   try {
+    const profile = await prisma.colorProfile.findUnique({ where: { id: req.params.id } });
+    if (!profile) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
     await prisma.colorProfile.delete({ where: { id: req.params.id } });
-    res.status(204).send();
+    res.json({ success: true, data: { id: req.params.id, deleted: true } });
   } catch(e){ next(e); }
 });
 

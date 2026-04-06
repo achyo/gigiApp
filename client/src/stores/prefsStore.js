@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import useAuthStore from './authStore';
 
 const PALETTES = [
   { id: 'def', label: 'Predeterminado',  cls: '',     bg: '#F5F3EF', ac: '#1A5FD4' },
@@ -37,6 +38,18 @@ function applyPalette(id) {
   }
 }
 
+function syncPreferences() {
+  const authStore = useAuthStore.getState();
+  const prefsStore = usePrefsStore.getState();
+  if (!authStore.user?.id) return;
+
+  const textSizeMap = { s: 0, m: 1, l: 2, xl: 3 };
+  authStore.updatePreferences({
+    tts_enabled: prefsStore.ttsEnabled,
+    text_size: textSizeMap[prefsStore.fontSizeId] ?? 1,
+  }).catch(() => {});
+}
+
 const usePrefsStore = create(
   persist(
     (set, get) => ({
@@ -49,14 +62,19 @@ const usePrefsStore = create(
       setPalette: (id) => {
         applyPalette(id);
         set({ paletteId: id });
+        syncPreferences();
       },
 
       setFontSize: (id) => {
         applyZoom(id);
         set({ fontSizeId: id });
+        syncPreferences();
       },
 
-      setTts: (v) => set({ ttsEnabled: v }),
+      setTts: (v) => {
+        set({ ttsEnabled: v });
+        syncPreferences();
+      },
 
       incFont: () => {
         const idx = FONT_SIZES.findIndex(f => f.id === get().fontSizeId);

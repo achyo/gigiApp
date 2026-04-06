@@ -5,6 +5,15 @@ const { authenticateJWT, authorizeRole, scopeFilter, paginateQuery, paginatedRes
 // GET /api/assignments/client/:clientId
 router.get('/client/:clientId', authenticateJWT, async (req, res, next) => {
   try {
+    const client = await prisma.client.findUnique({ where: { id: req.params.clientId }, select: { id: true, specialistId: true, userId: true } });
+    if (!client) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
+    if (req.user.role === 'client' && client.id !== req.user.client_id) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
+    if (req.user.role === 'specialist' && client.specialistId !== req.user.specialist_id) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
+
     const assignments = await prisma.assignment.findMany({
       where: { clientId: req.params.clientId, isActive: true },
       include: {
@@ -43,6 +52,13 @@ router.get('/', authenticateJWT, scopeFilter('assignments'), async (req, res, ne
 router.post('/', authenticateJWT, authorizeRole('admin', 'specialist'), async (req, res, next) => {
   try {
     const { activity_id, client_id, is_active = true } = req.body;
+    const [activity, client] = await Promise.all([
+      prisma.activity.findUnique({ where: { id: activity_id } }),
+      prisma.client.findUnique({ where: { id: client_id } }),
+    ]);
+    if (!activity || !client) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
+    if (!canModify(req.user, activity)) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+
     const assignment = await prisma.assignment.create({
       data: { activityId: activity_id, clientId: client_id, isActive: is_active },
       include: { activity: true, client: true },
@@ -134,6 +150,17 @@ router.post('/bulk', authenticateJWT, authorizeRole('admin', 'specialist'), asyn
 router.patch('/:id', authenticateJWT, async (req, res, next) => {
   try {
     const { is_active } = req.body;
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: req.params.id },
+      include: { activity: true, client: true },
+    });
+    if (!assignment) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
+    if (req.user.role === 'client' && assignment.clientId !== req.user.client_id) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
+    if (req.user.role === 'specialist' && assignment.client.specialistId !== req.user.specialist_id) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
     const updated = await prisma.assignment.update({
       where: { id: req.params.id }, data: { isActive: is_active },
     });
@@ -144,6 +171,17 @@ router.patch('/:id', authenticateJWT, async (req, res, next) => {
 // POST /api/assignments/:id/complete
 router.post('/:id/complete', authenticateJWT, async (req, res, next) => {
   try {
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: req.params.id },
+      include: { client: true },
+    });
+    if (!assignment) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
+    if (req.user.role === 'client' && assignment.clientId !== req.user.client_id) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
+    if (req.user.role === 'specialist' && assignment.client.specialistId !== req.user.specialist_id) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
+    }
     const updated = await prisma.assignment.update({
       where: { id: req.params.id }, data: { completedAt: new Date() },
     });

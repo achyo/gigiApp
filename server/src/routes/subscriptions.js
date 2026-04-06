@@ -11,6 +11,8 @@ router.post('/', authenticateJWT, authorizeRole('admin','specialist'), async (re
     expires.setMonth(expires.getMonth() + (billing === 'year' ? 12 : 1));
 
     if (entity_type === 'specialist') {
+      const existing = await prisma.specialist.findUnique({ where: { id: entity_id } });
+      if (!existing) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
       const s = await prisma.specialist.update({
         where: { id: entity_id },
         data: { subscription: { plan, billing, status: 'active', expires: expires.toISOString().split('T')[0] } },
@@ -20,6 +22,8 @@ router.post('/', authenticateJWT, authorizeRole('admin','specialist'), async (re
       return res.json({ success: true, data: s });
     }
     if (entity_type === 'client') {
+      const existing = await prisma.client.findUnique({ where: { id: entity_id } });
+      if (!existing) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
       const c = await prisma.client.update({
         where: { id: entity_id },
         data: { subscription: { plan, billing, status: 'active', expires: expires.toISOString().split('T')[0] } },
@@ -65,7 +69,7 @@ function _scheduleExpiryAlert(entityId, entityType, expiresDate) {
     setTimeout(async () => {
       try {
         const nodemailer = require('nodemailer');
-        const transporter = nodemailer.createTransporter({
+        const transporter = nodemailer.createTransport({
           host: process.env.SMTP_HOST, port: process.env.SMTP_PORT,
           auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
         });
