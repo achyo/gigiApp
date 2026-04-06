@@ -15,6 +15,66 @@ function getApiErrorMessage(error, fallback) {
   return error?.response?.data?.error?.message || error?.message || fallback;
 }
 
+function DashboardMetricCard({ value, label }) {
+  return (
+    <div className="rounded-[20px] border border-[var(--bd)] bg-[var(--sf)] px-5 py-4">
+      <p className="text-[2.25rem] font-black leading-none text-[var(--ac)]">{value ?? '0'}</p>
+      <p className="mt-2 text-[.7rem] font-black uppercase tracking-[0.08em] text-[var(--tx2)]">{label}</p>
+    </div>
+  );
+}
+
+function DashboardPanel({ icon, title, children, className = '' }) {
+  return (
+    <Card className={`rounded-[24px] px-5 py-5 shadow-soft ${className}`}>
+      <div className="mb-4 flex items-center gap-3">
+        <span className="text-xl">{icon}</span>
+        <h2 className="text-[1.05rem] font-black">{title}</h2>
+      </div>
+      {children}
+    </Card>
+  );
+}
+
+function ListPageHeader({ title, count, subtitle, action }) {
+  return (
+    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-black">{title}</h1>
+          <Badge variant="blue">{count}</Badge>
+        </div>
+        {subtitle && <p className="text-sm text-[var(--tx3)]">{subtitle}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function ListCollection({ children }) {
+  return <Card className="rounded-[24px] px-3 py-3 shadow-soft">{children}</Card>;
+}
+
+function ListRow({ avatar, title, subtitle, meta, badges, actions, accentColor }) {
+  return (
+    <div
+      className="flex flex-col gap-3 rounded-[20px] border border-[var(--bd)] bg-[var(--sf)] px-4 py-3 sm:flex-row sm:items-center"
+      style={accentColor ? { borderLeft: `4px solid ${accentColor}` } : undefined}
+    >
+      {avatar && <div className="flex-shrink-0">{avatar}</div>}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-black text-[var(--tx)]">{title}</p>
+          {badges && <div className="flex flex-wrap items-center gap-1.5">{badges}</div>}
+        </div>
+        {subtitle && <p className="mt-0.5 text-xs text-[var(--tx2)]">{subtitle}</p>}
+        {meta && <div className="mt-1">{meta}</div>}
+      </div>
+      {actions && <div className="flex flex-wrap items-center justify-end gap-2 sm:ml-auto">{actions}</div>}
+    </div>
+  );
+}
+
 /* ── Dashboard ─────────────────────────────────────────────────────────── */
 function Dashboard() {
   const [stats,   setStats]   = useState(null);
@@ -79,6 +139,33 @@ function Dashboard() {
     return diffDays >= 0 && diffDays <= 15;
   }).length;
 
+  const activeSpecialists = specialists.filter(item => item.user?.active).length;
+  const activeClients = clients.filter(item => item.user?.active).length;
+
+  const expiringEntries = [
+    ...specialists
+      .filter(item => item.subscription)
+      .map(item => ({
+        id: item.id,
+        kind: 'Especialista',
+        name: item.user?.name || 'Sin nombre',
+        expires: item.subscription?.expires,
+        daysLeft: Math.ceil((new Date(item.subscription?.expires) - new Date()) / 864e5),
+      })),
+    ...clients
+      .filter(item => item.subscription)
+      .map(item => ({
+        id: item.id,
+        kind: 'Cliente',
+        name: item.childName || item.user?.name || 'Sin nombre',
+        expires: item.subscription?.expires,
+        daysLeft: Math.ceil((new Date(item.subscription?.expires) - new Date()) / 864e5),
+      })),
+  ]
+    .filter(item => item.daysLeft >= 0 && item.daysLeft <= 15)
+    .sort((left, right) => left.daysLeft - right.daysLeft)
+    .slice(0, 6);
+
   const subCounts = allSubscriptions.reduce((acc, sub) => {
     const key = getSubState(sub);
     acc[key] = (acc[key] || 0) + 1;
@@ -86,41 +173,59 @@ function Dashboard() {
   }, { active: 0, trial: 0, grace: 0, expired: 0, expiring: 0 });
 
   return (
-    <div className="animate-in">
-      <h1 className="text-2xl font-black">Panel global</h1>
+    <div className="animate-in space-y-5">
+      <div>
+        <h1 className="text-2xl font-black">Panel global</h1>
+      </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {statItems.map(([label, val, ic]) => (
-          <Card key={label} className="flex items-center gap-3 py-3">
-            <span className="text-2xl">{ic}</span>
-            <div>
-              <p className="text-2xl font-black leading-none">{val ?? '—'}</p>
-              <p className="text-xs text-[var(--tx3)] font-bold uppercase tracking-wide mt-0.5">{label}</p>
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        <DashboardMetricCard value={stats?.specialists} label="Especialistas" />
+        <DashboardMetricCard value={stats?.clients} label="Clientes" />
+        <DashboardMetricCard value={stats?.activities} label="Actividades" />
+        <DashboardMetricCard value={stats?.objects} label="Objetos" />
+        <DashboardMetricCard value={activeSpecialists} label="Esp. activos" />
+        <DashboardMetricCard value={activeClients} label="Cli. activos" />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.05fr_.95fr]">
+        <DashboardPanel icon="⏳" title="Próximos a vencer (15d)" className="min-h-[236px]">
+          {expiringEntries.length === 0 ? (
+            <div className="flex min-h-[150px] items-center justify-center text-sm text-[var(--tx3)]">
+              Sin vencimientos próximos.
             </div>
-          </Card>
-        ))}
-      </div>
+          ) : (
+            <div className="space-y-2">
+              {expiringEntries.map(item => (
+                <div key={`${item.kind}-${item.id}`} className="flex items-center justify-between gap-3 rounded-[var(--r)] border border-[var(--bd)] px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold">{item.name}</p>
+                    <p className="text-xs text-[var(--tx3)]">{item.kind} · vence {item.expires}</p>
+                  </div>
+                  <Badge variant="amber">{item.daysLeft}d</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </DashboardPanel>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <Card>
-          <h2 className="mb-2 font-bold">⏰ Próximos a vencer</h2>
-          <p className="text-3xl font-black text-[var(--wa)]">{expiringSoon}</p>
-          <p className="text-sm text-[var(--tx2)]">Suscripciones que vencen en los próximos 15 días.</p>
-        </Card>
-        <Card>
-          <h2 className="mb-2 font-bold">💳 Estado de suscripciones</h2>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="green">Activas {subCounts.active || 0}</Badge>
-            <Badge variant="blue">Prueba {subCounts.trial || 0}</Badge>
-            <Badge variant="amber">Por vencer {subCounts.expiring || 0}</Badge>
-            <Badge variant="gold">Cortesía {subCounts.grace || 0}</Badge>
-            <Badge variant="red">Caducadas {subCounts.expired || 0}</Badge>
+        <DashboardPanel icon="📊" title="Estado suscripciones" className="min-h-[236px]">
+          <div className="divide-y divide-[var(--bd)]/80">
+            {[
+              ['Activa', subCounts.active || 0, 'green'],
+              ['Prueba 15d', subCounts.trial || 0, 'blue'],
+              ['Gracia 15d', subCounts.grace || 0, 'amber'],
+              ['Caducada', subCounts.expired || 0, 'red'],
+            ].map(([label, value, variant]) => (
+              <div key={label} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                <Badge variant={variant}>{label}</Badge>
+                <span className="text-2xl font-black text-[var(--tx)]">{value}</span>
+              </div>
+            ))}
           </div>
-        </Card>
+        </DashboardPanel>
       </div>
 
-      <Card>
-        <h2 className="font-bold mb-3">⏳ Aprobaciones pendientes ({allPending.length})</h2>
+      <DashboardPanel icon="🧾" title={`Aprobaciones pendientes (${allPending.length})`}>
         {allPending.length === 0
           ? <p className="text-sm text-[var(--tx3)]">Sin pendientes ✓</p>
           : allPending.map(x => (
@@ -133,7 +238,7 @@ function Dashboard() {
             </div>
           ))
         }
-      </Card>
+      </DashboardPanel>
     </div>
   );
 }
@@ -203,32 +308,45 @@ function Specialists() {
 
   return (
     <div className="animate-in">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h1 className="text-xl font-black">Especialistas</h1>
-        <Button onClick={openNew}>+ Nuevo</Button>
-      </div>
-      <SearchBar value={search} onChange={setSearch} placeholder="Buscar especialista..." />
+      <ListPageHeader
+        title="Especialistas"
+        count={`${filtered.length}/${specialists.length}`}
+        subtitle="Gestión de profesionales, estado de acceso y suscripción."
+        action={<Button onClick={openNew}>+ Nuevo</Button>}
+      />
+      <SearchBar value={search} onChange={setSearch} placeholder="Buscar especialista..." extra={<Badge variant="default">{filtered.length} visibles</Badge>} />
       {filtered.length === 0 ? <Empty icon="🧑‍⚕️" title="Sin especialistas" /> :
-        <div className="space-y-2">
+        <ListCollection>
+          <div className="space-y-2">
           {filtered.map(s => (
-            <div key={s.id} className="flex items-center gap-3 p-3 bg-[var(--sf)] border border-[var(--bd)] rounded-[var(--r)]">
-              <div className="w-9 h-9 rounded-full bg-[var(--ac)] text-white flex items-center justify-center font-black text-xs flex-shrink-0">
-                {(s.user?.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm">{s.user?.name}</p>
-                <p className="text-xs text-[var(--tx2)] truncate">{s.user?.email}</p>
-                {s.bio && <p className="text-xs text-[var(--tx3)] truncate">{s.bio}</p>}
-              </div>
-              <Badge variant={s.user?.active ? 'green' : 'default'}>{s.user?.active ? 'Activo' : 'Inactivo'}</Badge>
-              <span className="cursor-pointer" onClick={() => setSubTarget({ entity: s, type: 'specialist' })}>
-                <SubBadge sub={s.subscription} />
-              </span>
-              <Button size="sm" variant="secondary" onClick={() => openEdit(s)}>✏️</Button>
-              <Button size="sm" variant="danger"    onClick={() => setDelId(s.id)}>🗑</Button>
-            </div>
+            <ListRow
+              key={s.id}
+              avatar={
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">
+                  {(s.user?.name || '?').split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
+                </div>
+              }
+              title={s.user?.name}
+              subtitle={s.user?.email}
+              meta={s.bio ? <p className="truncate text-xs text-[var(--tx3)]">{s.bio}</p> : null}
+              badges={(
+                <>
+                  <Badge variant={s.user?.active ? 'green' : 'default'}>{s.user?.active ? 'Activo' : 'Inactivo'}</Badge>
+                  <span className="cursor-pointer" onClick={() => setSubTarget({ entity: s, type: 'specialist' })}>
+                    <SubBadge sub={s.subscription} />
+                  </span>
+                </>
+              )}
+              actions={(
+                <>
+                  <Button size="sm" variant="secondary" onClick={() => openEdit(s)}>Editar</Button>
+                  <Button size="sm" variant="danger" onClick={() => setDelId(s.id)}>Eliminar</Button>
+                </>
+              )}
+            />
           ))}
-        </div>
+          </div>
+        </ListCollection>
       }
       <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nuevo especialista' : 'Editar especialista'} maxWidth={480}>
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
@@ -364,34 +482,37 @@ function Clients() {
 
   return (
     <div className="animate-in">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-black">Todos los clientes</h1>
-        <Button onClick={openNew}>+ Nuevo</Button>
-      </div>
-      <SearchBar value={search} onChange={setSearch} placeholder="Buscar alumno o tutor..." />
+      <ListPageHeader
+        title="Todos los clientes"
+        count={`${filtered.length}/${clients.length}`}
+        subtitle="Vista operativa de alumnos, tutores, especialista responsable y grupos."
+        action={<Button onClick={openNew}>+ Nuevo</Button>}
+      />
+      <SearchBar value={search} onChange={setSearch} placeholder="Buscar alumno o tutor..." extra={<Badge variant="default">{filtered.length} visibles</Badge>} />
       {filtered.length === 0 ? <Empty icon="👶" title="Sin clientes" /> :
-        <div className="space-y-2">
+        <ListCollection>
+          <div className="space-y-2">
           {filtered.map(c => {
             const spec = specs.find(s => s.id === c.specialistId);
             return (
-              <div key={c.id} className="flex items-center gap-3 p-3 bg-[var(--sf)] border border-[var(--bd)] rounded-[var(--r)]">
-                <div className="w-9 h-9 rounded-full bg-[var(--ac)] text-white flex items-center justify-center font-black text-xs flex-shrink-0">
-                  {(c.childName||'?').slice(0,2).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm">{c.childName}</p>
-                  <p className="text-xs text-[var(--tx2)]">{c.user?.name} · Esp: {spec?.user?.name || '—'}</p>
-                  {renderClientGroups(c)}
-                </div>
-                <span className="cursor-pointer" onClick={() => setSub({ entity: c, type: 'client' })}>
-                  <SubBadge sub={c.subscription} />
-                </span>
-                <Button size="sm" variant="secondary" onClick={() => openEdit(c)}>✏️</Button>
-                <Button size="sm" variant="danger" onClick={() => setDelId(c.id)}>🗑</Button>
-              </div>
+              <ListRow
+                key={c.id}
+                avatar={<div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">{(c.childName || '?').slice(0, 2).toUpperCase()}</div>}
+                title={c.childName}
+                subtitle={`${c.user?.name || 'Sin tutor'} · Esp: ${spec?.user?.name || '—'}`}
+                meta={renderClientGroups(c)}
+                badges={<span className="cursor-pointer" onClick={() => setSub({ entity: c, type: 'client' })}><SubBadge sub={c.subscription} /></span>}
+                actions={(
+                  <>
+                    <Button size="sm" variant="secondary" onClick={() => openEdit(c)}>Editar</Button>
+                    <Button size="sm" variant="danger" onClick={() => setDelId(c.id)}>Eliminar</Button>
+                  </>
+                )}
+              />
             );
           })}
-        </div>
+          </div>
+        </ListCollection>
       }
       <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nuevo cliente' : 'Editar cliente'} maxWidth={640}>
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
@@ -625,26 +746,33 @@ function Activities() {
 
   return (
     <div className="animate-in">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h1 className="text-xl font-black">Todas las actividades</h1>
-        <Button onClick={openNew}>+ Nueva</Button>
-      </div>
-      <SearchBar value={search} onChange={setSearch} placeholder="Buscar actividad..." />
+      <ListPageHeader
+        title="Todas las actividades"
+        count={`${filtered.length}/${acts.length}`}
+        subtitle="Actividades creadas, objetos incluidos y destino actual de asignación."
+        action={<Button onClick={openNew}>+ Nueva</Button>}
+      />
+      <SearchBar value={search} onChange={setSearch} placeholder="Buscar actividad..." extra={<Badge variant="default">{filtered.length} visibles</Badge>} />
       {filtered.length === 0 ? <Empty icon="📋" title="Sin actividades" /> :
-        <div className="space-y-2">
+        <ListCollection>
+          <div className="space-y-2">
           {filtered.map(a => (
-            <div key={a.id} className="flex items-center gap-3 p-3 bg-[var(--sf)] border border-[var(--bd)] rounded-[var(--r)]">
-              <div className="flex gap-0.5 text-lg">{a.activityObjects?.slice(0,4).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm">{a.title}</p>
-                <p className="text-xs text-[var(--tx3)]">{a.activityObjects?.length || 0} objetos · {getAssignmentSummary(a)}</p>
-                <p className="text-[11px] text-[var(--tx3)] mt-0.5">{getAssignmentDetail(a)}</p>
-              </div>
-              <Button size="sm" variant="secondary" onClick={() => openEdit(a)}>✏️</Button>
-              <Button size="sm" variant="danger" onClick={() => setDelId(a.id)}>🗑</Button>
-            </div>
+            <ListRow
+              key={a.id}
+              avatar={<div className="flex min-h-11 min-w-11 items-center justify-center rounded-[16px] bg-[var(--bg2)] px-2 text-lg">{a.activityObjects?.slice(0, 4).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div>}
+              title={a.title}
+              subtitle={`${a.activityObjects?.length || 0} objetos · ${getAssignmentSummary(a)}`}
+              meta={<p className="text-[11px] text-[var(--tx3)]">{getAssignmentDetail(a)}</p>}
+              actions={(
+                <>
+                  <Button size="sm" variant="secondary" onClick={() => openEdit(a)}>Editar</Button>
+                  <Button size="sm" variant="danger" onClick={() => setDelId(a.id)}>Eliminar</Button>
+                </>
+              )}
+            />
           ))}
-        </div>
+          </div>
+        </ListCollection>
       }
       <Modal open={modal} onClose={() => setModal(false)} title={editAct ? 'Editar actividad' : 'Nueva actividad'} maxWidth={860}>
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
@@ -1146,25 +1274,34 @@ function Groups() {
 
   return (
     <div className="max-h-dvh">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h1 className="text-xl font-black">Grupos</h1>
-        <Button onClick={openNew}>+ Nuevo grupo</Button>
-      </div>
-      <SearchBar value={search} onChange={setSearch} placeholder="Buscar grupo..." />
+      <ListPageHeader
+        title="Grupos"
+        count={`${filtered.length}/${groups.length}`}
+        subtitle="Agrupaciones operativas para asignar actividades a varios alumnos."
+        action={<Button onClick={openNew}>+ Nuevo grupo</Button>}
+      />
+      <SearchBar value={search} onChange={setSearch} placeholder="Buscar grupo..." extra={<Badge variant="default">{filtered.length} visibles</Badge>} />
       {filtered.length === 0 ? <Empty icon="👥" title="Sin grupos" /> :
-        <div className="space-y-2">
+        <ListCollection>
+          <div className="space-y-2">
           {filtered.map(g => (
-            <div key={g.id} className="flex items-center gap-3 p-3 bg-[var(--sf)] border border-[var(--bd)] rounded-[var(--r)]" style={{ borderLeft: `4px solid ${g.color}` }}>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-black text-sm" style={{ background: g.color }}>{g.clients?.length || 0}</div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm">{g.name}</p>
-                <p className="text-xs text-[var(--tx3)]">{g.clients?.map(c=>c.childName).join(', ') || 'Sin miembros'}</p>
-              </div>
-              <Button size="sm" variant="secondary" onClick={() => openEdit(g)}>✏️</Button>
-              <Button size="sm" variant="danger"    onClick={() => setDelId(g.id)}>🗑</Button>
-            </div>
+            <ListRow
+              key={g.id}
+              accentColor={g.color}
+              avatar={<div className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-black text-white" style={{ background: g.color }}>{g.clients?.length || 0}</div>}
+              title={g.name}
+              subtitle={`${g.clients?.length || 0} miembros`}
+              meta={<p className="text-xs text-[var(--tx3)]">{g.clients?.map(c => c.childName).join(', ') || 'Sin miembros'}</p>}
+              actions={(
+                <>
+                  <Button size="sm" variant="secondary" onClick={() => openEdit(g)}>Editar</Button>
+                  <Button size="sm" variant="danger" onClick={() => setDelId(g.id)}>Eliminar</Button>
+                </>
+              )}
+            />
           ))}
-        </div>
+          </div>
+        </ListCollection>
       }
       <Modal open={modal} onClose={() => setModal(false)} title={editGrp ? 'Editar grupo' : 'Nuevo grupo'} maxWidth={480}>
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}

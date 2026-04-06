@@ -10,6 +10,66 @@ function getApiErrorMessage(error, fallback) {
   return error?.response?.data?.error?.message || error?.message || fallback;
 }
 
+function DashboardMetricCard({ value, label }) {
+  return (
+    <div className="rounded-[20px] border border-[var(--bd)] bg-[var(--sf)] px-5 py-4">
+      <p className="text-[2.25rem] font-black leading-none text-[var(--ac)]">{value ?? '0'}</p>
+      <p className="mt-2 text-[.7rem] font-black uppercase tracking-[0.08em] text-[var(--tx2)]">{label}</p>
+    </div>
+  );
+}
+
+function DashboardPanel({ icon, title, children, className = '' }) {
+  return (
+    <Card className={`rounded-[24px] px-5 py-5 shadow-soft ${className}`}>
+      <div className="mb-4 flex items-center gap-3">
+        <span className="text-xl">{icon}</span>
+        <h2 className="text-[1.05rem] font-black">{title}</h2>
+      </div>
+      {children}
+    </Card>
+  );
+}
+
+function ListPageHeader({ title, count, subtitle, action }) {
+  return (
+    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-black">{title}</h1>
+          <Badge variant="blue">{count}</Badge>
+        </div>
+        {subtitle && <p className="text-sm text-[var(--tx3)]">{subtitle}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function ListCollection({ children }) {
+  return <Card className="rounded-[24px] px-3 py-3 shadow-soft">{children}</Card>;
+}
+
+function ListRow({ avatar, title, subtitle, meta, badges, actions, accentColor }) {
+  return (
+    <div
+      className="flex flex-col gap-3 rounded-[20px] border border-[var(--bd)] bg-[var(--sf)] px-4 py-3 sm:flex-row sm:items-center"
+      style={accentColor ? { borderLeft: `4px solid ${accentColor}` } : undefined}
+    >
+      {avatar && <div className="flex-shrink-0">{avatar}</div>}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-black text-[var(--tx)]">{title}</p>
+          {badges && <div className="flex flex-wrap items-center gap-1.5">{badges}</div>}
+        </div>
+        {subtitle && <p className="mt-0.5 text-xs text-[var(--tx2)]">{subtitle}</p>}
+        {meta && <div className="mt-1">{meta}</div>}
+      </div>
+      {actions && <div className="flex flex-wrap items-center justify-end gap-2 sm:ml-auto">{actions}</div>}
+    </div>
+  );
+}
+
 function Dashboard() {
   const [clients, setClients] = useState([]);
   const [activities, setActivities] = useState([]);
@@ -29,6 +89,7 @@ function Dashboard() {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
 
   const activeUsers = clients.filter(client => client.user?.active !== false).length;
+  const inactiveUsers = clients.length - activeUsers;
   const latestClients = clients.slice(0, 3);
   const latestActivities = activities.slice(0, 3);
   const latestGroups = groups.slice(0, 3);
@@ -37,80 +98,77 @@ function Dashboard() {
     <div className="animate-in space-y-5">
       <div>
         <h1 className="text-2xl font-black">Panel del especialista</h1>
-        <p className="mt-1 text-sm text-[var(--tx2)]">Resumen rápido de alumnos, actividades, grupos y cuentas activas.</p>
       </div>
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        {[
-          ['Alumnos', clients.length, '👶'],
-          ['Actividades', activities.length, '📋'],
-          ['Grupos', groups.length, '👥'],
-          ['Usuarios activos', activeUsers, '✅'],
-        ].map(([label, value, icon]) => (
-          <Card key={label} className="flex items-center gap-3 py-3 shadow-soft">
-            <span className="text-2xl">{icon}</span>
-            <div>
-              <p className="text-2xl font-black leading-none">{value}</p>
-              <p className="mt-0.5 text-xs font-bold uppercase tracking-wide text-[var(--tx3)]">{label}</p>
-            </div>
-          </Card>
-        ))}
+        <DashboardMetricCard value={clients.length} label="Alumnos" />
+        <DashboardMetricCard value={activities.length} label="Actividades" />
+        <DashboardMetricCard value={groups.length} label="Grupos" />
+        <DashboardMetricCard value={activeUsers} label="Usuarios activos" />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <Card className="shadow-soft">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="font-black text-lg">Últimos alumnos</h2>
-            <Badge variant="blue">{clients.length}</Badge>
-          </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <DashboardPanel icon="👶" title="Alumnos" className="min-h-[248px]">
           {latestClients.length === 0 ? <Empty icon="👶" title="Sin alumnos" subtitle="Crea tu primer cliente para empezar." /> : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {latestClients.map(client => (
-                <div key={client.id} className="rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-3 py-2">
-                  <p className="font-bold text-sm">{client.childName}</p>
-                  <p className="text-xs text-[var(--tx2)]">{client.user?.name || 'Sin tutor'}</p>
-                  <p className="text-[11px] text-[var(--tx3)]">{client.groups?.length ? client.groups.map(group => group.name).join(', ') : 'Sin grupos'}</p>
+                <div key={client.id} className="rounded-[var(--r)] border border-[var(--bd)] px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold">{client.childName}</p>
+                      <p className="truncate text-xs text-[var(--tx2)]">{client.user?.name || 'Sin tutor'}</p>
+                    </div>
+                    <Badge variant={client.user?.active !== false ? 'green' : 'red'}>{client.user?.active !== false ? 'Activo' : 'Inactivo'}</Badge>
+                  </div>
+                  <p className="mt-1 text-[11px] text-[var(--tx3)]">{client.groups?.length ? client.groups.map(group => group.name).join(', ') : 'Sin grupos'}</p>
                 </div>
               ))}
             </div>
           )}
-        </Card>
+        </DashboardPanel>
 
-        <Card className="shadow-soft">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="font-black text-lg">Actividades creadas</h2>
-            <Badge variant="blue">{activities.length}</Badge>
-          </div>
+        <DashboardPanel icon="📋" title="Actividades creadas" className="min-h-[248px]">
           {latestActivities.length === 0 ? <Empty icon="📋" title="Sin actividades" subtitle="Las actividades que crees aparecerán aquí." /> : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {latestActivities.map(activity => (
-                <div key={activity.id} className="rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-3 py-2">
-                  <p className="font-bold text-sm">{activity.title}</p>
+                <div key={activity.id} className="rounded-[var(--r)] border border-[var(--bd)] px-3 py-2.5">
+                  <p className="text-sm font-bold">{activity.title}</p>
                   <p className="text-xs text-[var(--tx2)]">{activity.activityObjects?.length || 0} objetos</p>
                   <p className="text-[11px] text-[var(--tx3)]">{activity.assignments?.length || 0} clientes asignados</p>
                 </div>
               ))}
             </div>
           )}
-        </Card>
+        </DashboardPanel>
 
-        <Card className="shadow-soft">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="font-black text-lg">Grupos activos</h2>
-            <Badge variant="blue">{groups.length}</Badge>
-          </div>
+        <DashboardPanel icon="👥" title="Grupos" className="min-h-[248px]">
           {latestGroups.length === 0 ? <Empty icon="👥" title="Sin grupos" subtitle="Usa grupos para asignar actividades a varios alumnos." /> : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {latestGroups.map(group => (
-                <div key={group.id} className="rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-3 py-2" style={{ borderLeftWidth: 4, borderLeftColor: group.color }}>
-                  <p className="font-bold text-sm">{group.name}</p>
+                <div key={group.id} className="rounded-[var(--r)] border border-[var(--bd)] px-3 py-2.5" style={{ borderLeftWidth: 4, borderLeftColor: group.color }}>
+                  <p className="text-sm font-bold">{group.name}</p>
                   <p className="text-xs text-[var(--tx2)]">{group.clients?.length || 0} alumnos</p>
                   <p className="text-[11px] text-[var(--tx3)]">{group.clients?.length ? group.clients.map(client => client.childName).join(', ') : 'Sin miembros'}</p>
                 </div>
               ))}
             </div>
           )}
-        </Card>
+        </DashboardPanel>
+
+        <DashboardPanel icon="📈" title="Usuarios activos" className="min-h-[248px]">
+          <div className="divide-y divide-[var(--bd)]/80">
+            {[
+              ['Activos', activeUsers, 'green'],
+              ['Inactivos', inactiveUsers, 'red'],
+              ['Total alumnos', clients.length, 'blue'],
+            ].map(([label, value, variant]) => (
+              <div key={label} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                <Badge variant={variant}>{label}</Badge>
+                <span className="text-2xl font-black text-[var(--tx)]">{value}</span>
+              </div>
+            ))}
+          </div>
+        </DashboardPanel>
       </div>
     </div>
   );
@@ -197,31 +255,34 @@ function Clients() {
 
   return (
     <div className="animate-in">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h1 className="text-xl font-black">Mis clientes</h1>
-        <Button onClick={openNew}>+ Nuevo cliente</Button>
-      </div>
-      <SearchBar value={search} onChange={setSearch} placeholder="Buscar alumno o tutor..." />
+      <ListPageHeader
+        title="Mis clientes"
+        count={`${filtered.length}/${clients.length}`}
+        subtitle="Seguimiento de alumnos, tutor, grupos y estado de acceso."
+        action={<Button onClick={openNew}>+ Nuevo cliente</Button>}
+      />
+      <SearchBar value={search} onChange={setSearch} placeholder="Buscar alumno o tutor..." extra={<Badge variant="default">{filtered.length} visibles</Badge>} />
       {filtered.length === 0 ? <Empty icon="👶" title="Sin clientes" subtitle="Añade tu primer alumno" /> :
-        <div className="space-y-2">
+        <ListCollection>
+          <div className="space-y-2">
           {filtered.map(c => (
-            <div key={c.id} className="flex items-center gap-3 p-3 bg-[var(--sf)] border border-[var(--bd)] rounded-[var(--r)]">
-              <div className="w-9 h-9 rounded-full bg-[var(--ac)] text-white flex items-center justify-center font-black text-xs flex-shrink-0">
-                {(c.childName||'?').slice(0,2).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm truncate">{c.childName}</p>
-                <p className="text-xs text-[var(--tx2)] truncate">{c.user?.name}</p>
-                {renderClientGroups(c)}
-              </div>
-              <span className="cursor-pointer" onClick={() => setSubTarget({ entity: c, type: 'client' })}>
-                <SubBadge sub={c.subscription} />
-              </span>
-              <Button size="sm" variant="secondary" onClick={() => openEdit(c)}>✏️</Button>
-              <Button size="sm" variant="danger"    onClick={() => setDelId(c.id)}>🗑</Button>
-            </div>
+            <ListRow
+              key={c.id}
+              avatar={<div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">{(c.childName || '?').slice(0, 2).toUpperCase()}</div>}
+              title={c.childName}
+              subtitle={c.user?.name}
+              meta={renderClientGroups(c)}
+              badges={<span className="cursor-pointer" onClick={() => setSubTarget({ entity: c, type: 'client' })}><SubBadge sub={c.subscription} /></span>}
+              actions={(
+                <>
+                  <Button size="sm" variant="secondary" onClick={() => openEdit(c)}>Editar</Button>
+                  <Button size="sm" variant="danger" onClick={() => setDelId(c.id)}>Eliminar</Button>
+                </>
+              )}
+            />
           ))}
-        </div>
+          </div>
+        </ListCollection>
       }
       <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nuevo cliente' : 'Editar cliente'} maxWidth={640}>
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
@@ -423,26 +484,33 @@ function Activities() {
 
   return (
     <div className="animate-in">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h1 className="text-xl font-black">Actividades</h1>
-        <Button onClick={openNew}>+ Nueva</Button>
-      </div>
-      <SearchBar value={search} onChange={setSearch} placeholder="Buscar actividad..." />
+      <ListPageHeader
+        title="Actividades"
+        count={`${filtered.length}/${acts.length}`}
+        subtitle="Tus actividades, objetos incluidos y destino de asignación activo."
+        action={<Button onClick={openNew}>+ Nueva</Button>}
+      />
+      <SearchBar value={search} onChange={setSearch} placeholder="Buscar actividad..." extra={<Badge variant="default">{filtered.length} visibles</Badge>} />
       {filtered.length === 0 ? <Empty icon="📋" title="Sin actividades" /> :
-        <div className="space-y-2">
+        <ListCollection>
+          <div className="space-y-2">
           {filtered.map(a => (
-            <div key={a.id} className="flex items-center gap-3 p-3 bg-[var(--sf)] border border-[var(--bd)] rounded-[var(--r)]">
-              <div className="flex gap-0.5 text-lg">{a.activityObjects?.slice(0,4).map(ao=><span key={ao.id}>{ao.object?.em}</span>)}</div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm">{a.title}</p>
-                <p className="text-xs text-[var(--tx3)]">{a.activityObjects?.length||0} objetos · {getAssignmentSummary(a)}</p>
-                <p className="text-[11px] text-[var(--tx3)] mt-0.5">{getAssignmentDetail(a)}</p>
-              </div>
-              <Button size="sm" variant="secondary" onClick={() => openEdit(a)}>✏️</Button>
-              <Button size="sm" variant="danger"    onClick={() => setDelId(a.id)}>🗑</Button>
-            </div>
+            <ListRow
+              key={a.id}
+              avatar={<div className="flex min-h-11 min-w-11 items-center justify-center rounded-[16px] bg-[var(--bg2)] px-2 text-lg">{a.activityObjects?.slice(0, 4).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div>}
+              title={a.title}
+              subtitle={`${a.activityObjects?.length || 0} objetos · ${getAssignmentSummary(a)}`}
+              meta={<p className="text-[11px] text-[var(--tx3)]">{getAssignmentDetail(a)}</p>}
+              actions={(
+                <>
+                  <Button size="sm" variant="secondary" onClick={() => openEdit(a)}>Editar</Button>
+                  <Button size="sm" variant="danger" onClick={() => setDelId(a.id)}>Eliminar</Button>
+                </>
+              )}
+            />
           ))}
-        </div>
+          </div>
+        </ListCollection>
       }
       <Modal open={modal} onClose={() => setModal(false)} title={editAct ? 'Editar actividad' : 'Nueva actividad'} maxWidth={860}>
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
@@ -877,25 +945,34 @@ function Groups() {
 
   return (
     <div className="animate-in">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h1 className="text-xl font-black">Grupos</h1>
-        <Button onClick={openNew}>+ Nuevo grupo</Button>
-      </div>
-      <SearchBar value={search} onChange={setSearch} placeholder="Buscar grupo..." />
+      <ListPageHeader
+        title="Grupos"
+        count={`${filtered.length}/${groups.length}`}
+        subtitle="Conjuntos de alumnos para asignaciones rápidas y seguimiento."
+        action={<Button onClick={openNew}>+ Nuevo grupo</Button>}
+      />
+      <SearchBar value={search} onChange={setSearch} placeholder="Buscar grupo..." extra={<Badge variant="default">{filtered.length} visibles</Badge>} />
       {filtered.length === 0 ? <Empty icon="👥" title="Sin grupos" subtitle="Los grupos permiten asignar actividades a varios clientes a la vez" /> :
-        <div className="space-y-2">
+        <ListCollection>
+          <div className="space-y-2">
           {filtered.map(g=>(
-            <div key={g.id} className="flex items-center gap-3 p-3 bg-[var(--sf)] border border-[var(--bd)] rounded-[var(--r)]" style={{borderLeft:`4px solid ${g.color}`}}>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-black text-sm flex-shrink-0" style={{background:g.color}}>{g.clients?.length||0}</div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm">{g.name}</p>
-                <p className="text-xs text-[var(--tx3)]">{g.clients?.map(c=>c.childName).join(', ')||'Sin miembros'}</p>
-              </div>
-              <Button size="sm" variant="secondary" onClick={()=>openEdit(g)}>✏️ Editar</Button>
-              <Button size="sm" variant="danger"    onClick={()=>setDelId(g.id)}>🗑</Button>
-            </div>
+            <ListRow
+              key={g.id}
+              accentColor={g.color}
+              avatar={<div className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-black text-white" style={{ background: g.color }}>{g.clients?.length || 0}</div>}
+              title={g.name}
+              subtitle={`${g.clients?.length || 0} miembros`}
+              meta={<p className="text-xs text-[var(--tx3)]">{g.clients?.map(c => c.childName).join(', ') || 'Sin miembros'}</p>}
+              actions={(
+                <>
+                  <Button size="sm" variant="secondary" onClick={() => openEdit(g)}>Editar</Button>
+                  <Button size="sm" variant="danger" onClick={() => setDelId(g.id)}>Eliminar</Button>
+                </>
+              )}
+            />
           ))}
-        </div>
+          </div>
+        </ListCollection>
       }
       <Modal open={modal} onClose={()=>setModal(false)} title={editGrp?'Editar grupo':'Nuevo grupo'} maxWidth={480}>
         <Input label="Nombre del grupo" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="mb-3" />
