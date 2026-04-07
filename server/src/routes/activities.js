@@ -171,7 +171,26 @@ router.delete('/:id', authenticateJWT, async (req, res, next) => {
     const act = await prisma.activity.findUnique({ where: { id: req.params.id } });
     if (!act) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
     if (!canModify(req.user, act)) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
-    await prisma.activity.delete({ where: { id: req.params.id } });
+
+    await prisma.$transaction(async (tx) => {
+      const activityObjects = await tx.activityObject.findMany({
+        where: { activityId: req.params.id },
+        select: { id: true },
+      });
+
+      const activityObjectIds = activityObjects.map((item) => item.id);
+
+      if (activityObjectIds.length > 0) {
+        await tx.gameResult.deleteMany({
+          where: { activityObjectId: { in: activityObjectIds } },
+        });
+      }
+
+      await tx.assignment.deleteMany({ where: { activityId: req.params.id } });
+      await tx.activityObject.deleteMany({ where: { activityId: req.params.id } });
+      await tx.activity.delete({ where: { id: req.params.id } });
+    });
+
     res.json({ success: true, data: { id: req.params.id, deleted: true } });
   } catch (e) { next(e); }
 });

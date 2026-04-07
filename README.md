@@ -16,14 +16,14 @@ Aplicación web fullstack para trabajar la conceptualización del lenguaje en ni
 
 ## Requisitos
 
-- Node.js 22 o superior
-- npm 10 o superior
-- Docker Desktop si vas a usar el flujo con contenedores
-- Cuenta de Cloudinary para subida de imágenes
+*   Node.js 22 o superior
+*   npm 10 o superior
+*   Docker Desktop si vas a usar el flujo con contenedores
+*   Cuenta de Cloudinary para subida de imágenes
 
 ## Estructura
 
-```text
+```
 gigiApp/
 ├── client/                  # SPA React
 ├── server/                  # API Express + Prisma
@@ -38,32 +38,32 @@ El backend usa variables de entorno en `server/.env` y Prisma 7 se configura des
 
 Pasos recomendados:
 
-```bash
+```
 cp server/.env.example server/.env
 ```
 
 Después ajusta al menos:
 
-- `DATABASE_URL`
-- `REDIS_URL`
-- `JWT_SECRET`
-- `CLOUDINARY_CLOUD_NAME`
-- `CLOUDINARY_API_KEY`
-- `CLOUDINARY_API_SECRET`
-- `SMTP_*`
-- `FRONTEND_URL`
+*   `DATABASE_URL`
+*   `REDIS_URL`
+*   `JWT_SECRET`
+*   `CLOUDINARY_CLOUD_NAME`
+*   `CLOUDINARY_API_KEY`
+*   `CLOUDINARY_API_SECRET`
+*   `SMTP_*`
+*   `FRONTEND_URL`
 
 ## Desarrollo local sin Docker
 
 Instala dependencias del workspace:
 
-```bash
+```
 npm install
 ```
 
 Genera cliente Prisma 7, aplica migraciones y carga seed:
 
-```bash
+```
 npm run db:migrate --workspace=server
 npm run db:generate --workspace=server
 npm run db:seed --workspace=server
@@ -71,54 +71,54 @@ npm run db:seed --workspace=server
 
 Arranque en desarrollo:
 
-```bash
+```
 npm run dev
 ```
 
 Servicios esperados:
 
-- Frontend: `http://localhost:5173`
-- API: `http://localhost:3000`
+*   Frontend: `http://localhost:5173`
+*   API: `http://localhost:3000`
 
 ## Desarrollo con Docker
 
 El flujo Docker del repositorio está preparado para:
 
-- persistir PostgreSQL en el volumen `postgres_data`
-- persistir Redis en `redis_data` con AOF habilitado
-- mantener `node_modules` de frontend y backend en volúmenes separados
-- ejecutar frontend y backend sobre imágenes Docker basadas en Node 22
-- regenerar Prisma y aplicar migraciones al arrancar el backend
-- refrescar dependencias dentro de los contenedores cuando cambia `package.json`
+*   persistir PostgreSQL en el volumen `postgres_data`
+*   persistir Redis en `redis_data` con AOF habilitado
+*   mantener `node_modules` de frontend y backend en volúmenes separados
+*   ejecutar frontend y backend sobre imágenes Docker basadas en Node 22
+*   regenerar Prisma y aplicar migraciones al arrancar el backend
+*   refrescar dependencias dentro de los contenedores cuando cambia `package.json`
 
 Levantar todo el stack:
 
-```bash
+```
 docker compose up -d --build postgres redis server client
 ```
 
 Ver logs:
 
-```bash
+```
 docker compose logs -f server
 docker compose logs -f client
 ```
 
 Sembrar datos demo dentro del contenedor del backend:
 
-```bash
+```
 docker compose exec server npm run db:seed
 ```
 
 Parar el stack:
 
-```bash
+```
 docker compose down
 ```
 
 Parar y borrar volúmenes persistidos:
 
-```bash
+```
 docker compose down -v
 ```
 
@@ -128,14 +128,14 @@ El proyecto ya está migrado a Prisma 7.
 
 Puntos importantes:
 
-- La conexión CLI ya no se define en `schema.prisma`, sino en `server/prisma.config.ts`.
-- El runtime usa `@prisma/adapter-pg` y `pg` para crear `PrismaClient`.
-- El seed reutiliza la misma inicialización del cliente Prisma del backend.
-- El backend ejecuta este orden de arranque: `npm install` → `prisma generate` → `prisma migrate deploy` → `nodemon`.
+*   La conexión CLI ya no se define en `schema.prisma`, sino en `server/prisma.config.ts`.
+*   El runtime usa `@prisma/adapter-pg` y `pg` para crear `PrismaClient`.
+*   El seed reutiliza la misma inicialización del cliente Prisma del backend.
+*   El backend ejecuta este orden de arranque: `npm install` → `prisma generate` → `prisma migrate deploy` → `nodemon`.
 
 Comandos útiles del backend:
 
-```bash
+```
 npm run db:generate --workspace=server
 npm run db:migrate --workspace=server
 npm run db:migrate:prod --workspace=server
@@ -148,14 +148,14 @@ npm run db:studio --workspace=server
 
 El seed crea:
 
-- 3 usuarios demo: admin, especialista y cliente
-- 6 paletas de color
-- 4 categorías públicas aprobadas
-- 12 objetos públicos aprobados
-- 1 modelo 3D para `Perro`
-- 1 actividad demo `Animales del campo`
-- 1 asignación activa al cliente demo
-- 1 grupo demo
+*   3 usuarios demo: admin, especialista y cliente
+*   6 paletas de color
+*   4 categorías públicas aprobadas
+*   12 objetos públicos aprobados
+*   1 modelo 3D para `Perro`
+*   1 actividad demo `Animales del campo`
+*   1 asignación activa al cliente demo
+*   1 grupo demo
 
 Credenciales:
 
@@ -169,33 +169,33 @@ Credenciales:
 
 Sobre el stack Docker levantado se verificó correctamente:
 
-- `GET /api/health`
-- login de admin, especialista y cliente
-- apertura de actividades del cliente y arranque de sesión de juego
-- CRUD representativo de grupos, clientes, categorías, objetos y actividades
-- activación y consulta de suscripciones para especialista y cliente
-- sesión de juego y guardado de resultados
-- respuestas `delete` normalizadas en la API
+*   `GET /api/health`
+*   login de admin, especialista y cliente
+*   apertura de actividades del cliente y arranque de sesión de juego
+*   CRUD representativo de grupos, clientes, categorías, objetos y actividades
+*   activación y consulta de suscripciones para especialista y cliente
+*   sesión de juego y guardado de resultados
+*   respuestas `delete` normalizadas en la API
 
 ## Roles del sistema
 
-- Admin: gestión global, aprobaciones, usuarios, suscripciones y contenido público
-- Especialista: gestiona sus clientes, grupos, actividades y objetos
-- Cliente: accede a actividades asignadas y ejecuta el flujo de juego
+*   Admin: gestión global, aprobaciones, usuarios, suscripciones y contenido público
+*   Especialista: gestiona sus clientes, grupos, actividades y objetos
+*   Cliente: accede a actividades asignadas y ejecuta el flujo de juego
 
 ## Flujo pedagógico
 
 Cada objeto se trabaja por niveles:
 
-1. Nivel 1: modelo 3D
-2. Nivel 2: fotografía
-3. Nivel 3: dibujo
+1.  Nivel 1: modelo 3D
+2.  Nivel 2: fotografía
+3.  Nivel 3: dibujo
 
 En los niveles 2 y 3 pueden aparecer ejercicios de mostrar, reconocer, relacionar y memorizar. Al terminar un objeto, el usuario elige cuál continuar cuando quedan más pendientes.
 
 ## Build de frontend
 
-```bash
+```
 npm run build
 ```
 
@@ -205,15 +205,15 @@ El resultado queda en `client/dist`.
 
 ### Docker en Windows
 
-- Si el frontend o el backend parecen ignorar cambios de `package.json`, reinicia los servicios con `docker compose up -d server client`. El `docker-compose.yml` ya fuerza `npm install` al arrancar para resincronizar los volúmenes de `node_modules`.
-- Si quieres reiniciar desde cero dependencias, base de datos y caché, usa `docker compose down -v` y luego `docker compose up -d --build postgres redis server client`.
-- Si Vite no detecta bien cambios de archivos en Windows, el contenedor del cliente ya arranca con `CHOKIDAR_USEPOLLING=true` y `VITE_USE_POLLING=true`.
-- El layout principal colapsa la sidebar antes en anchos intermedios para evitar que listados, modales y editores queden comprimidos dentro de los contenedores.
-- La pantalla de login usa selector visual de rol con precarga de credenciales demo y la vista de cliente muestra estado de carga/error al abrir una actividad.
+*   Si el frontend o el backend parecen ignorar cambios de `package.json`, reinicia los servicios con `docker compose up -d server client`. El `docker-compose.yml` ya fuerza `npm install` al arrancar para resincronizar los volúmenes de `node_modules`.
+*   Si quieres reiniciar desde cero dependencias, base de datos y caché, usa `docker compose down -v` y luego `docker compose up -d --build postgres redis server client`.
+*   Si Vite no detecta bien cambios de archivos en Windows, el contenedor del cliente ya arranca con `CHOKIDAR_USEPOLLING=true` y `VITE_USE_POLLING=true`.
+*   El layout principal colapsa la sidebar antes en anchos intermedios para evitar que listados, modales y editores queden comprimidos dentro de los contenedores.
+*   La pantalla de login usa selector visual de rol con precarga de credenciales demo y la vista de cliente muestra estado de carga/error al abrir una actividad.
 
 ### Prisma 7
 
-- Si `prisma generate` falla con errores sobre `url` en `schema.prisma`, revisa que la conexión esté definida en `server/prisma.config.ts` y no en `server/prisma/schema.prisma`.
-- Si el backend falla al construir `PrismaClient`, comprueba que estén instalados `@prisma/adapter-pg` y `pg`, y que `DATABASE_URL` exista en `server/.env` o en el entorno del contenedor.
-- Si cambias dependencias de Prisma y el contenedor sigue usando una versión antigua, reinicia `server` para refrescar el volumen `server_node_modules`.
-- Prisma 7 puede mostrar una advertencia `EBADENGINE` relacionada con paquetes opcionales de desarrollo bajo Node 20. En esta aplicación no bloquea generación, migraciones ni runtime.
+*   Si `prisma generate` falla con errores sobre `url` en `schema.prisma`, revisa que la conexión esté definida en `server/prisma.config.ts` y no en `server/prisma/schema.prisma`.
+*   Si el backend falla al construir `PrismaClient`, comprueba que estén instalados `@prisma/adapter-pg` y `pg`, y que `DATABASE_URL` exista en `server/.env` o en el entorno del contenedor.
+*   Si cambias dependencias de Prisma y el contenedor sigue usando una versión antigua, reinicia `server` para refrescar el volumen `server_node_modules`.
+*   Prisma 7 puede mostrar una advertencia `EBADENGINE` relacionada con paquetes opcionales de desarrollo bajo Node 20. En esta aplicación no bloquea generación, migraciones ni runtime.

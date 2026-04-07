@@ -70,12 +70,12 @@ function MediaDisplay({ step, levelId }) {
 function ShowExercise({ step, levelId, speak, onNext }) {
   return (
     <div className="gbox animate-in">
-      <div className="rounded-full bg-[var(--acb)] px-3 py-1 text-xs font-bold text-[var(--act)]">
+      <div className="rounded-full bg-[var(--acb)] px-3.5 py-3 text-xs font-bold text-[var(--act)]">
         {LEVEL_META[levelId].icon} {LEVEL_META[levelId].sub}
       </div>
       <MediaDisplay step={step} levelId={levelId} />
       <div className="gname" onMouseEnter={() => speak(step.object_name)}>{step.object_name}</div>
-      <div className="rounded-[var(--r)] bg-[var(--bg2)] px-3 py-2 text-center text-sm text-[var(--tx2)]">
+      <div className="rounded-[var(--r)] bg-[var(--bg2)] px-4 py-3 text-center text-sm text-[var(--tx2)]">
         {levelId === 'l1' && 'Explora el objeto en 3D con el alumno.'}
         {levelId === 'l2' && 'Observa la fotografía real del objeto.'}
         {levelId === 'l3' && 'Fíjate en cómo el dibujo representa el objeto.'}
@@ -294,7 +294,7 @@ function FeedbackPanel({ feedback, currentStep, remainingSteps, onPick, onComple
               {remainingSteps.map(step => (
                 <button
                   key={step.object_id}
-                  className="rounded-[var(--r)] border-2 border-[var(--bd)] bg-[var(--sf)] px-3 py-3 transition-colors hover:border-[var(--ac)] hover:bg-[var(--acb)]"
+                  className="rounded-[var(--r)] border-2 border-[var(--bd)] bg-[var(--sf)] px-4 py-4 transition-colors hover:border-[var(--ac)] hover:bg-[var(--acb)]"
                   onClick={() => onPick(step.object_id)}
                 >
                   <div className="text-3xl">{step.object_emoji}</div>
@@ -350,6 +350,10 @@ export default function GameEngine({ session, onResult, onBack, onComplete }) {
   const remainingChoices = steps.filter(step => remIds.includes(step.object_id) && step.object_id !== currentObjectId);
   const totalExercises = steps.length * LEVEL_ORDER.reduce((count, levelId) => count + getLevelExercises(levelId).length, 0);
   const progress = totalExercises ? Math.round((doneKeys.size / totalExercises) * 100) : 0;
+  const isObjectComplete = (objectId) => LEVEL_ORDER.every((levelId) =>
+    getLevelExercises(levelId).every((exercise) => doneKeys.has(`${objectId}_${levelId}_${exercise.id}`))
+  );
+  const currentStepPosition = steps.findIndex((step) => step.object_id === currentObjectId) + 1;
 
   useEffect(() => {
     if (currentStep) {
@@ -431,16 +435,37 @@ export default function GameEngine({ session, onResult, onBack, onComplete }) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl animate-in">
-      <div className="mb-4 flex items-center gap-3">
+    <div className="gwrap animate-in">
+      <div className="ghdr">
         <button onClick={onBack} className="text-sm font-bold text-[var(--tx2)] hover:text-[var(--tx)]">← Volver</button>
-        <div className="flex-1">
-          <p className="mb-1 text-xs font-bold text-[var(--tx3)]">{session.activity.title}</p>
-          <div className="h-1.5 overflow-hidden rounded-full bg-[var(--bg3)]">
-            <div className="h-full rounded-full bg-[var(--ac)] transition-all" style={{ width: `${progress}%` }} />
+        <div className="flex-1 min-w-0">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-[var(--tx3)]">
+            <p className="truncate">{session.activity.title}</p>
+            <span>Objeto {currentStepPosition} de {steps.length}</span>
+          </div>
+          <div className="gprog">
+            <div className="gpf" style={{ width: `${progress}%` }} />
           </div>
         </div>
         <span className="text-xs font-bold text-[var(--tx2)]">{progress}%</span>
+      </div>
+
+      <div className="gstrip">
+        {steps.map((step) => {
+          const isCurrent = step.object_id === currentObjectId;
+          const isDone = isObjectComplete(step.object_id) || ((feedback === 'objdone' || feedback === 'done') && step.object_id === currentObjectId);
+
+          return (
+            <div
+              key={step.object_id}
+              className={`ochip ${isCurrent ? 'on' : ''} ${isDone ? 'done' : ''}`}
+              title={step.object_name}
+              aria-label={step.object_name}
+            >
+              <span>{step.object_emoji}</span>
+            </div>
+          );
+        })}
       </div>
 
       <div className="mb-4 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">

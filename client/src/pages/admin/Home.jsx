@@ -17,19 +17,19 @@ function getApiErrorMessage(error, fallback) {
 
 function DashboardMetricCard({ value, label }) {
   return (
-    <div className="rounded-[20px] border border-[var(--bd)] bg-[var(--sf)] px-5 py-4">
-      <p className="text-[2.25rem] font-black leading-none text-[var(--ac)]">{value ?? '0'}</p>
-      <p className="mt-2 text-[.7rem] font-black uppercase tracking-[0.08em] text-[var(--tx2)]">{label}</p>
+    <div className="min-h-[88px] rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-[15px] py-3">
+      <p className="text-[1.8rem] font-black leading-none text-[var(--ac)]">{value ?? '0'}</p>
+      <p className="mt-1 text-[.65rem] font-bold uppercase tracking-[0.05em] text-[var(--tx3)]">{label}</p>
     </div>
   );
 }
 
 function DashboardPanel({ icon, title, children, className = '' }) {
   return (
-    <Card className={`rounded-[24px] px-5 py-5 shadow-soft ${className}`}>
-      <div className="mb-4 flex items-center gap-3">
-        <span className="text-xl">{icon}</span>
-        <h2 className="text-[1.05rem] font-black">{title}</h2>
+    <Card className={`${className}`}>
+      <div className="mb-3 flex items-center gap-2.5">
+        <span className="text-lg">{icon}</span>
+        <h2 className="text-base font-black">{title}</h2>
       </div>
       {children}
     </Card>
@@ -51,14 +51,14 @@ function ListPageHeader({ title, count, subtitle, action }) {
   );
 }
 
-function ListCollection({ children }) {
-  return <Card className="rounded-[24px] px-3 py-3 shadow-soft">{children}</Card>;
+function ListCollection({ children, className = '' }) {
+  return <Card className={className}>{children}</Card>;
 }
 
-function ListRow({ avatar, title, subtitle, meta, badges, actions, accentColor }) {
+function ListRow({ avatar, title, subtitle, meta, badges, actions, accentColor, className = '' }) {
   return (
     <div
-      className="flex flex-col gap-3 rounded-[20px] border border-[var(--bd)] bg-[var(--sf)] px-4 py-3 sm:flex-row sm:items-center"
+      className={`flex flex-col gap-2.5 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-[14px] py-[11px] sm:flex-row sm:items-center ${className}`}
       style={accentColor ? { borderLeft: `4px solid ${accentColor}` } : undefined}
     >
       {avatar && <div className="flex-shrink-0">{avatar}</div>}
@@ -70,7 +70,7 @@ function ListRow({ avatar, title, subtitle, meta, badges, actions, accentColor }
         {subtitle && <p className="mt-0.5 text-xs text-[var(--tx2)]">{subtitle}</p>}
         {meta && <div className="mt-1">{meta}</div>}
       </div>
-      {actions && <div className="flex flex-wrap items-center justify-end gap-2 sm:ml-auto">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center justify-end gap-2.5 sm:ml-auto">{actions}</div>}
     </div>
   );
 }
@@ -196,7 +196,7 @@ function Dashboard() {
           ) : (
             <div className="space-y-2">
               {expiringEntries.map(item => (
-                <div key={`${item.kind}-${item.id}`} className="flex items-center justify-between gap-3 rounded-[var(--r)] border border-[var(--bd)] px-3 py-2">
+                <div key={`${item.kind}-${item.id}`} className="flex items-center justify-between gap-3 rounded-[var(--r)] border border-[var(--bd)] px-4 py-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold">{item.name}</p>
                     <p className="text-xs text-[var(--tx3)]">{item.kind} · vence {item.expires}</p>
@@ -216,7 +216,7 @@ function Dashboard() {
               ['Gracia 15d', subCounts.grace || 0, 'amber'],
               ['Caducada', subCounts.expired || 0, 'red'],
             ].map(([label, value, variant]) => (
-              <div key={label} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+              <div key={label} className="flex items-center justify-between gap-3 py-3.5 first:pt-0 last:pb-0">
                 <Badge variant={variant}>{label}</Badge>
                 <span className="text-2xl font-black text-[var(--tx)]">{value}</span>
               </div>
@@ -229,7 +229,7 @@ function Dashboard() {
         {allPending.length === 0
           ? <p className="text-sm text-[var(--tx3)]">Sin pendientes ✓</p>
           : allPending.map(x => (
-            <div key={x.id} className="flex items-center gap-3 py-2 border-b border-[var(--bg3)] last:border-0">
+            <div key={x.id} className="flex items-center gap-3 border-b border-[var(--bg3)] px-3 py-3 last:border-0">
               <Badge variant="gold">{x._type === 'object' ? '📦 Objeto' : '🗂 Categoría'}</Badge>
               <span className="flex-1 font-bold text-sm">{x.name}</span>
               <span className="text-xs text-[var(--tx3)]">por {x.owner?.name}</span>
@@ -314,7 +314,7 @@ function Specialists() {
         subtitle="Gestión de profesionales, estado de acceso y suscripción."
         action={<Button onClick={openNew}>+ Nuevo</Button>}
       />
-      <SearchBar value={search} onChange={setSearch} placeholder="Buscar especialista..." extra={<Badge variant="default">{filtered.length} visibles</Badge>} />
+      <SearchBar value={search} onChange={setSearch} placeholder="🔍 Buscar especialista..." extra={<Badge variant="default">{filtered.length} visibles</Badge>} />
       {filtered.length === 0 ? <Empty icon="🧑‍⚕️" title="Sin especialistas" /> :
         <ListCollection>
           <div className="space-y-2">
@@ -464,7 +464,7 @@ function Clients() {
         {client.groups.map(group => (
           <span
             key={group.id}
-            className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold"
+            className="clients-group-chip inline-flex items-center rounded-full border text-[11px] font-bold"
             style={{
               borderColor: group.color,
               backgroundColor: `${group.color}1A`,
@@ -486,26 +486,34 @@ function Clients() {
         title="Todos los clientes"
         count={`${filtered.length}/${clients.length}`}
         subtitle="Vista operativa de alumnos, tutores, especialista responsable y grupos."
-        action={<Button onClick={openNew}>+ Nuevo</Button>}
+        action={<Button className="clients-action-btn" onClick={openNew}>+ Nuevo</Button>}
       />
-      <SearchBar value={search} onChange={setSearch} placeholder="Buscar alumno o tutor..." extra={<Badge variant="default">{filtered.length} visibles</Badge>} />
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="🔍 Buscar alumno o tutor..."
+        fieldClassName="clients-search-field"
+        inputClassName="clients-search-input"
+        extra={<Badge variant="default">{filtered.length} visibles</Badge>}
+      />
       {filtered.length === 0 ? <Empty icon="👶" title="Sin clientes" /> :
-        <ListCollection>
+        <ListCollection className="clients-list-shell">
           <div className="space-y-2">
           {filtered.map(c => {
             const spec = specs.find(s => s.id === c.specialistId);
             return (
               <ListRow
                 key={c.id}
+                className="clients-list-row"
                 avatar={<div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">{(c.childName || '?').slice(0, 2).toUpperCase()}</div>}
                 title={c.childName}
                 subtitle={`${c.user?.name || 'Sin tutor'} · Esp: ${spec?.user?.name || '—'}`}
                 meta={renderClientGroups(c)}
-                badges={<span className="cursor-pointer" onClick={() => setSub({ entity: c, type: 'client' })}><SubBadge sub={c.subscription} /></span>}
+                badges={<span className="cursor-pointer" onClick={() => setSub({ entity: c, type: 'client' })}><SubBadge sub={c.subscription} className="clients-item-badge" /></span>}
                 actions={(
                   <>
-                    <Button size="sm" variant="secondary" onClick={() => openEdit(c)}>Editar</Button>
-                    <Button size="sm" variant="danger" onClick={() => setDelId(c.id)}>Eliminar</Button>
+                    <Button size="sm" variant="secondary" className="clients-action-btn" onClick={() => openEdit(c)}>Editar</Button>
+                    <Button size="sm" variant="danger" className="clients-action-btn" onClick={() => setDelId(c.id)}>Eliminar</Button>
                   </>
                 )}
               />
@@ -571,6 +579,9 @@ function Activities() {
   const [specs,   setSpecs]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [search,  setSearch]  = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [clientFilter, setClientFilter] = useState('all');
+  const [specialistFilter, setSpecialistFilter] = useState('all');
   const [modal,   setModal]   = useState(false);
   const [editAct, setEditAct] = useState(null);
   const [delId,   setDelId]   = useState(null);
@@ -661,6 +672,15 @@ function Activities() {
     });
   }, [clients, groups, form.specialist_id]);
 
+  useEffect(() => {
+    if (specialistFilter === 'all') return;
+    if (clientFilter === 'all') return;
+    const client = clients.find(item => item.id === clientFilter);
+    if (client?.specialistId !== specialistFilter) {
+      setClientFilter('all');
+    }
+  }, [clients, specialistFilter, clientFilter]);
+
   const openNew = () => {
     setEditAct(null);
     setForm({ title:'', specialist_id:'', selObjs:[], assignMode:'all', selClients:[], selGroups:[] });
@@ -739,7 +759,18 @@ function Activities() {
     }
   };
 
-  const filtered = acts.filter(a => !search || a.title.toLowerCase().includes(search.toLowerCase()));
+  const normalizedSearch = search.trim().toLowerCase();
+  const clientOptions = clients.filter(client => specialistFilter === 'all' || client.specialistId === specialistFilter);
+  const filtered = acts.filter((activity) => {
+    const matchesSearch = !normalizedSearch || activity.title.toLowerCase().includes(normalizedSearch);
+    const matchesSpecialist = specialistFilter === 'all' || activity.specialistId === specialistFilter;
+    const relevantAssignments = (activity.assignments || []).filter((assignment) => clientFilter === 'all' || assignment.clientId === clientFilter);
+    const matchesClient = clientFilter === 'all' || relevantAssignments.length > 0;
+    const matchesStatus = statusFilter === 'all'
+      || (statusFilter === 'pending' && relevantAssignments.some((assignment) => !assignment.completedAt))
+      || (statusFilter === 'completed' && relevantAssignments.some((assignment) => Boolean(assignment.completedAt)));
+    return matchesSearch && matchesSpecialist && matchesClient && matchesStatus;
+  });
   const cats = [...new Set(objects.map(object => object.category?.name || 'Sin categoría'))];
   const visibleObjects = objects.filter(object => cat === 'Todos' || object.category?.name === cat);
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
@@ -750,23 +781,48 @@ function Activities() {
         title="Todas las actividades"
         count={`${filtered.length}/${acts.length}`}
         subtitle="Actividades creadas, objetos incluidos y destino actual de asignación."
-        action={<Button onClick={openNew}>+ Nueva</Button>}
+        action={<Button className="entity-action-btn" onClick={openNew}>+ Nueva</Button>}
       />
-      <SearchBar value={search} onChange={setSearch} placeholder="Buscar actividad..." extra={<Badge variant="default">{filtered.length} visibles</Badge>} />
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="🔍 Buscar actividad por nombre..."
+        fieldClassName="entity-search-field"
+        inputClassName="entity-search-input"
+        extra={(
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="!w-auto text-sm">
+              <option value="all">Todas</option>
+              <option value="pending">Pendientes</option>
+              <option value="completed">Completadas</option>
+            </Select>
+            <Select value={specialistFilter} onChange={e => setSpecialistFilter(e.target.value)} className="!w-auto text-sm">
+              <option value="all">Todos los especialistas</option>
+              {specs.map(spec => <option key={spec.id} value={spec.id}>{spec.user?.name || 'Sin nombre'}</option>)}
+            </Select>
+            <Select value={clientFilter} onChange={e => setClientFilter(e.target.value)} className="!w-auto text-sm">
+              <option value="all">Todos los clientes</option>
+              {clientOptions.map(client => <option key={client.id} value={client.id}>{client.childName}</option>)}
+            </Select>
+            <Badge variant="default">{filtered.length} visibles</Badge>
+          </div>
+        )}
+      />
       {filtered.length === 0 ? <Empty icon="📋" title="Sin actividades" /> :
-        <ListCollection>
+        <ListCollection className="entity-list-shell">
           <div className="space-y-2">
           {filtered.map(a => (
             <ListRow
               key={a.id}
+              className="entity-list-row"
               avatar={<div className="flex min-h-11 min-w-11 items-center justify-center rounded-[16px] bg-[var(--bg2)] px-2 text-lg">{a.activityObjects?.slice(0, 4).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div>}
               title={a.title}
               subtitle={`${a.activityObjects?.length || 0} objetos · ${getAssignmentSummary(a)}`}
               meta={<p className="text-[11px] text-[var(--tx3)]">{getAssignmentDetail(a)}</p>}
               actions={(
                 <>
-                  <Button size="sm" variant="secondary" onClick={() => openEdit(a)}>Editar</Button>
-                  <Button size="sm" variant="danger" onClick={() => setDelId(a.id)}>Eliminar</Button>
+                  <Button size="sm" variant="secondary" className="entity-action-btn" onClick={() => openEdit(a)}>Editar</Button>
+                  <Button size="sm" variant="danger" className="entity-action-btn" onClick={() => setDelId(a.id)}>Eliminar</Button>
                 </>
               )}
             />
@@ -786,7 +842,7 @@ function Activities() {
         <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tx3)]">Objetos</div>
         <div className="flex gap-1.5 flex-wrap mb-2">
           {['Todos', ...cats].map(category => (
-            <button key={category} onClick={() => setCat(category)} className={`px-2 py-0.5 rounded text-xs font-bold border ${cat === category ? 'bg-[var(--ac)] text-white border-[var(--ac)]' : 'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>
+            <button key={category} onClick={() => setCat(category)} className={`px-3 py-2 rounded text-xs font-bold border ${cat === category ? 'bg-[var(--ac)] text-white border-[var(--ac)]' : 'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>
               {category}
             </button>
           ))}
@@ -801,7 +857,7 @@ function Activities() {
                   ? current.selObjs.filter(id => id !== object.id)
                   : [...current.selObjs, object.id],
               }))}
-              className={`flex flex-col items-center gap-1 p-2 border-2 rounded-lg cursor-pointer transition-all text-center ${form.selObjs.includes(object.id) ? 'border-[var(--ac)] bg-[var(--acb)]' : 'border-[var(--bd)] hover:border-[var(--ac)]'}`}
+              className={`flex flex-col items-center gap-1.5 px-3 py-3 border-2 rounded-lg cursor-pointer transition-all text-center ${form.selObjs.includes(object.id) ? 'border-[var(--ac)] bg-[var(--acb)]' : 'border-[var(--bd)] hover:border-[var(--ac)]'}`}
             >
               <span className="text-xl">{object.em}</span>
               <span className="text-[.65rem] font-bold text-[var(--tx2)] leading-tight">{object.name}</span>
@@ -814,7 +870,7 @@ function Activities() {
             <div
               key={mode}
               onClick={() => setForm({ ...form, assignMode: mode })}
-              className={`p-2 border-2 rounded-[var(--r)] cursor-pointer text-center text-xs font-bold ${form.assignMode === mode ? 'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}
+              className={`px-3 py-3 border-2 rounded-[var(--r)] cursor-pointer text-center text-xs font-bold ${form.assignMode === mode ? 'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}
             >
               <div className="text-lg">{icon}</div>{label}
             </div>
@@ -824,7 +880,7 @@ function Activities() {
         {form.assignMode === 'clients' && (
           <div className="border border-[var(--bd)] rounded-[var(--r)] max-h-40 overflow-y-auto mb-3">
             {visibleClients.map(client => (
-              <label key={client.id} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-[var(--acb)] border-b border-[var(--bd)] last:border-0">
+              <label key={client.id} className="flex items-center gap-3 px-3 py-3 cursor-pointer hover:bg-[var(--acb)] border-b border-[var(--bd)] last:border-0">
                 <input type="checkbox" checked={form.selClients.includes(client.id)} onChange={() => setForm(current => ({ ...current, selClients: current.selClients.includes(client.id) ? current.selClients.filter(id => id !== client.id) : [...current.selClients, client.id] }))} />
                 <span className="text-sm font-bold">{client.childName}</span>
                 <span className="text-xs text-[var(--tx3)]">{client.user?.name}</span>
@@ -839,7 +895,7 @@ function Activities() {
               <div
                 key={group.id}
                 onClick={() => setForm(current => ({ ...current, selGroups: current.selGroups.includes(group.id) ? current.selGroups.filter(id => id !== group.id) : [...current.selGroups, group.id] }))}
-                className={`px-3 py-1.5 rounded-full border-2 cursor-pointer text-xs font-bold ${form.selGroups.includes(group.id) ? 'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}
+                className={`px-4 py-3 rounded-full border-2 cursor-pointer text-xs font-bold ${form.selGroups.includes(group.id) ? 'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}
               >
                 {group.name} ({group.clients?.length || 0})
               </div>
@@ -1049,9 +1105,11 @@ function Objects() {
     <div className="animate-in">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="text-xl font-black">Objetos públicos</h1>
-        <Button onClick={openNew}>+ Nuevo</Button>
+        <Button className="entity-action-btn" onClick={openNew}>+ Nuevo</Button>
       </div>
-      <SearchBar value={search} onChange={setSearch} placeholder="Buscar objeto..."
+      <SearchBar value={search} onChange={setSearch} placeholder="🔍 Buscar objeto..."
+        fieldClassName="entity-search-field"
+        inputClassName="entity-search-input"
         extra={
           <Select value={catF} onChange={e => setCatF(e.target.value)} className="!w-auto text-sm">
             <option>Todos</option>
@@ -1060,7 +1118,8 @@ function Objects() {
         }
       />
       {filtered.length === 0 ? <Empty icon="📦" title="Sin objetos" /> :
-        <div className="space-y-2">
+        <ListCollection className="entity-list-shell">
+          <div className="space-y-2">
           {filtered.map(o => {
             const reps = o.representations || [];
             const has3d = reps.some(rep => rep.level === 'model_3d');
@@ -1069,19 +1128,19 @@ function Objects() {
 
             return (
               <div key={o.id} className={`bg-[var(--sf)] border-2 rounded-[var(--rl)] overflow-hidden transition-colors ${expanded === o.id ? 'border-[var(--ac)]' : 'border-[var(--bd)]'}`}>
-                <div className="flex flex-wrap items-center gap-2 md:gap-3 p-4 cursor-pointer" onClick={() => setExpanded(expanded === o.id ? null : o.id)}>
+                <div className="entity-list-row flex flex-wrap items-center gap-2 md:gap-3 cursor-pointer" onClick={() => setExpanded(expanded === o.id ? null : o.id)}>
                   <span className="text-2xl">{o.em}</span>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-sm">{o.name}</p>
                     <p className="text-xs text-[var(--tx3)]">{o.category?.name}</p>
                   </div>
-                  <Badge variant={has3d ? 'green' : 'amber'}>🧊 {has3d ? '✓' : '✗'}</Badge>
-                  <Badge variant={hasPhoto ? 'green' : 'amber'}>📷 {hasPhoto ? '✓' : '✗'}</Badge>
-                  <Badge variant={hasDrawing ? 'green' : 'amber'}>✏️ {hasDrawing ? '✓' : '✗'}</Badge>
-                  <Badge variant={o.ownerId ? 'default' : 'green'}>{o.ownerId ? 'Privado' : 'Público'}</Badge>
-                  <Badge variant={o.status === 'approved' ? 'green' : o.status === 'pending' ? 'amber' : 'default'}>{o.status}</Badge>
-                  <Button size="sm" variant="secondary" onClick={(event) => { event.stopPropagation(); openEdit(o); }}>✏️</Button>
-                  <Button size="sm" variant="danger" onClick={(event) => { event.stopPropagation(); setDelId(o.id); }}>🗑</Button>
+                  <Badge className="entity-item-badge" variant={has3d ? 'green' : 'amber'}>🧊 {has3d ? '✓' : '✗'}</Badge>
+                  <Badge className="entity-item-badge" variant={hasPhoto ? 'green' : 'amber'}>📷 {hasPhoto ? '✓' : '✗'}</Badge>
+                  <Badge className="entity-item-badge" variant={hasDrawing ? 'green' : 'amber'}>✏️ {hasDrawing ? '✓' : '✗'}</Badge>
+                  <Badge className="entity-item-badge" variant={o.ownerId ? 'default' : 'green'}>{o.ownerId ? 'Privado' : 'Público'}</Badge>
+                  <Badge className="entity-item-badge" variant={o.status === 'approved' ? 'green' : o.status === 'pending' ? 'amber' : 'default'}>{o.status}</Badge>
+                  <Button size="sm" variant="secondary" className="entity-action-btn" onClick={(event) => { event.stopPropagation(); openEdit(o); }}>✏️</Button>
+                  <Button size="sm" variant="danger" className="entity-action-btn" onClick={(event) => { event.stopPropagation(); setDelId(o.id); }}>🗑</Button>
                 </div>
                 {expanded === o.id && (
                   <div className="border-t border-[var(--bd)] p-4 grid gap-4 xl:grid-cols-3">
@@ -1141,7 +1200,8 @@ function Objects() {
               </div>
             );
           })}
-        </div>
+          </div>
+        </ListCollection>
       }
       <Modal open={modal} onClose={closeModal} title={editObj ? 'Editar objeto' : 'Nuevo objeto (público)'} maxWidth={860}>
         <div className="space-y-3">
@@ -1278,24 +1338,25 @@ function Groups() {
         title="Grupos"
         count={`${filtered.length}/${groups.length}`}
         subtitle="Agrupaciones operativas para asignar actividades a varios alumnos."
-        action={<Button onClick={openNew}>+ Nuevo grupo</Button>}
+        action={<Button className="entity-action-btn" onClick={openNew}>+ Nuevo grupo</Button>}
       />
-      <SearchBar value={search} onChange={setSearch} placeholder="Buscar grupo..." extra={<Badge variant="default">{filtered.length} visibles</Badge>} />
+      <SearchBar value={search} onChange={setSearch} placeholder="🔍 Buscar grupo..." fieldClassName="entity-search-field" inputClassName="entity-search-input" extra={<Badge className="entity-item-badge" variant="default">{filtered.length} visibles</Badge>} />
       {filtered.length === 0 ? <Empty icon="👥" title="Sin grupos" /> :
-        <ListCollection>
+        <ListCollection className="entity-list-shell">
           <div className="space-y-2">
           {filtered.map(g => (
             <ListRow
               key={g.id}
+              className="entity-list-row"
               accentColor={g.color}
-              avatar={<div className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-black text-white" style={{ background: g.color }}>{g.clients?.length || 0}</div>}
+              avatar={<div className="flex p-[11px] h-11 w-11 items-center justify-center rounded-full text-sm font-black text-white" style={{ background: g.color }}>{g.clients?.length || 0}</div>}
               title={g.name}
               subtitle={`${g.clients?.length || 0} miembros`}
               meta={<p className="text-xs text-[var(--tx3)]">{g.clients?.map(c => c.childName).join(', ') || 'Sin miembros'}</p>}
               actions={(
                 <>
-                  <Button size="sm" variant="secondary" onClick={() => openEdit(g)}>Editar</Button>
-                  <Button size="sm" variant="danger" onClick={() => setDelId(g.id)}>Eliminar</Button>
+                  <Button size="sm" variant="secondary" className="entity-action-btn" onClick={() => openEdit(g)}>Editar</Button>
+                  <Button size="sm" variant="danger" className="entity-action-btn" onClick={() => setDelId(g.id)}>Eliminar</Button>
                 </>
               )}
             />
@@ -1327,7 +1388,7 @@ function Groups() {
             <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)] mb-2">Miembros</p>
             <div className="border border-[var(--bd)] rounded-[var(--r)] max-h-36 overflow-y-auto">
               {selectableClients.map(c => (
-                <label key={c.id} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-[var(--acb)] border-b border-[var(--bd)] last:border-0">
+                <label key={c.id} className="flex items-center gap-3 px-3 py-3 cursor-pointer hover:bg-[var(--acb)] border-b border-[var(--bd)] last:border-0">
                   <input type="checkbox" checked={form.client_ids.includes(c.id)} onChange={() => setForm(f => ({ ...f, client_ids: f.client_ids.includes(c.id) ? f.client_ids.filter(x => x !== c.id) : [...f.client_ids, c.id] }))} />
                   <span className="text-sm font-bold">{c.childName}</span>
                 </label>
@@ -1395,7 +1456,7 @@ function Subscriptions() {
   return (
     <div className="animate-in">
       <h1 className="text-xl font-black mb-4">Gestión de suscripciones</h1>
-      <SearchBar value={search} onChange={setSearch} placeholder="Buscar..."
+      <SearchBar value={search} onChange={setSearch} placeholder="🔍 Buscar..."
         extra={
           <Select value={filter} onChange={e => setFilter(e.target.value)} className="!w-auto text-sm">
             <option value="all">Todos</option>

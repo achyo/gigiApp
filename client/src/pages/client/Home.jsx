@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import useAuthStore from '../../stores/authStore';
 import { assignmentsApi, gameApi } from '../../api';
-import { Spinner, Badge, Button, Empty, Notice } from '../../components/ui';
+import { Spinner, Badge, Button, Empty, Notice, SearchBar, Select } from '../../components/ui';
 import GameEngine from '../../components/game/GameEngine';
 
 export default function ClientHome() {
   // 🔧 CORREGIDO: vista de cliente adaptada a las tarjetas y estados del mockup.
   const { user } = useAuthStore();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [assignments, setAssignments] = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [session,     setSession]     = useState(null); // { assignmentId, gameData }
   const [startingId,  setStartingId]  = useState(null);
   const [startError,  setStartError]  = useState('');
+  const [search,      setSearch]      = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const playAssignmentId = searchParams.get('play');
 
   useEffect(() => {
     if (!user) return;
@@ -21,17 +26,45 @@ export default function ClientHome() {
       .finally(() => setLoading(false));
   }, [user]);
 
-  const startActivity = async (assignmentId) => {
-    setStartingId(assignmentId);
-    setStartError('');
-    try {
-      const r = await gameApi.session(assignmentId);
-      setSession({ assignmentId, gameData: r.data.data });
-    } catch(e) {
-      setStartError('No se pudo abrir la actividad. Recarga la página e inténtalo de nuevo.');
-    } finally {
+  useEffect(() => {
+    if (!user || !playAssignmentId) {
+      setSession(null);
       setStartingId(null);
+      return;
     }
+
+    let cancelled = false;
+
+    const loadSession = async () => {
+      setStartingId(playAssignmentId);
+      setStartError('');
+      try {
+        const r = await gameApi.session(playAssignmentId);
+        if (!cancelled) {
+          setSession({ assignmentId: playAssignmentId, gameData: r.data.data });
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setSession(null);
+          setStartError('No se pudo abrir la actividad. Recarga la página e inténtalo de nuevo.');
+          setSearchParams({}, { replace: true });
+        }
+      } finally {
+        if (!cancelled) {
+          setStartingId(null);
+        }
+      }
+    };
+
+    loadSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, playAssignmentId, setSearchParams]);
+
+  const startActivity = (assignmentId) => {
+    setSearchParams({ play: assignmentId });
   };
 
   const handleResult = (result) => {
@@ -42,18 +75,27 @@ export default function ClientHome() {
     <GameEngine
       session={session.gameData}
       onResult={handleResult}
-      onBack={() => setSession(null)}
+      onBack={() => setSearchParams({}, { replace: true })}
       onComplete={() => {
         assignmentsApi.complete(session.assignmentId).catch(console.error);
-        setSession(null);
+        setSearchParams({}, { replace: true });
       }}
     />
   );
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size={36} /></div>;
 
-  const active   = assignments.filter(a => !a.completedAt);
-  const done     = assignments.filter(a =>  a.completedAt);
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredAssignments = assignments.filter((assignment) => {
+    const matchesSearch = !normalizedSearch || assignment.activity?.title?.toLowerCase().includes(normalizedSearch);
+    const isCompleted = Boolean(assignment.completedAt);
+    const matchesStatus = statusFilter === 'all'
+      || (statusFilter === 'pending' && !isCompleted)
+      || (statusFilter === 'completed' && isCompleted);
+    return matchesSearch && matchesStatus;
+  });
+  const active   = filteredAssignments.filter(a => !a.completedAt);
+  const done     = filteredAssignments.filter(a =>  a.completedAt);
 
   return (
     <div className="mx-auto max-w-4xl animate-in">
@@ -67,19 +109,41 @@ export default function ClientHome() {
 
       {startError && <Notice variant="error" className="mb-4">{startError}</Notice>}
 
-      {active.length === 0 && done.length === 0 && (
-        <Empty icon="📋" title="Sin actividades" subtitle="Tu especialista aún no te ha asignado ninguna actividad" />
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="🔍 Buscar actividad por nombre..."
+        extra={(
+          <div className="flex items-center gap-2">
+            <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="!w-auto text-sm">
+              <option value="all">Todas</option>
+              <option value="pending">Pendientes</option>
+              <option value="completed">Completadas</option>
+            </Select>
+            <Badge variant="default">{filteredAssignments.length} visibles</Badge>
+          </div>
+        )}
+      />
+
+      {filteredAssignments.length === 0 && (
+        <Empty
+          icon="📋"
+          title="Sin actividades"
+          subtitle={assignments.length === 0 ? 'Tu especialista aún no te ha asignado ninguna actividad' : 'No hay actividades que coincidan con los filtros actuales'}
+        />
       )}
 
-      <div className="cgrid">
-        {active.map(a => <ActivityCard key={a.id} assignment={a} onStart={startActivity} starting={startingId === a.id} />)}
-      </div>
+      {active.length > 0 && (
+        <div className="cgrid">
+          {active.map(a => <ActivityCard key={a.id} assignment={a} onStart={startActivity} starting={startingId === a.id} />)}
+        </div>
+      )}
 
       {done.length > 0 && (
         <>
           <h2 className="mt-8 mb-3 text-base font-bold text-[var(--tx2)]">Completadas</h2>
           <div className="cgrid opacity-70">
-            {done.map(a => <ActivityCard key={a.id} assignment={a} onStart={startActivity} done />)}
+            {done.map(a => <ActivityCard key={a.id} assignment={a} onStart={startActivity} done starting={startingId === a.id} />)}
           </div>
         </>
       )}
@@ -92,17 +156,16 @@ function ActivityCard({ assignment, onStart, done, starting }) {
   const objs = act?.activityObjects || [];
 
   const handleStart = () => {
-    if (!done && !starting) onStart(assignment.id);
+    if (!starting) onStart(assignment.id);
   };
 
   return (
     <div
       className="ac-card"
-      role={done ? undefined : 'button'}
-      tabIndex={done ? -1 : 0}
+      role="button"
+      tabIndex={0}
       onClick={handleStart}
       onKeyDown={(event) => {
-        if (done) return;
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           handleStart();
@@ -119,11 +182,18 @@ function ActivityCard({ assignment, onStart, done, starting }) {
           : <Badge variant="blue">▶ En curso</Badge>
         }
       </div>
-      {!done && (
-        <Button className="w-full justify-center mt-3" size="lg" type="button" onClick={handleStart} disabled={starting}>
-          {starting ? 'Cargando…' : '▶ Empezar'}
-        </Button>
-      )}
+      <Button
+        className="w-full justify-center mt-3"
+        size="lg"
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          handleStart();
+        }}
+        disabled={starting}
+      >
+        {starting ? 'Cargando…' : done ? '↻ Repetir' : '▶ Empezar'}
+      </Button>
     </div>
   );
 }

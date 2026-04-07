@@ -3,7 +3,7 @@ import React from 'react';
 /* ── Button ──────────────────────────────────────────────────────────────── */
 export function Button({ variant = 'primary', size = 'md', className = '', children, ...props }) {
   const base = 'inline-flex items-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap';
-  const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2.5 text-sm', lg: 'px-5 py-3 text-base' };
+  const sizes = { sm: 'px-2.5 py-1 text-[0.8em]', md: 'px-[15px] py-2 text-[.88em]', lg: 'px-[15px] py-2 text-[.88em]' };
   const variants = {
     primary: 'bg-[var(--ac)] text-white border-[var(--ac)] hover:brightness-110',
     secondary: 'bg-[var(--sf)] text-[var(--tx)] border-[var(--bd)] hover:bg-[var(--bg2)]',
@@ -52,7 +52,7 @@ export function Notice({ variant = 'info', children, className = '' }) {
 /* ── Card ────────────────────────────────────────────────────────────────── */
 export function Card({ children, className = '', ...props }) {
   return (
-    <div className={`bg-[var(--sf)] border border-[var(--bd)] rounded-[var(--rl)] p-4 ${className}`} {...props}>
+    <div className={`bg-[var(--sf)] border border-[var(--bd)] rounded-[var(--rl)] px-[18px] py-4 ${className}`} {...props}>
       {children}
     </div>
   );
@@ -109,7 +109,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 640, classNam
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div
-        className={`bg-[var(--sf)] rounded-[var(--rl)] p-4 sm:p-6 w-full scale-in ${className}`}
+        className={`bg-[var(--sf)] rounded-[var(--rl)] px-[26px] py-[22px] w-full scale-in ${className}`}
         style={{ maxWidth }}
       >
         {title && (
@@ -143,15 +143,14 @@ export function Confirm({ open, message, onConfirm, onCancel }) {
 }
 
 /* ── SearchBar ───────────────────────────────────────────────────────────── */
-export function SearchBar({ value, onChange, placeholder = 'Buscar...', extra }) {
+export function SearchBar({ value, onChange, placeholder = '🔍 Buscar...', extra, className = '', fieldClassName = '', inputClassName = '' }) {
   return (
-    <div className="flex gap-2 items-center mb-3 flex-wrap">
-      <div className="relative flex-1 min-w-[160px]">
-        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-[var(--tx3)]">🔍</span>
+    <div className={`srch2 ${className}`}>
+      <div className={`srch flex-1 min-w-[160px] ${fieldClassName}`}>
         <input
           value={value} onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full pl-8 pr-3.5 py-2.5 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)]"
+          className={`w-full pl-7 pr-3 py-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-[.9em] outline-none focus:border-[var(--ac)] ${inputClassName}`}
         />
       </div>
       {extra}
@@ -162,12 +161,12 @@ export function SearchBar({ value, onChange, placeholder = 'Buscar...', extra })
 /* ── TabBar ──────────────────────────────────────────────────────────────── */
 export function TabBar({ tabs, active, onChange, actions }) {
   return (
-    <div className="flex items-center gap-1.5 flex-wrap pb-3 mb-4 border-b border-[var(--bd)]">
+    <div className="tabrow">
       {tabs.map(t => (
         <button
           key={t.id}
           onClick={() => onChange(t.id)}
-          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--r)] text-xs font-bold border transition-all
+          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--r)] text-[.82em] font-bold border transition-all
             ${active === t.id
               ? 'bg-[var(--ac)] text-white border-[var(--ac)]'
               : 'bg-[var(--sf)] text-[var(--tx2)] border-[var(--bd)] hover:bg-[var(--bg2)]'
@@ -192,16 +191,16 @@ export function Spinner({ size = 24 }) {
 }
 
 /* ── SubStatus badge ─────────────────────────────────────────────────────── */
-export function SubBadge({ sub }) {
-  if (!sub) return <Badge variant="default">Sin suscripción</Badge>;
+export function SubBadge({ sub, className = '' }) {
+  if (!sub) return <Badge variant="default" className={className}>Sin suscripción</Badge>;
   const now  = new Date();
   const exp  = new Date(sub.expires);
   const days = (exp - now) / 864e5;
-  if (sub.status === 'trial')           return <Badge variant="blue">Prueba 15d</Badge>;
-  if (days > 0  && days <= 15)          return <Badge variant="amber">Vence pronto</Badge>;
-  if (days > 0)                         return <Badge variant="green">Activa</Badge>;
-  if (days > -15)                       return <Badge variant="amber">Cortesía 15d</Badge>;
-  return <Badge variant="red">Caducada</Badge>;
+  if (sub.status === 'trial')           return <Badge variant="blue" className={className}>Prueba 15d</Badge>;
+  if (days > 0  && days <= 15)          return <Badge variant="amber" className={className}>Vence pronto</Badge>;
+  if (days > 0)                         return <Badge variant="green" className={className}>Activa</Badge>;
+  if (days > -15)                       return <Badge variant="amber" className={className}>Cortesía 15d</Badge>;
+  return <Badge variant="red" className={className}>Caducada</Badge>;
 }
 
 /* ── Divider ─────────────────────────────────────────────────────────────── */

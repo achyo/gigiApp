@@ -6,6 +6,9 @@ export default {
       fontFamily: {
         sans: ['Lexend Deca', 'Atkinson Hyperlegible', 'Segoe UI', 'Arial', 'sans-serif'],
       },
+      padding: {
+        '11px': '11px',
+      },
       colors: {
         brand: {
           50:  'var(--acb)',

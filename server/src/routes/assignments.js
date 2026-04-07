@@ -39,7 +39,17 @@ router.get('/', authenticateJWT, scopeFilter('assignments'), async (req, res, ne
     const [data, total] = await Promise.all([
       prisma.assignment.findMany({
         where: req.scope, skip, take,
-        include: { activity: true, client: true },
+        include: {
+          activity: {
+            include: {
+              activityObjects: {
+                include: { object: { select: { id: true, em: true, name: true } } },
+                orderBy: { sortOrder: 'asc' },
+              },
+            },
+          },
+          client: true,
+        },
         orderBy: { assignedAt: 'desc' },
       }),
       prisma.assignment.count({ where: req.scope }),

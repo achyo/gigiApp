@@ -46,7 +46,7 @@ export default function SubscriptionModal({ entity, entityType, onClose, onSave 
           <div className="grid grid-cols-2 gap-3 mb-4">
             {Object.entries(PLANS).map(([k, p]) => (
               <div key={k} onClick={() => setPlan(k)}
-                className={`border-2 rounded-[var(--r)] p-3 cursor-pointer transition-all ${plan === k ? 'border-[var(--ac)] bg-[var(--acb)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}>
+                className={`border-2 rounded-[var(--r)] p-4 cursor-pointer transition-all ${plan === k ? 'border-[var(--ac)] bg-[var(--acb)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}>
                 <p className="font-bold text-sm">{plan === k ? '✓ ' : ''}{p.label}</p>
                 <p className="font-black text-base text-[var(--ac)] my-1">{billing === 'month' ? p.month : p.year}</p>
                 <p className="text-xs text-[var(--tx3)]">{p.features}</p>
@@ -58,7 +58,7 @@ export default function SubscriptionModal({ entity, entityType, onClose, onSave 
           <div className="flex gap-2 mb-4">
             {[['month','Mensual'],['year','Anual (20% dto.)']].map(([k, l]) => (
               <button key={k} onClick={() => setBilling(k)}
-                className={`px-3 py-1.5 rounded-[var(--r)] text-sm font-bold border transition-all ${billing === k ? 'bg-[var(--ac)] text-white border-[var(--ac)]' : 'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>
+                className={`px-4 py-3 rounded-[var(--r)] text-sm font-bold border transition-all ${billing === k ? 'bg-[var(--ac)] text-white border-[var(--ac)]' : 'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>
                 {l}
               </button>
             ))}
@@ -69,7 +69,7 @@ export default function SubscriptionModal({ entity, entityType, onClose, onSave 
           <div className="flex gap-2 mb-4">
             {[['card','💳 Tarjeta'],['paypal','🅿️ PayPal'],['bizum','📱 Bizum']].map(([k, l]) => (
               <button key={k} onClick={() => setMethod(k)}
-                className={`px-3 py-1.5 rounded-[var(--r)] text-sm font-bold border transition-all ${method === k ? 'bg-[var(--ac)] text-white border-[var(--ac)]' : 'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>
+                className={`px-4 py-3 rounded-[var(--r)] text-sm font-bold border transition-all ${method === k ? 'bg-[var(--ac)] text-white border-[var(--ac)]' : 'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>
                 {l}
               </button>
             ))}
@@ -91,7 +91,7 @@ export default function SubscriptionModal({ entity, entityType, onClose, onSave 
             </div>
           )}
           {method === 'bizum' && (
-            <div className="bg-[var(--acb)] rounded-[var(--r)] p-4 mb-4">
+            <div className="bg-[var(--acb)] rounded-[var(--r)] px-4 py-4 mb-4">
               <p className="font-bold text-sm mb-1">📱 Pagar por Bizum</p>
               <p className="text-sm text-[var(--tx2)]">Envía <strong>{billing === 'month' ? PLANS[plan].month : PLANS[plan].year}</strong> al:</p>
               <p className="font-black text-2xl tracking-widest my-2 text-[var(--ac)]">+34 600 000 000</p>
@@ -99,7 +99,7 @@ export default function SubscriptionModal({ entity, entityType, onClose, onSave 
             </div>
           )}
 
-          <div className="bg-[var(--wab)] border border-[var(--wa)] rounded-[var(--r)] p-3 text-xs text-[var(--tx2)] mb-4">
+          <div className="bg-[var(--wab)] border border-[var(--wa)] rounded-[var(--r)] px-4 py-3 text-xs text-[var(--tx2)] mb-4">
             ⚠️ Recibirás un aviso 15 días antes del vencimiento. Tras caducar, dispones de 15 días de cortesía.
           </div>
 

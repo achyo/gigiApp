@@ -36,7 +36,7 @@ export default function Login() {
     try {
       const user = await login(email, password);
       if (user.role === 'admin')      navigate('/admin');
-      else if (user.role === 'specialist') navigate('/specialist/clients');
+      else if (user.role === 'specialist') navigate('/specialist');
       else navigate('/client');
     } catch (err) {
       const code = err.response?.data?.error?.code;
