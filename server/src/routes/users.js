@@ -38,17 +38,25 @@ router.post('/', authenticateJWT, authorizeRole('admin'), async (req, res, next)
 
 router.patch('/:id', authenticateJWT, authorizeRole('admin'), async (req, res, next) => {
   try {
-    const { name, bio } = req.body;
+    const { name, email, bio, password } = req.body;
     const user = await prisma.user.findUnique({
       where: { id: req.params.id },
       include: { specialistProfile: true },
     });
     if (!user) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
 
+    let passwordHash;
+    if (password) {
+      assertStrongPassword(password, { required: false });
+      passwordHash = await bcrypt.hash(password, 12);
+    }
+
     const updated = await prisma.user.update({
       where: { id: req.params.id },
       data: {
         ...(name !== undefined && { name }),
+        ...(email !== undefined && { email }),
+        ...(passwordHash && { passwordHash }),
         ...(bio !== undefined && user.specialistProfile && {
           specialistProfile: { update: { bio } },
         }),
@@ -59,6 +67,7 @@ router.patch('/:id', authenticateJWT, authorizeRole('admin'), async (req, res, n
         email: true,
         role: true,
         active: true,
+        createdAt: true,
         specialistProfile: { select: { id: true, bio: true } },
       },
     });

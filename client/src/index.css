@@ -70,15 +70,43 @@ body {
 }
 
 .sp-dash-metric {
-  padding: 11px;
+  padding: 14px;
 }
 
 .sp-dash-panel {
-  padding: 11px !important;
+  padding: 16px !important;
 }
 
 .sp-dash-list-card {
-  padding: 11px;
+  padding: 14px;
+}
+
+.admin-dashboard-stack {
+  gap: 22px;
+}
+
+.admin-dashboard-metrics {
+  margin-bottom: 6px;
+}
+
+.admin-dashboard-sections {
+  margin-top: 4px;
+}
+
+.admin-dashboard-approvals {
+  margin-top: 6px;
+}
+
+.specialist-dashboard-stack {
+  gap: 22px;
+}
+
+.specialist-dashboard-metrics {
+  margin-bottom: 6px;
+}
+
+.specialist-dashboard-sections {
+  margin-top: 4px;
 }
 
 .entity-list-shell,
@@ -164,6 +192,19 @@ body {
 .admin-subscription-count {
   min-width: 28px;
   text-align: right;
+}
+
+.management-count-badge {
+  min-height: 34px;
+  padding: 7px 12px !important;
+  font-size: 0.88rem;
+}
+
+.category-object-count-badge {
+  min-height: 32px;
+  padding: 6px 12px !important;
+  font-size: 0.92rem;
+  line-height: 1;
 }
 
 .subscription-trial-notice {
@@ -1094,13 +1135,32 @@ body {
   background: transparent;
   color: var(--tx);
   font: inherit;
-  font-size: 1.2em;
-  font-weight: 900;
-  letter-spacing: -.5px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
 }
 
-.brand b { color: var(--ac); }
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-logo__image {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: 100%;
+}
+
+.brand-logo__image--topbar {
+  height: 30px;
+}
+
+.brand-logo__image--login {
+  height: clamp(42px, 7vw, 58px);
+}
 
 .topact {
   display: flex;
@@ -1338,7 +1398,9 @@ body {
 
 .login-title {
   margin-bottom: 8px;
-  font-size: clamp(2rem, 4vw, 2.4rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .login-subtitle {
@@ -1417,7 +1479,9 @@ body {
   font-weight: 900;
 }
 
-.ll b { color: var(--ac); }
+.login-brand {
+  max-width: min(100%, 260px);
+}
 
 .ph {
   display: flex;

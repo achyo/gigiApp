@@ -71,7 +71,7 @@ function ListPageHeader({ title, count, subtitle, action }) {
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-black">{title}</h1>
-          <Badge variant="blue">{count}</Badge>
+          <Badge variant="blue" className="management-count-badge">{count}</Badge>
         </div>
         {subtitle && <p className="text-sm text-[var(--tx3)]">{subtitle}</p>}
       </div>
@@ -137,19 +137,19 @@ function Dashboard() {
   const latestGroups = groups.slice(0, 3);
 
   return (
-    <div className="animate-in space-y-5">
+    <div className="animate-in space-y-5 specialist-dashboard-stack">
       <div>
         <h1 className="text-2xl font-black">Panel del especialista</h1>
       </div>
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 specialist-dashboard-metrics">
         <DashboardMetricCard value={clients.length} label="Alumnos" />
         <DashboardMetricCard value={activities.length} label="Actividades" />
         <DashboardMetricCard value={groups.length} label="Grupos" />
         <DashboardMetricCard value={activeUsers} label="Usuarios activos" />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2 specialist-dashboard-sections">
         <DashboardPanel icon="👶" title="Alumnos" className="min-h-[248px]">
           {latestClients.length === 0 ? <Empty icon="👶" title="Sin alumnos" subtitle="Crea tu primer cliente para empezar." /> : (
             <div className="space-y-3">
@@ -385,6 +385,7 @@ function Clients() {
               badges={<span className="cursor-pointer" onClick={() => setSubTarget({ entity: c, type: 'client' })}><SubBadge sub={c.subscription} className="clients-item-badge" /></span>}
               actions={(
                 <>
+                  <IconButton icon="💳" label="Gestionar suscripción" variant="secondary" className="clients-action-btn" onClick={() => setSubTarget({ entity: c, type: 'client' })} />
                   <IconButton icon="🎯" label="Actividades y progreso" variant="primary" className="clients-action-btn client-activity-launch-btn" onClick={() => setActivityClient(c)} />
                   <ActionIconButton className="clients-action-btn" onClick={() => openEdit(c)} />
                   <ActionIconButton action="delete" className="clients-action-btn" onClick={() => setDelId(c.id)} />

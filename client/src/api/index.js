@@ -71,8 +71,10 @@ export const authApi = {
 };
 
 export const usersApi = {
+  list:              (params) => api.get('/users', { params }),
   create:            (data)  => api.post('/users', data),
   delete:            (id)    => api.delete(`/users/${id}`),
+  update:            (id, d) => api.patch(`/users/${id}`, d),
   preferences:       (id)    => api.get(`/users/${id}/preferences`),
   updatePreferences: (id, d) => api.patch(`/users/${id}/preferences`, d),
 };

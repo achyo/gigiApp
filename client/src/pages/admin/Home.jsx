@@ -44,7 +44,7 @@ function ListPageHeader({ title, count, subtitle, action }) {
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-black">{title}</h1>
-          <Badge variant="blue">{count}</Badge>
+          <Badge variant="blue" className="management-count-badge">{count}</Badge>
         </div>
         {subtitle && <p className="text-sm text-[var(--tx3)]">{subtitle}</p>}
       </div>
@@ -186,12 +186,12 @@ function Dashboard() {
   }, { active: 0, trial: 0, grace: 0, expired: 0, expiring: 0, inactive: 0 });
 
   return (
-    <div className="animate-in space-y-5">
+    <div className="animate-in space-y-5 admin-dashboard-stack">
       <div>
         <h1 className="text-2xl font-black">Panel global</h1>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 admin-dashboard-metrics">
         <DashboardMetricCard value={stats?.specialists} label="Especialistas" />
         <DashboardMetricCard value={stats?.clients} label="Clientes" />
         <DashboardMetricCard value={stats?.activities} label="Actividades" />
@@ -200,7 +200,7 @@ function Dashboard() {
         <DashboardMetricCard value={activeClients} label="Cli. activos" />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.05fr_.95fr]">
+      <div className="grid gap-4 xl:grid-cols-[1.05fr_.95fr] admin-dashboard-sections">
         <DashboardPanel icon="⏳" title="Próximos a vencer (15d)" className="min-h-[236px]">
           {expiringEntries.length === 0 ? (
             <div className="flex min-h-[150px] items-center justify-center text-sm text-[var(--tx3)]">
@@ -239,7 +239,7 @@ function Dashboard() {
         </DashboardPanel>
       </div>
 
-      <DashboardPanel icon="🧾" title={`Aprobaciones pendientes (${allPending.length})`}>
+      <DashboardPanel icon="🧾" title={`Aprobaciones pendientes (${allPending.length})`} className="admin-dashboard-approvals">
         {allPending.length === 0
           ? <p className="text-sm text-[var(--tx3)]">Sin pendientes ✓</p>
           : allPending.map(x => (
@@ -259,14 +259,14 @@ function Dashboard() {
 
 /* ── Specialists page ──────────────────────────────────────────────────── */
 function Specialists() {
-  const [specialists, setSpecialists] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [columnCount, setColumnCount] = useListColumns('admin.specialists', 1);
   const [modal, setModal] = useState(null);
   const [delId, setDelId] = useState(null);
   const [subTarget, setSubTarget] = useState(null);
-  const [form, setForm] = useState({ name: '', email: '', bio: '', password: '', confirm_password: '' });
+  const [form, setForm] = useState({ role: 'specialist', name: '', email: '', bio: '', password: '', confirm_password: '' });
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const passwordError = getPasswordStrengthError(form.password, { required: modal === 'new' });
@@ -274,49 +274,108 @@ function Specialists() {
     ? 'Las contrasenas no coinciden.'
     : '';
 
+  const loadAccounts = async () => {
+    const [specRes, adminRes] = await Promise.all([
+      specialistsApi.list(),
+      usersApi.list({ role: 'admin', limit: 100 }),
+    ]);
+
+    const specialistAccounts = specRes.data.data.map((specialist) => ({
+      id: specialist.id,
+      userId: specialist.user?.id,
+      entityType: 'specialist',
+      role: 'specialist',
+      name: specialist.user?.name || 'Sin nombre',
+      email: specialist.user?.email || '',
+      bio: specialist.bio || '',
+      active: specialist.user?.active,
+      subscription: specialist.subscription,
+      counts: specialist._count,
+      raw: specialist,
+    }));
+
+    const adminAccounts = adminRes.data.data.map((admin) => ({
+      id: admin.id,
+      userId: admin.id,
+      entityType: 'admin',
+      role: 'admin',
+      name: admin.name || 'Sin nombre',
+      email: admin.email || '',
+      bio: '',
+      active: admin.active,
+      subscription: null,
+      counts: null,
+      raw: admin,
+    }));
+
+    setAccounts([...specialistAccounts, ...adminAccounts].sort((left, right) => left.name.localeCompare(right.name, 'es')));
+  };
+
   useEffect(() => {
-    specialistsApi.list()
-      .then(r => setSpecialists(r.data.data))
+    loadAccounts()
       .finally(() => setLoading(false));
   }, []);
 
-  const openNew = () => { setModal('new'); setFeedback(null); setForm({ name: '', email: '', bio: '', password: '', confirm_password: '' }); };
-  const openEdit = (s) => { setModal(s); setFeedback(null); setForm({ name: s.user?.name || '', email: s.user?.email || '', bio: s.bio || '', password: '', confirm_password: '' }); };
+  const openNew = () => { setModal('new'); setFeedback(null); setForm({ role: 'specialist', name: '', email: '', bio: '', password: '', confirm_password: '' }); };
+  const openEdit = (account) => {
+    setModal(account);
+    setFeedback(null);
+    setForm({
+      role: account.role,
+      name: account.name || '',
+      email: account.email || '',
+      bio: account.bio || '',
+      password: '',
+      confirm_password: '',
+    });
+  };
 
   const save = async () => {
     setSaving(true);
     setFeedback(null);
     try {
       if (modal === 'new') {
-        await usersApi.create({ ...form, role: 'specialist' });
-        const spec = await specialistsApi.list();
-        setSpecialists(spec.data.data);
-        setFeedback({ type: 'success', message: 'Especialista creado correctamente.' });
+        await usersApi.create({ ...form, role: form.role });
+        await loadAccounts();
+        setFeedback({ type: 'success', message: form.role === 'admin' ? 'Administrador creado correctamente.' : 'Especialista creado correctamente.' });
       } else {
-        const response = await specialistsApi.update(modal.id, {
-          name: form.name,
-          email: form.email,
-          bio: form.bio,
-          ...(form.password ? { password: form.password } : {}),
+        if (modal.entityType === 'admin') {
+          await usersApi.update(modal.userId, {
+            name: form.name,
+            email: form.email,
+            ...(form.password ? { password: form.password } : {}),
+          });
+        } else {
+          await specialistsApi.update(modal.id, {
+            name: form.name,
+            email: form.email,
+            bio: form.bio,
+            ...(form.password ? { password: form.password } : {}),
+          });
+        }
+        await loadAccounts();
+        setFeedback({
+          type: 'success',
+          message: form.password
+            ? `${modal.entityType === 'admin' ? 'Administrador' : 'Especialista'} y contraseña actualizados.`
+            : `${modal.entityType === 'admin' ? 'Administrador' : 'Especialista'} actualizado correctamente.`,
         });
-        setSpecialists(prev => prev.map(spec => spec.id === modal.id ? response.data.data : spec));
-        setFeedback({ type: 'success', message: form.password ? 'Especialista y contraseña actualizados.' : 'Especialista actualizado correctamente.' });
       }
 
       window.setTimeout(() => {
         setModal(null);
         setFeedback(null);
-        setForm({ name: '', email: '', bio: '', password: '', confirm_password: '' });
+        setForm({ role: 'specialist', name: '', email: '', bio: '', password: '', confirm_password: '' });
       }, 800);
     } catch (error) {
-      setFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudo guardar el especialista.') });
+      setFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudo guardar la cuenta.') });
     } finally {
       setSaving(false);
     }
   };
 
-  const filtered = specialists.filter(s =>
-    !search || (s.user?.name + s.user?.email).toLowerCase().includes(search.toLowerCase())
+  const filtered = accounts.filter(account =>
+    !search || `${account.name}${account.email}`.toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
@@ -325,14 +384,14 @@ function Specialists() {
     <div className="animate-in">
       <ListPageHeader
         title="Especialistas"
-        count={`${filtered.length}/${specialists.length}`}
-        subtitle="Gestión de profesionales, estado de acceso y suscripción."
-        action={<Button className="entity-action-btn" onClick={openNew}>+ Nuevo especialista</Button>}
+        count={`${filtered.length}/${accounts.length}`}
+        subtitle="Gestión de profesionales y cuentas administradoras."
+        action={<Button className="entity-action-btn" onClick={openNew}>+ Nueva cuenta</Button>}
       />
       <SearchBar
         value={search}
         onChange={setSearch}
-        placeholder="🔍 Buscar especialista..."
+        placeholder="🔍 Buscar especialista o administrador..."
         fieldClassName="search-field"
         inputClassName="search-input"
         extra={(
@@ -342,33 +401,42 @@ function Specialists() {
           </div>
         )}
       />
-      {filtered.length === 0 ? <Empty icon="🧑‍⚕️" title="Sin especialistas" /> :
+      {filtered.length === 0 ? <Empty icon="🧑‍⚕️" title="Sin cuentas" /> :
         <ListCollection className="entity-list-shell">
           <ListGrid columns={columnCount}>
-            {filtered.map(s => (
+            {filtered.map(account => (
               <ListRow
-                key={s.id}
+                key={`${account.entityType}-${account.id}`}
                 className="entity-list-row"
                 avatar={
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">
-                    {(s.user?.name || '?').split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
+                    {(account.name || '?').split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
                   </div>
                 }
-                title={s.user?.name}
-                subtitle={s.user?.email}
-                meta={s.bio ? <p className="truncate text-xs text-[var(--tx3)]">{s.bio}</p> : null}
+                title={account.name}
+                subtitle={account.email}
+                meta={account.entityType === 'admin'
+                  ? <p className="truncate text-xs text-[var(--tx3)]">Cuenta administradora con acceso sin caducidad.</p>
+                  : (account.bio ? <p className="truncate text-xs text-[var(--tx3)]">{account.bio}</p> : null)}
                 badges={(
                   <>
-                    <Badge className="entity-item-badge" variant={s.user?.active ? 'green' : 'default'}>{s.user?.active ? 'Activo' : 'Inactivo'}</Badge>
-                    <span className="cursor-pointer" onClick={() => setSubTarget({ entity: s, type: 'specialist' })}>
-                      <SubBadge sub={s.subscription} className="entity-item-badge" />
-                    </span>
+                    <Badge className="entity-item-badge" variant={account.active ? 'green' : 'default'}>{account.active ? 'Activo' : 'Inactivo'}</Badge>
+                    <Badge className="entity-item-badge" variant={account.entityType === 'admin' ? 'gold' : 'blue'}>
+                      {account.entityType === 'admin' ? 'Administrador' : 'Especialista'}
+                    </Badge>
+                    {account.entityType === 'admin' ? (
+                      <Badge className="entity-item-badge" variant="green">Sin caducidad</Badge>
+                    ) : (
+                      <span className="cursor-pointer" onClick={() => setSubTarget({ entity: account.raw, type: 'specialist' })}>
+                        <SubBadge sub={account.subscription} className="entity-item-badge" />
+                      </span>
+                    )}
                   </>
                 )}
                 actions={(
                   <>
-                    <ActionIconButton className="entity-action-btn" onClick={() => openEdit(s)} />
-                    <ActionIconButton action="delete" className="entity-action-btn" onClick={() => setDelId(s.id)} />
+                    <ActionIconButton className="entity-action-btn" onClick={() => openEdit(account)} />
+                    <ActionIconButton action="delete" className="entity-action-btn" onClick={() => setDelId(account.userId)} />
                   </>
                 )}
               />
@@ -376,9 +444,29 @@ function Specialists() {
           </ListGrid>
         </ListCollection>
       }
-      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nuevo especialista' : 'Editar especialista'} maxWidth={480}>
+      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nueva cuenta' : `Editar ${modal?.entityType === 'admin' ? 'administrador' : 'especialista'}`} maxWidth={480}>
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
         <div className="modal-stack">
+          {modal === 'new' && (
+            <div className="modal-section">
+              <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Tipo de cuenta</p>
+              <div className="flex flex-wrap gap-2">
+                {[['specialist', 'Especialista'], ['admin', 'Administrador']].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setForm(current => ({ ...current, role: key, bio: key === 'admin' ? '' : current.bio }))}
+                    className={`modal-choice rounded-[var(--r)] text-sm font-bold border transition-all ${form.role === key ? 'bg-[var(--ac)] text-white border-[var(--ac)]' : 'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {modal !== 'new' && modal?.entityType === 'admin' && (
+            <Notice variant="info">Esta cuenta es administradora y no tiene caducidad ni suscripción asociada.</Notice>
+          )}
           <Input label="Nombre completo" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
           <Input label="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
           <Input
@@ -398,15 +486,17 @@ function Specialists() {
             placeholder={modal === 'new' ? '' : 'Repítela solo si vas a cambiarla'}
             onChange={e => setForm({ ...form, confirm_password: e.target.value })}
           />
-          <Textarea label="Bio / especialidad" rows={2} value={form.bio} onChange={e => setForm({ ...form, bio: e.target.value })} />
+          {(modal === 'new' ? form.role !== 'admin' : modal?.entityType !== 'admin') && (
+            <Textarea label="Bio / especialidad" rows={2} value={form.bio} onChange={e => setForm({ ...form, bio: e.target.value })} />
+          )}
         </div>
         <div className="modal-actions flex gap-2 justify-end mt-4">
           <Button variant="secondary" onClick={() => setModal(null)} disabled={saving}>Cancelar</Button>
           <Button disabled={saving || !form.name || !form.email || !!passwordError || !!passwordConfirmError} onClick={save}>{saving ? 'Guardando...' : modal === 'new' ? 'Crear' : 'Guardar'}</Button>
         </div>
       </Modal>
-      <Confirm open={!!delId} message="Se desactivará el especialista." onConfirm={async () => { await usersApi.delete(delId); setSpecialists(p => p.filter(s => s.id !== delId)); setDelId(null); }} onCancel={() => setDelId(null)} />
-      {subTarget && <SubscriptionModal entity={subTarget.entity} entityType={subTarget.type} onClose={() => setSubTarget(null)} onSave={() => { specialistsApi.list().then(r => setSpecialists(r.data.data)); setSubTarget(null); }} />}
+      <Confirm open={!!delId} message="Se desactivará la cuenta." onConfirm={async () => { await usersApi.delete(delId); setAccounts(current => current.filter(account => account.userId !== delId)); setDelId(null); }} onCancel={() => setDelId(null)} />
+      {subTarget && <SubscriptionModal entity={subTarget.entity} entityType={subTarget.type} onClose={() => setSubTarget(null)} onSave={() => { loadAccounts().then(() => setSubTarget(null)); }} />}
     </div>
   );
 }

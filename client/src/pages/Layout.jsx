@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router';
 import useAuthStore  from '../stores/authStore';
 import usePrefsStore from '../stores/prefsStore';
+import BrandLogo from '../components/BrandLogo';
 
 const NAV = {
   client:     [{ to: '/client',     icon: '🏠', label: 'Actividades' }],
@@ -42,7 +43,7 @@ export default function Layout() {
           ☰
         </button>
         <button className="brand" onClick={() => navigate('/')}>
-          Proyecto<b>Gigi</b>
+          <BrandLogo syncFavicon imageClassName="brand-logo__image--topbar" />
         </button>
 
         <div className="topact">
@@ -74,7 +75,7 @@ export default function Layout() {
           </div>
 
           <span className="role-chip hidden sm:inline-flex">
-            {user?.role === 'admin' ? '⚙️ Admin' : user?.role === 'specialist' ? '🧑‍⚕️ Especialista' : '👶 Cliente'}
+            {user?.role === 'admin' ? '🛡️ Admin' : user?.role === 'specialist' ? '🧑‍⚕️ Especialista' : '👶 Cliente'}
           </span>
           <button onClick={() => navigate('/settings')} className="icon-btn" title="Configuracion">⚙️</button>
           <button onClick={handleLogout} className="ghost-link" title="Cerrar sesion">Salir</button>
