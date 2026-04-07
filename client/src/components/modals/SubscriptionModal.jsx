@@ -41,12 +41,12 @@ export default function SubscriptionModal({ entity, entityType, onClose, onSave 
           <p className="text-sm text-[var(--tx2)] mt-2">Se enviará un email de confirmación</p>
         </div>
       ) : (
-        <>
+        <div className="modal-stack">
           {/* Plan selector */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="modal-grid grid grid-cols-2 gap-3">
             {Object.entries(PLANS).map(([k, p]) => (
               <div key={k} onClick={() => setPlan(k)}
-                className={`border-2 rounded-[var(--r)] p-4 cursor-pointer transition-all ${plan === k ? 'border-[var(--ac)] bg-[var(--acb)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}>
+                className={`modal-choice border-2 rounded-[var(--r)] p-4 cursor-pointer transition-all ${plan === k ? 'border-[var(--ac)] bg-[var(--acb)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}>
                 <p className="font-bold text-sm">{plan === k ? '✓ ' : ''}{p.label}</p>
                 <p className="font-black text-base text-[var(--ac)] my-1">{billing === 'month' ? p.month : p.year}</p>
                 <p className="text-xs text-[var(--tx3)]">{p.features}</p>
@@ -55,43 +55,45 @@ export default function SubscriptionModal({ entity, entityType, onClose, onSave 
           </div>
 
           {/* Billing period */}
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-wrap gap-2">
             {[['month','Mensual'],['year','Anual (20% dto.)']].map(([k, l]) => (
               <button key={k} onClick={() => setBilling(k)}
-                className={`px-4 py-3 rounded-[var(--r)] text-sm font-bold border transition-all ${billing === k ? 'bg-[var(--ac)] text-white border-[var(--ac)]' : 'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>
+                className={`modal-choice rounded-[var(--r)] text-sm font-bold border transition-all ${billing === k ? 'bg-[var(--ac)] text-white border-[var(--ac)]' : 'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>
                 {l}
               </button>
             ))}
           </div>
 
           {/* Payment method */}
-          <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)] mb-2">Método de pago</p>
-          <div className="flex gap-2 mb-4">
-            {[['card','💳 Tarjeta'],['paypal','🅿️ PayPal'],['bizum','📱 Bizum']].map(([k, l]) => (
-              <button key={k} onClick={() => setMethod(k)}
-                className={`px-4 py-3 rounded-[var(--r)] text-sm font-bold border transition-all ${method === k ? 'bg-[var(--ac)] text-white border-[var(--ac)]' : 'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>
-                {l}
-              </button>
-            ))}
+          <div className="modal-section">
+            <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Método de pago</p>
+            <div className="flex flex-wrap gap-2">
+              {[['card','💳 Tarjeta'],['paypal','🅿️ PayPal'],['bizum','📱 Bizum']].map(([k, l]) => (
+                <button key={k} onClick={() => setMethod(k)}
+                  className={`modal-choice rounded-[var(--r)] text-sm font-bold border transition-all ${method === k ? 'bg-[var(--ac)] text-white border-[var(--ac)]' : 'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
           </div>
 
           {method === 'card' && (
-            <div className="space-y-3 mb-4">
+            <div className="modal-section">
               <Input label="Número de tarjeta" value={cardNum} onChange={e => setCardNum(e.target.value)} placeholder="1234 5678 9012 3456" maxLength={19} />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="modal-grid grid grid-cols-2 gap-3">
                 <Input label="Caducidad" value={cardExp} onChange={e => setCardExp(e.target.value)} placeholder="MM/AA" maxLength={5} />
                 <Input label="CVC"       value={cardCvc} onChange={e => setCardCvc(e.target.value)} placeholder="123" maxLength={3} />
               </div>
             </div>
           )}
           {method === 'paypal' && (
-            <div className="mb-4">
+            <div className="modal-section">
               <Input label="Email PayPal" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@paypal.com" />
               <p className="text-xs text-[var(--tx3)] mt-1">Se abrirá PayPal para completar el pago</p>
             </div>
           )}
           {method === 'bizum' && (
-            <div className="bg-[var(--acb)] rounded-[var(--r)] px-4 py-4 mb-4">
+            <div className="modal-panel bg-[var(--acb)] rounded-[var(--r)] px-4 py-4">
               <p className="font-bold text-sm mb-1">📱 Pagar por Bizum</p>
               <p className="text-sm text-[var(--tx2)]">Envía <strong>{billing === 'month' ? PLANS[plan].month : PLANS[plan].year}</strong> al:</p>
               <p className="font-black text-2xl tracking-widest my-2 text-[var(--ac)]">+34 600 000 000</p>
@@ -99,15 +101,15 @@ export default function SubscriptionModal({ entity, entityType, onClose, onSave 
             </div>
           )}
 
-          <div className="bg-[var(--wab)] border border-[var(--wa)] rounded-[var(--r)] px-4 py-3 text-xs text-[var(--tx2)] mb-4">
+          <div className="modal-panel bg-[var(--wab)] border border-[var(--wa)] rounded-[var(--r)] px-4 py-3 text-xs text-[var(--tx2)]">
             ⚠️ Recibirás un aviso 15 días antes del vencimiento. Tras caducar, dispones de 15 días de cortesía.
           </div>
 
-          <div className="flex gap-2 justify-end">
+          <div className="modal-actions flex gap-2 justify-end">
             <Button variant="secondary" onClick={onClose}>Cancelar</Button>
             <Button disabled={loading} onClick={submit}>{loading ? 'Procesando…' : 'Activar suscripción'}</Button>
           </div>
-        </>
+        </div>
       )}
     </Modal>
   );

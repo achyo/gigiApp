@@ -5,10 +5,12 @@ import {
   objectsApi, categoriesApi, groupsApi, subscriptionsApi, usersApi,
 } from '../../api';
 import {
-  Button, Badge, Card, Input, Select, Textarea,
-  SearchBar, Confirm, Modal, Empty, Spinner, SubBadge, Divider, Notice,
+  Button, Badge, Card, Input, Select, Textarea, ActionIconButton,
+  SearchBar, ColumnToggle, Confirm, Modal, Empty, Spinner, SubBadge, Divider, Notice,
 } from '../../components/ui';
+import CategoryManagerModal from '../../components/modals/CategoryManagerModal';
 import SubscriptionModal from '../../components/modals/SubscriptionModal';
+import useListColumns from '../../hooks/useListColumns';
 import { getPasswordStrengthError, PASSWORD_RULE_HINT } from '../../lib/password';
 
 function getApiErrorMessage(error, fallback) {
@@ -17,7 +19,7 @@ function getApiErrorMessage(error, fallback) {
 
 function DashboardMetricCard({ value, label }) {
   return (
-    <div className="min-h-[88px] rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-[15px] py-3">
+    <div className="sp-dash-metric min-h-[88px] rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-[15px] py-3">
       <p className="text-[1.8rem] font-black leading-none text-[var(--ac)]">{value ?? '0'}</p>
       <p className="mt-1 text-[.65rem] font-bold uppercase tracking-[0.05em] text-[var(--tx3)]">{label}</p>
     </div>
@@ -26,7 +28,7 @@ function DashboardMetricCard({ value, label }) {
 
 function DashboardPanel({ icon, title, children, className = '' }) {
   return (
-    <Card className={`${className}`}>
+    <Card className={`sp-dash-panel ${className}`}>
       <div className="mb-3 flex items-center gap-2.5">
         <span className="text-lg">{icon}</span>
         <h2 className="text-base font-black">{title}</h2>
@@ -55,6 +57,14 @@ function ListCollection({ children, className = '' }) {
   return <Card className={className}>{children}</Card>;
 }
 
+function ListGrid({ columns = 1, children, className = '' }) {
+  return (
+    <div className={`grid items-start gap-2 ${className}`} style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+      {children}
+    </div>
+  );
+}
+
 function ListRow({ avatar, title, subtitle, meta, badges, actions, accentColor, className = '' }) {
   return (
     <div
@@ -77,7 +87,7 @@ function ListRow({ avatar, title, subtitle, meta, badges, actions, accentColor, 
 
 /* ── Dashboard ─────────────────────────────────────────────────────────── */
 function Dashboard() {
-  const [stats,   setStats]   = useState(null);
+  const [stats, setStats] = useState(null);
   const [pending, setPending] = useState({ objects: [], categories: [] });
   const [specialists, setSpecialists] = useState([]);
   const [clients, setClients] = useState([]);
@@ -107,11 +117,11 @@ function Dashboard() {
 
   const statItems = [
     ['Especialistas', stats?.specialists, '🧑‍⚕️'],
-    ['Clientes',      stats?.clients,      '👶'],
-    ['Actividades',   stats?.activities,   '📋'],
-    ['Objetos',       stats?.objects,      '📦'],
-    ['Categorías',    stats?.categories,   '🗂'],
-    ['Asignaciones',  stats?.assignments,  '🔗'],
+    ['Clientes', stats?.clients, '👶'],
+    ['Actividades', stats?.activities, '📋'],
+    ['Objetos', stats?.objects, '📦'],
+    ['Categorías', stats?.categories, '🗂'],
+    ['Asignaciones', stats?.assignments, '🔗'],
   ];
 
   const allPending = [
@@ -196,7 +206,7 @@ function Dashboard() {
           ) : (
             <div className="space-y-2">
               {expiringEntries.map(item => (
-                <div key={`${item.kind}-${item.id}`} className="flex items-center justify-between gap-3 rounded-[var(--r)] border border-[var(--bd)] px-4 py-3">
+                <div key={`${item.kind}-${item.id}`} className="sp-dash-list-card flex items-center justify-between gap-3 rounded-[var(--r)] border border-[var(--bd)] px-4 py-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold">{item.name}</p>
                     <p className="text-xs text-[var(--tx3)]">{item.kind} · vence {item.expires}</p>
@@ -229,12 +239,12 @@ function Dashboard() {
         {allPending.length === 0
           ? <p className="text-sm text-[var(--tx3)]">Sin pendientes ✓</p>
           : allPending.map(x => (
-            <div key={x.id} className="flex items-center gap-3 border-b border-[var(--bg3)] px-3 py-3 last:border-0">
-              <Badge variant="gold">{x._type === 'object' ? '📦 Objeto' : '🗂 Categoría'}</Badge>
+            <div key={x.id} className="sp-dash-list-card flex items-center gap-3 border-b border-[var(--bg3)] px-3 py-3 last:border-0">
+              <Badge className="entity-item-badge" variant="gold">{x._type === 'object' ? '📦 Objeto' : '🗂 Categoría'}</Badge>
               <span className="flex-1 font-bold text-sm">{x.name}</span>
               <span className="text-xs text-[var(--tx3)]">por {x.owner?.name}</span>
-              <Button size="sm" onClick={() => approve(x._type, x.id)}>✓ Aprobar</Button>
-              <Button size="sm" variant="danger" onClick={() => reject(x._type, x.id)}>✗ Rechazar</Button>
+              <Button size="sm" className="entity-action-btn" onClick={() => approve(x._type, x.id)}>✓ Aprobar</Button>
+              <Button size="sm" variant="danger" className="entity-action-btn" onClick={() => reject(x._type, x.id)}>✗ Rechazar</Button>
             </div>
           ))
         }
@@ -246,14 +256,15 @@ function Dashboard() {
 /* ── Specialists page ──────────────────────────────────────────────────── */
 function Specialists() {
   const [specialists, setSpecialists] = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [search,      setSearch]      = useState('');
-  const [modal,       setModal]       = useState(null);
-  const [delId,       setDelId]       = useState(null);
-  const [subTarget,   setSubTarget]   = useState(null);
-  const [form,        setForm]        = useState({ name: '', email: '', bio: '', password: '', confirm_password: '' });
-  const [saving,      setSaving]      = useState(false);
-  const [feedback,    setFeedback]    = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [columnCount, setColumnCount] = useListColumns('admin.specialists', 1);
+  const [modal, setModal] = useState(null);
+  const [delId, setDelId] = useState(null);
+  const [subTarget, setSubTarget] = useState(null);
+  const [form, setForm] = useState({ name: '', email: '', bio: '', password: '', confirm_password: '' });
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState(null);
   const passwordError = getPasswordStrengthError(form.password, { required: modal === 'new' });
   const passwordConfirmError = form.password && form.password !== form.confirm_password
     ? 'Las contrasenas no coinciden.'
@@ -265,8 +276,8 @@ function Specialists() {
       .finally(() => setLoading(false));
   }, []);
 
-  const openNew  = ()  => { setModal('new'); setFeedback(null); setForm({ name:'',email:'',bio:'',password:'',confirm_password:'' }); };
-  const openEdit = (s) => { setModal(s); setFeedback(null); setForm({ name:s.user?.name||'', email:s.user?.email||'', bio:s.bio||'', password:'', confirm_password:'' }); };
+  const openNew = () => { setModal('new'); setFeedback(null); setForm({ name: '', email: '', bio: '', password: '', confirm_password: '' }); };
+  const openEdit = (s) => { setModal(s); setFeedback(null); setForm({ name: s.user?.name || '', email: s.user?.email || '', bio: s.bio || '', password: '', confirm_password: '' }); };
 
   const save = async () => {
     setSaving(true);
@@ -291,7 +302,7 @@ function Specialists() {
       window.setTimeout(() => {
         setModal(null);
         setFeedback(null);
-        setForm({ name:'',email:'',bio:'',password:'',confirm_password:'' });
+        setForm({ name: '', email: '', bio: '', password: '', confirm_password: '' });
       }, 800);
     } catch (error) {
       setFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudo guardar el especialista.') });
@@ -312,47 +323,60 @@ function Specialists() {
         title="Especialistas"
         count={`${filtered.length}/${specialists.length}`}
         subtitle="Gestión de profesionales, estado de acceso y suscripción."
-        action={<Button onClick={openNew}>+ Nuevo</Button>}
+        action={<Button className="entity-action-btn" onClick={openNew}>+ Nuevo especialista</Button>}
       />
-      <SearchBar value={search} onChange={setSearch} placeholder="🔍 Buscar especialista..." extra={<Badge variant="default">{filtered.length} visibles</Badge>} />
-      {filtered.length === 0 ? <Empty icon="🧑‍⚕️" title="Sin especialistas" /> :
-        <ListCollection>
-          <div className="space-y-2">
-          {filtered.map(s => (
-            <ListRow
-              key={s.id}
-              avatar={
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">
-                  {(s.user?.name || '?').split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
-              }
-              title={s.user?.name}
-              subtitle={s.user?.email}
-              meta={s.bio ? <p className="truncate text-xs text-[var(--tx3)]">{s.bio}</p> : null}
-              badges={(
-                <>
-                  <Badge variant={s.user?.active ? 'green' : 'default'}>{s.user?.active ? 'Activo' : 'Inactivo'}</Badge>
-                  <span className="cursor-pointer" onClick={() => setSubTarget({ entity: s, type: 'specialist' })}>
-                    <SubBadge sub={s.subscription} />
-                  </span>
-                </>
-              )}
-              actions={(
-                <>
-                  <Button size="sm" variant="secondary" onClick={() => openEdit(s)}>Editar</Button>
-                  <Button size="sm" variant="danger" onClick={() => setDelId(s.id)}>Eliminar</Button>
-                </>
-              )}
-            />
-          ))}
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="🔍 Buscar especialista..."
+        fieldClassName="search-field"
+        inputClassName="search-input"
+        extra={(
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="search-visible-badge" variant="default">{filtered.length} visibles</Badge>
+            <ColumnToggle value={columnCount} onChange={setColumnCount} />
           </div>
+        )}
+      />
+      {filtered.length === 0 ? <Empty icon="🧑‍⚕️" title="Sin especialistas" /> :
+        <ListCollection className="entity-list-shell">
+          <ListGrid columns={columnCount}>
+            {filtered.map(s => (
+              <ListRow
+                key={s.id}
+                className="entity-list-row"
+                avatar={
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">
+                    {(s.user?.name || '?').split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                }
+                title={s.user?.name}
+                subtitle={s.user?.email}
+                meta={s.bio ? <p className="truncate text-xs text-[var(--tx3)]">{s.bio}</p> : null}
+                badges={(
+                  <>
+                    <Badge className="entity-item-badge" variant={s.user?.active ? 'green' : 'default'}>{s.user?.active ? 'Activo' : 'Inactivo'}</Badge>
+                    <span className="cursor-pointer" onClick={() => setSubTarget({ entity: s, type: 'specialist' })}>
+                      <SubBadge sub={s.subscription} className="entity-item-badge" />
+                    </span>
+                  </>
+                )}
+                actions={(
+                  <>
+                    <ActionIconButton className="entity-action-btn" onClick={() => openEdit(s)} />
+                    <ActionIconButton action="delete" className="entity-action-btn" onClick={() => setDelId(s.id)} />
+                  </>
+                )}
+              />
+            ))}
+          </ListGrid>
         </ListCollection>
       }
       <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nuevo especialista' : 'Editar especialista'} maxWidth={480}>
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
-        <div className="space-y-3">
-          <Input label="Nombre completo" value={form.name}  onChange={e => setForm({ ...form, name: e.target.value })} />
-          <Input label="Email"           value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+        <div className="modal-stack">
+          <Input label="Nombre completo" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+          <Input label="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
           <Input
             label={modal === 'new' ? 'Contraseña' : 'Nueva contraseña'}
             type="password"
@@ -361,6 +385,7 @@ function Specialists() {
             placeholder={modal === 'new' ? '' : 'Déjala vacía para no cambiarla'}
             onChange={e => setForm({ ...form, password: e.target.value })}
           />
+          <p className="modal-hint text-xs text-[var(--tx3)]">{PASSWORD_RULE_HINT}</p>
           <Input
             label={modal === 'new' ? 'Confirmar contraseña' : 'Confirmar nueva contraseña'}
             type="password"
@@ -369,10 +394,9 @@ function Specialists() {
             placeholder={modal === 'new' ? '' : 'Repítela solo si vas a cambiarla'}
             onChange={e => setForm({ ...form, confirm_password: e.target.value })}
           />
-          <p className="text-xs text-[var(--tx3)]">{PASSWORD_RULE_HINT}</p>
           <Textarea label="Bio / especialidad" rows={2} value={form.bio} onChange={e => setForm({ ...form, bio: e.target.value })} />
         </div>
-        <div className="flex gap-2 justify-end mt-4">
+        <div className="modal-actions flex gap-2 justify-end mt-4">
           <Button variant="secondary" onClick={() => setModal(null)} disabled={saving}>Cancelar</Button>
           <Button disabled={saving || !form.name || !form.email || !!passwordError || !!passwordConfirmError} onClick={save}>{saving ? 'Guardando...' : modal === 'new' ? 'Crear' : 'Guardar'}</Button>
         </div>
@@ -386,14 +410,15 @@ function Specialists() {
 /* ── Clients page (admin) ──────────────────────────────────────────────── */
 function Clients() {
   const [clients, setClients] = useState([]);
-  const [specs,   setSpecs]   = useState([]);
+  const [specs, setSpecs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState('');
-  const [modal,   setModal]   = useState(null);
-  const [sub,     setSub]     = useState(null);
-  const [delId,   setDelId]   = useState(null);
-  const [form,    setForm]    = useState({});
-  const [saving,  setSaving]  = useState(false);
+  const [search, setSearch] = useState('');
+  const [columnCount, setColumnCount] = useListColumns('admin.clients', 1);
+  const [modal, setModal] = useState(null);
+  const [sub, setSub] = useState(null);
+  const [delId, setDelId] = useState(null);
+  const [form, setForm] = useState({});
+  const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const passwordError = getPasswordStrengthError(form.password || '', { required: modal === 'new' });
   const passwordConfirmError = (form.password || '') && form.password !== form.confirm_password
@@ -486,7 +511,7 @@ function Clients() {
         title="Todos los clientes"
         count={`${filtered.length}/${clients.length}`}
         subtitle="Vista operativa de alumnos, tutores, especialista responsable y grupos."
-        action={<Button className="clients-action-btn" onClick={openNew}>+ Nuevo</Button>}
+        action={<Button className="clients-action-btn" onClick={openNew}>+ Nuevo cliente</Button>}
       />
       <SearchBar
         value={search}
@@ -494,74 +519,81 @@ function Clients() {
         placeholder="🔍 Buscar alumno o tutor..."
         fieldClassName="clients-search-field"
         inputClassName="clients-search-input"
-        extra={<Badge variant="default">{filtered.length} visibles</Badge>}
+        extra={(
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="search-visible-badge" variant="default">{filtered.length} visibles</Badge>
+            <ColumnToggle value={columnCount} onChange={setColumnCount} />
+          </div>
+        )}
       />
       {filtered.length === 0 ? <Empty icon="👶" title="Sin clientes" /> :
         <ListCollection className="clients-list-shell">
-          <div className="space-y-2">
-          {filtered.map(c => {
-            const spec = specs.find(s => s.id === c.specialistId);
-            return (
-              <ListRow
-                key={c.id}
-                className="clients-list-row"
-                avatar={<div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">{(c.childName || '?').slice(0, 2).toUpperCase()}</div>}
-                title={c.childName}
-                subtitle={`${c.user?.name || 'Sin tutor'} · Esp: ${spec?.user?.name || '—'}`}
-                meta={renderClientGroups(c)}
-                badges={<span className="cursor-pointer" onClick={() => setSub({ entity: c, type: 'client' })}><SubBadge sub={c.subscription} className="clients-item-badge" /></span>}
-                actions={(
-                  <>
-                    <Button size="sm" variant="secondary" className="clients-action-btn" onClick={() => openEdit(c)}>Editar</Button>
-                    <Button size="sm" variant="danger" className="clients-action-btn" onClick={() => setDelId(c.id)}>Eliminar</Button>
-                  </>
-                )}
-              />
-            );
-          })}
-          </div>
+          <ListGrid columns={columnCount}>
+            {filtered.map(c => {
+              const spec = specs.find(s => s.id === c.specialistId);
+              return (
+                <ListRow
+                  key={c.id}
+                  className="clients-list-row"
+                  avatar={<div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">{(c.childName || '?').slice(0, 2).toUpperCase()}</div>}
+                  title={c.childName}
+                  subtitle={`${c.user?.name || 'Sin tutor'} · Esp: ${spec?.user?.name || '—'}`}
+                  meta={renderClientGroups(c)}
+                  badges={<span className="cursor-pointer" onClick={() => setSub({ entity: c, type: 'client' })}><SubBadge sub={c.subscription} className="clients-item-badge" /></span>}
+                  actions={(
+                    <>
+                      <ActionIconButton className="clients-action-btn" onClick={() => openEdit(c)} />
+                      <ActionIconButton action="delete" className="clients-action-btn" onClick={() => setDelId(c.id)} />
+                    </>
+                  )}
+                />
+              );
+            })}
+          </ListGrid>
         </ListCollection>
       }
-      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nuevo cliente' : 'Editar cliente'} maxWidth={640}>
+      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nuevo cliente' : 'Editar cliente'} maxWidth={640} className="client-form-modal">
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input label="Nombre tutor" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} />
-          <Input label="Nombre alumno" value={form.child_name || ''} onChange={e => setForm({ ...form, child_name: e.target.value })} />
-          <Input label="Email" value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value })} />
-          <Input
-            label={modal === 'new' ? 'Contraseña' : 'Nueva contraseña'}
-            type="password"
-            value={form.password || ''}
-            error={passwordError || undefined}
-            placeholder={modal === 'new' ? '' : 'Déjala vacía para no cambiarla'}
-            onChange={e => setForm({ ...form, password: e.target.value })}
-          />
-          <Input
-            label={modal === 'new' ? 'Confirmar contraseña' : 'Confirmar nueva contraseña'}
-            type="password"
-            value={form.confirm_password || ''}
-            error={passwordConfirmError || undefined}
-            placeholder={modal === 'new' ? '' : 'Repítela solo si vas a cambiarla'}
-            onChange={e => setForm({ ...form, confirm_password: e.target.value })}
-          />
-          <Select label="Especialista" value={form.specialist_id || ''} onChange={e => setForm({ ...form, specialist_id: e.target.value })} className="sm:col-span-2">
-            <option value="">Selecciona…</option>
-            {specs.map(spec => <option key={spec.id} value={spec.id}>{spec.user?.name || 'Sin nombre'}</option>)}
-          </Select>
-        </div>
-        <p className="mt-2 text-xs text-[var(--tx3)]">{PASSWORD_RULE_HINT}</p>
-        <div className="mt-3">
-          <Textarea label="Notas clínicas" rows={3} value={form.diagnosis_notes || ''} onChange={e => setForm({ ...form, diagnosis_notes: e.target.value })} />
-        </div>
-        {modal !== 'new' && (
-          <div className="mt-3">
-            <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)] mb-2">Grupos</p>
-            {renderClientGroups(modal)}
+        <div className="client-form-body">
+          <div className="client-form-grid grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input label="Nombre tutor" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} />
+            <Input label="Nombre alumno" value={form.child_name || ''} onChange={e => setForm({ ...form, child_name: e.target.value })} />
+            <Input label="Email" value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value })} />
+            <Input
+              label={modal === 'new' ? 'Contraseña' : 'Nueva contraseña'}
+              type="password"
+              value={form.password || ''}
+              error={passwordError || undefined}
+              placeholder={modal === 'new' ? '' : 'Déjala vacía para no cambiarla'}
+              onChange={e => setForm({ ...form, password: e.target.value })}
+            />
+            <Input
+              label={modal === 'new' ? 'Confirmar contraseña' : 'Confirmar nueva contraseña'}
+              type="password"
+              value={form.confirm_password || ''}
+              error={passwordConfirmError || undefined}
+              placeholder={modal === 'new' ? '' : 'Repítela solo si vas a cambiarla'}
+              onChange={e => setForm({ ...form, confirm_password: e.target.value })}
+            />
+            <Select label="Especialista" value={form.specialist_id || ''} onChange={e => setForm({ ...form, specialist_id: e.target.value })} className="sm:col-span-2">
+              <option value="">Selecciona…</option>
+              {specs.map(spec => <option key={spec.id} value={spec.id}>{spec.user?.name || 'Sin nombre'}</option>)}
+            </Select>
           </div>
-        )}
-        <div className="flex gap-2 justify-end mt-4">
-          <Button variant="secondary" onClick={() => setModal(null)} disabled={saving}>Cancelar</Button>
-          <Button disabled={saving || !form.child_name || !form.email || !form.specialist_id || !!passwordError || !!passwordConfirmError} onClick={save}>{saving ? 'Guardando...' : modal === 'new' ? 'Crear' : 'Guardar'}</Button>
+          <p className="client-form-hint text-xs text-[var(--tx3)]">{PASSWORD_RULE_HINT}</p>
+          <div className="client-form-section">
+            <Textarea label="Notas clínicas" rows={3} value={form.diagnosis_notes || ''} onChange={e => setForm({ ...form, diagnosis_notes: e.target.value })} />
+          </div>
+          {modal !== 'new' && (
+            <div className="client-form-section">
+              <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)] mb-2">Grupos</p>
+              {renderClientGroups(modal)}
+            </div>
+          )}
+          <div className="modal-actions flex gap-2 justify-end mt-4">
+            <Button variant="secondary" className="clients-action-btn" onClick={() => setModal(null)} disabled={saving}>Cancelar</Button>
+            <Button className="clients-action-btn" disabled={saving || !form.child_name || !form.email || !form.specialist_id || !!passwordError || !!passwordConfirmError} onClick={save}>{saving ? 'Guardando...' : modal === 'new' ? 'Crear' : 'Guardar'}</Button>
+          </div>
         </div>
       </Modal>
       <Confirm open={!!delId} message="Se desactivará el cliente." onConfirm={async () => { await clientsApi.delete(delId); setClients(p => p.filter(c => c.id !== delId)); setDelId(null); }} onCancel={() => setDelId(null)} />
@@ -572,22 +604,23 @@ function Clients() {
 
 /* ── Activities page (admin) ───────────────────────────────────────────── */
 function Activities() {
-  const [acts,    setActs]    = useState([]);
+  const [acts, setActs] = useState([]);
   const [clients, setClients] = useState([]);
-  const [groups,  setGroups]  = useState([]);
+  const [groups, setGroups] = useState([]);
   const [objects, setObjects] = useState([]);
-  const [specs,   setSpecs]   = useState([]);
+  const [specs, setSpecs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState('');
+  const [search, setSearch] = useState('');
+  const [columnCount, setColumnCount] = useListColumns('admin.activities', 1);
   const [statusFilter, setStatusFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
   const [specialistFilter, setSpecialistFilter] = useState('all');
-  const [modal,   setModal]   = useState(false);
+  const [modal, setModal] = useState(false);
   const [editAct, setEditAct] = useState(null);
-  const [delId,   setDelId]   = useState(null);
-  const [cat,     setCat]     = useState('Todos');
-  const [form,    setForm]    = useState({ title:'', specialist_id:'', selObjs:[], assignMode:'all', selClients:[], selGroups:[] });
-  const [saving,  setSaving]  = useState(false);
+  const [delId, setDelId] = useState(null);
+  const [cat, setCat] = useState('Todos');
+  const [form, setForm] = useState({ title: '', specialist_id: '', selObjs: [], assignMode: 'all', selClients: [], selGroups: [] });
+  const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
   const getAudience = (activity) => activity?.audience || null;
@@ -683,7 +716,7 @@ function Activities() {
 
   const openNew = () => {
     setEditAct(null);
-    setForm({ title:'', specialist_id:'', selObjs:[], assignMode:'all', selClients:[], selGroups:[] });
+    setForm({ title: '', specialist_id: '', selObjs: [], assignMode: 'all', selClients: [], selGroups: [] });
     setCat('Todos');
     setFeedback(null);
     setModal(true);
@@ -781,7 +814,7 @@ function Activities() {
         title="Todas las actividades"
         count={`${filtered.length}/${acts.length}`}
         subtitle="Actividades creadas, objetos incluidos y destino actual de asignación."
-        action={<Button className="entity-action-btn" onClick={openNew}>+ Nueva</Button>}
+        action={<Button className="entity-action-btn" onClick={openNew}>+ Nueva actividad</Button>}
       />
       <SearchBar
         value={search}
@@ -791,43 +824,44 @@ function Activities() {
         inputClassName="entity-search-input"
         extra={(
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="!w-auto text-sm">
+            <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="search-filter-select !w-auto text-sm">
               <option value="all">Todas</option>
               <option value="pending">Pendientes</option>
               <option value="completed">Completadas</option>
             </Select>
-            <Select value={specialistFilter} onChange={e => setSpecialistFilter(e.target.value)} className="!w-auto text-sm">
+            <Select value={specialistFilter} onChange={e => setSpecialistFilter(e.target.value)} className="search-filter-select !w-auto text-sm">
               <option value="all">Todos los especialistas</option>
               {specs.map(spec => <option key={spec.id} value={spec.id}>{spec.user?.name || 'Sin nombre'}</option>)}
             </Select>
-            <Select value={clientFilter} onChange={e => setClientFilter(e.target.value)} className="!w-auto text-sm">
+            <Select value={clientFilter} onChange={e => setClientFilter(e.target.value)} className="search-filter-select !w-auto text-sm">
               <option value="all">Todos los clientes</option>
               {clientOptions.map(client => <option key={client.id} value={client.id}>{client.childName}</option>)}
             </Select>
-            <Badge variant="default">{filtered.length} visibles</Badge>
+            <Badge className="search-visible-badge" variant="default">{filtered.length} visibles</Badge>
+            <ColumnToggle value={columnCount} onChange={setColumnCount} />
           </div>
         )}
       />
       {filtered.length === 0 ? <Empty icon="📋" title="Sin actividades" /> :
         <ListCollection className="entity-list-shell">
-          <div className="space-y-2">
-          {filtered.map(a => (
-            <ListRow
-              key={a.id}
-              className="entity-list-row"
-              avatar={<div className="flex min-h-11 min-w-11 items-center justify-center rounded-[16px] bg-[var(--bg2)] px-2 text-lg">{a.activityObjects?.slice(0, 4).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div>}
-              title={a.title}
-              subtitle={`${a.activityObjects?.length || 0} objetos · ${getAssignmentSummary(a)}`}
-              meta={<p className="text-[11px] text-[var(--tx3)]">{getAssignmentDetail(a)}</p>}
-              actions={(
-                <>
-                  <Button size="sm" variant="secondary" className="entity-action-btn" onClick={() => openEdit(a)}>Editar</Button>
-                  <Button size="sm" variant="danger" className="entity-action-btn" onClick={() => setDelId(a.id)}>Eliminar</Button>
-                </>
-              )}
-            />
-          ))}
-          </div>
+          <ListGrid columns={columnCount}>
+            {filtered.map(a => (
+              <ListRow
+                key={a.id}
+                className="entity-list-row"
+                avatar={<div className="flex min-h-11 min-w-11 items-center justify-center rounded-[16px] bg-[var(--bg2)] px-2 text-lg">{a.activityObjects?.slice(0, 4).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div>}
+                title={a.title}
+                subtitle={`${a.activityObjects?.length || 0} objetos · ${getAssignmentSummary(a)}`}
+                meta={<p className="text-[11px] text-[var(--tx3)]">{getAssignmentDetail(a)}</p>}
+                actions={(
+                  <>
+                    <ActionIconButton className="entity-action-btn" onClick={() => openEdit(a)} />
+                    <ActionIconButton action="delete" className="entity-action-btn" onClick={() => setDelId(a.id)} />
+                  </>
+                )}
+              />
+            ))}
+          </ListGrid>
         </ListCollection>
       }
       <Modal open={modal} onClose={() => setModal(false)} title={editAct ? 'Editar actividad' : 'Nueva actividad'} maxWidth={860}>
@@ -842,7 +876,7 @@ function Activities() {
         <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tx3)]">Objetos</div>
         <div className="flex gap-1.5 flex-wrap mb-2">
           {['Todos', ...cats].map(category => (
-            <button key={category} onClick={() => setCat(category)} className={`px-3 py-2 rounded text-xs font-bold border ${cat === category ? 'bg-[var(--ac)] text-white border-[var(--ac)]' : 'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>
+            <button key={category} onClick={() => setCat(category)} className={`modal-choice rounded text-xs font-bold border ${cat === category ? 'bg-[var(--ac)] text-white border-[var(--ac)]' : 'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>
               {category}
             </button>
           ))}
@@ -857,7 +891,7 @@ function Activities() {
                   ? current.selObjs.filter(id => id !== object.id)
                   : [...current.selObjs, object.id],
               }))}
-              className={`flex flex-col items-center gap-1.5 px-3 py-3 border-2 rounded-lg cursor-pointer transition-all text-center ${form.selObjs.includes(object.id) ? 'border-[var(--ac)] bg-[var(--acb)]' : 'border-[var(--bd)] hover:border-[var(--ac)]'}`}
+              className={`modal-choice flex flex-col items-center gap-1.5 border-2 rounded-lg cursor-pointer transition-all text-center ${form.selObjs.includes(object.id) ? 'border-[var(--ac)] bg-[var(--acb)]' : 'border-[var(--bd)] hover:border-[var(--ac)]'}`}
             >
               <span className="text-xl">{object.em}</span>
               <span className="text-[.65rem] font-bold text-[var(--tx2)] leading-tight">{object.name}</span>
@@ -866,11 +900,11 @@ function Activities() {
         </div>
         <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tx3)]">Asignar a</div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
-          {[['all','🌐','Todos los usuarios'],['clients','👤','Clientes'],['groups','👥','Grupos']].map(([mode, icon, label]) => (
+          {[['all', '🌐', 'Todos los usuarios'], ['clients', '👤', 'Clientes'], ['groups', '👥', 'Grupos']].map(([mode, icon, label]) => (
             <div
               key={mode}
               onClick={() => setForm({ ...form, assignMode: mode })}
-              className={`px-3 py-3 border-2 rounded-[var(--r)] cursor-pointer text-center text-xs font-bold ${form.assignMode === mode ? 'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}
+              className={`modal-choice border-2 rounded-[var(--r)] cursor-pointer text-center text-xs font-bold ${form.assignMode === mode ? 'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}
             >
               <div className="text-lg">{icon}</div>{label}
             </div>
@@ -878,15 +912,15 @@ function Activities() {
         </div>
         {editAct && <p className="mb-3 text-xs text-[var(--tx3)]">Guardar actualizará también los destinatarios activos de esta actividad.</p>}
         {form.assignMode === 'clients' && (
-          <div className="border border-[var(--bd)] rounded-[var(--r)] max-h-40 overflow-y-auto mb-3">
+          <div className="modal-list-panel border border-[var(--bd)] rounded-[var(--r)] max-h-40 overflow-y-auto mb-3">
             {visibleClients.map(client => (
-              <label key={client.id} className="flex items-center gap-3 px-3 py-3 cursor-pointer hover:bg-[var(--acb)] border-b border-[var(--bd)] last:border-0">
+              <label key={client.id} className="modal-list-row flex items-center gap-3 cursor-pointer hover:bg-[var(--acb)] border-b border-[var(--bd)] last:border-0">
                 <input type="checkbox" checked={form.selClients.includes(client.id)} onChange={() => setForm(current => ({ ...current, selClients: current.selClients.includes(client.id) ? current.selClients.filter(id => id !== client.id) : [...current.selClients, client.id] }))} />
                 <span className="text-sm font-bold">{client.childName}</span>
                 <span className="text-xs text-[var(--tx3)]">{client.user?.name}</span>
               </label>
             ))}
-            {visibleClients.length === 0 && <p className="p-3 text-sm text-[var(--tx3)]">No hay clientes disponibles para el especialista seleccionado.</p>}
+            {visibleClients.length === 0 && <p className="modal-list-row text-sm text-[var(--tx3)]">No hay clientes disponibles para el especialista seleccionado.</p>}
           </div>
         )}
         {form.assignMode === 'groups' && (
@@ -895,7 +929,7 @@ function Activities() {
               <div
                 key={group.id}
                 onClick={() => setForm(current => ({ ...current, selGroups: current.selGroups.includes(group.id) ? current.selGroups.filter(id => id !== group.id) : [...current.selGroups, group.id] }))}
-                className={`px-4 py-3 rounded-full border-2 cursor-pointer text-xs font-bold ${form.selGroups.includes(group.id) ? 'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}
+                className={`modal-chip rounded-full border-2 cursor-pointer text-xs font-bold ${form.selGroups.includes(group.id) ? 'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}
               >
                 {group.name} ({group.clients?.length || 0})
               </div>
@@ -903,7 +937,7 @@ function Activities() {
             {visibleGroups.length === 0 && <p className="text-sm text-[var(--tx3)]">No hay grupos disponibles para el especialista seleccionado.</p>}
           </div>
         )}
-        <div className="flex gap-2 justify-end mt-2">
+        <div className="modal-actions flex gap-2 justify-end mt-2">
           <Button variant="secondary" onClick={() => setModal(false)} disabled={saving}>Cancelar</Button>
           <Button disabled={saving || !form.title || !form.specialist_id || form.selObjs.length === 0 || (form.assignMode === 'clients' && form.selClients.length === 0) || (form.assignMode === 'groups' && form.selGroups.length === 0)} onClick={save}>{saving ? 'Guardando...' : editAct ? 'Guardar y reasignar' : 'Crear y asignar'}</Button>
         </div>
@@ -915,16 +949,18 @@ function Activities() {
 
 /* ── Objects page (admin) ──────────────────────────────────────────────── */
 function Objects() {
-  const [objects,  setObjects]  = useState([]);
-  const [cats,     setCats]     = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [search,   setSearch]   = useState('');
-  const [catF,     setCatF]     = useState('Todos');
+  const [objects, setObjects] = useState([]);
+  const [cats, setCats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [catF, setCatF] = useState('Todos');
+  const [columnCount, setColumnCount] = useListColumns('admin.objects', 1);
   const [expanded, setExpanded] = useState(null);
-  const [modal,    setModal]    = useState(false);
-  const [editObj,  setEditObj]  = useState(null);
-  const [delId,    setDelId]    = useState(null);
-  const [saving,   setSaving]   = useState(false);
+  const [modal, setModal] = useState(false);
+  const [categoriesModal, setCategoriesModal] = useState(false);
+  const [editObj, setEditObj] = useState(null);
+  const [delId, setDelId] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [repActionKey, setRepActionKey] = useState('');
   const [repDrafts, setRepDrafts] = useState({});
@@ -941,10 +977,14 @@ function Objects() {
   };
   const [form, setForm] = useState(emptyForm);
 
+  const loadData = async () => {
+    const [objectsResponse, categoriesResponse] = await Promise.all([objectsApi.list(), categoriesApi.list()]);
+    setObjects(objectsResponse.data.data);
+    setCats(categoriesResponse.data.data);
+  };
+
   useEffect(() => {
-    Promise.all([objectsApi.list(), categoriesApi.list()])
-      .then(([or, cr]) => { setObjects(or.data.data); setCats(cr.data.data); })
-      .finally(() => setLoading(false));
+    loadData().finally(() => setLoading(false));
   }, []);
 
   const revokePreview = (url) => {
@@ -968,6 +1008,16 @@ function Objects() {
   const refreshObject = async (objectId) => {
     const refreshed = await objectsApi.get(objectId);
     setObjects(prev => prev.map(object => object.id === objectId ? refreshed.data.data : object));
+  };
+
+  const renderCategoryChip = (category) => {
+    if (!category) return null;
+    return (
+      <span className="object-category-chip" style={{ backgroundColor: `${category.color || '#1A5FD4'}14` }}>
+        <span className="object-category-dot" style={{ backgroundColor: category.color || '#1A5FD4' }} />
+        {category.name}
+      </span>
+    );
   };
 
   const openNew = () => {
@@ -1105,102 +1155,124 @@ function Objects() {
     <div className="animate-in">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="text-xl font-black">Objetos públicos</h1>
-        <Button className="entity-action-btn" onClick={openNew}>+ Nuevo</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" className="entity-action-btn" onClick={() => setCategoriesModal(true)}>Categorías</Button>
+          <Button className="entity-action-btn" onClick={openNew}>+ Nuevo objeto</Button>
+        </div>
       </div>
       <SearchBar value={search} onChange={setSearch} placeholder="🔍 Buscar objeto..."
         fieldClassName="entity-search-field"
         inputClassName="entity-search-input"
         extra={
-          <Select value={catF} onChange={e => setCatF(e.target.value)} className="!w-auto text-sm">
-            <option>Todos</option>
-            {cats.map(c => <option key={c.id}>{c.name}</option>)}
-          </Select>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={catF} onChange={e => setCatF(e.target.value)} className="search-filter-select !w-auto text-sm">
+              <option>Todos</option>
+              {cats.map(c => <option key={c.id}>{c.name}</option>)}
+            </Select>
+            <Badge className="search-visible-badge" variant="default">{filtered.length} visibles</Badge>
+            <ColumnToggle value={columnCount} onChange={setColumnCount} />
+          </div>
         }
       />
       {filtered.length === 0 ? <Empty icon="📦" title="Sin objetos" /> :
         <ListCollection className="entity-list-shell">
-          <div className="space-y-2">
-          {filtered.map(o => {
-            const reps = o.representations || [];
-            const has3d = reps.some(rep => rep.level === 'model_3d');
-            const hasPhoto = reps.some(rep => rep.level === 'photo');
-            const hasDrawing = reps.some(rep => rep.level === 'drawing');
+          <ListGrid columns={columnCount}>
+            {filtered.map(o => {
+              const reps = o.representations || [];
+              const has3d = reps.some(rep => rep.level === 'model_3d');
+              const hasPhoto = reps.some(rep => rep.level === 'photo');
+              const hasDrawing = reps.some(rep => rep.level === 'drawing');
 
-            return (
-              <div key={o.id} className={`bg-[var(--sf)] border-2 rounded-[var(--rl)] overflow-hidden transition-colors ${expanded === o.id ? 'border-[var(--ac)]' : 'border-[var(--bd)]'}`}>
-                <div className="entity-list-row flex flex-wrap items-center gap-2 md:gap-3 cursor-pointer" onClick={() => setExpanded(expanded === o.id ? null : o.id)}>
-                  <span className="text-2xl">{o.em}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm">{o.name}</p>
-                    <p className="text-xs text-[var(--tx3)]">{o.category?.name}</p>
+              return (
+                <div key={o.id} className={`bg-[var(--sf)] border-2 rounded-[var(--rl)] overflow-hidden transition-colors ${expanded === o.id ? 'border-[var(--ac)]' : 'border-[var(--bd)]'}`}>
+                  <div className="object-card object-card--admin entity-list-row cursor-pointer" onClick={() => setExpanded(expanded === o.id ? null : o.id)}>
+                    <div className="object-card__row object-card__row--top">
+                      <div className="object-card__title">
+                        <span className="object-card__emoji text-2xl">{o.em}</span>
+                        <div className="object-card__title-copy">
+                          <p className="font-bold text-sm">{o.name}</p>
+                        </div>
+                      </div>
+                      <div className="object-card__badges">
+                        <Badge className="entity-item-badge" variant={has3d ? 'green' : 'amber'}>🧊 {has3d ? '✓' : '✗'}</Badge>
+                        <Badge className="entity-item-badge" variant={hasPhoto ? 'green' : 'amber'}>📷 {hasPhoto ? '✓' : '✗'}</Badge>
+                        <Badge className="entity-item-badge" variant={hasDrawing ? 'green' : 'amber'}>✏️ {hasDrawing ? '✓' : '✗'}</Badge>
+                      </div>
+                    </div>
+
+                    <div className="object-card__row object-card__row--meta">
+                      {renderCategoryChip(o.category)}
+                      <Badge className="entity-item-badge" variant={o.ownerId ? 'default' : 'green'}>{o.ownerId ? 'Privado' : 'Público'}</Badge>
+                      <Badge className="entity-item-badge" variant={o.status === 'approved' ? 'green' : o.status === 'pending' ? 'amber' : 'default'}>{o.status}</Badge>
+                    </div>
+
+                    <div className="object-card__row object-card__row--actions">
+                      <div className="object-card__actions">
+                        <ActionIconButton className="entity-action-btn" onClick={(event) => { event.stopPropagation(); openEdit(o); }} />
+                        <ActionIconButton action="delete" className="entity-action-btn" onClick={(event) => { event.stopPropagation(); setDelId(o.id); }} />
+                      </div>
+                    </div>
                   </div>
-                  <Badge className="entity-item-badge" variant={has3d ? 'green' : 'amber'}>🧊 {has3d ? '✓' : '✗'}</Badge>
-                  <Badge className="entity-item-badge" variant={hasPhoto ? 'green' : 'amber'}>📷 {hasPhoto ? '✓' : '✗'}</Badge>
-                  <Badge className="entity-item-badge" variant={hasDrawing ? 'green' : 'amber'}>✏️ {hasDrawing ? '✓' : '✗'}</Badge>
-                  <Badge className="entity-item-badge" variant={o.ownerId ? 'default' : 'green'}>{o.ownerId ? 'Privado' : 'Público'}</Badge>
-                  <Badge className="entity-item-badge" variant={o.status === 'approved' ? 'green' : o.status === 'pending' ? 'amber' : 'default'}>{o.status}</Badge>
-                  <Button size="sm" variant="secondary" className="entity-action-btn" onClick={(event) => { event.stopPropagation(); openEdit(o); }}>✏️</Button>
-                  <Button size="sm" variant="danger" className="entity-action-btn" onClick={(event) => { event.stopPropagation(); setDelId(o.id); }}>🗑</Button>
-                </div>
-                {expanded === o.id && (
-                  <div className="border-t border-[var(--bd)] p-4 grid gap-4 xl:grid-cols-3">
-                    {[
-                      ['model_3d', 'URL 3D', reps.find(rep => rep.level === 'model_3d')],
-                      ['photo', 'Foto', reps.find(rep => rep.level === 'photo')],
-                      ['drawing', 'Dibujo', reps.find(rep => rep.level === 'drawing')],
-                    ].map(([level, label, rep]) => {
-                      const draftKey = repDraftKey(o.id, level);
-                      const isBusy = repActionKey === draftKey;
-                      const draftValue = repDrafts[draftKey] ?? rep?.model3dUrl ?? '';
-                      return (
-                      <div key={level} className="rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3 space-y-2">
-                        <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)] mb-2">{label}</p>
-                        {!rep && <p className="text-sm text-[var(--tx3)]">Sin contenido</p>}
-                        {rep?.mediaType === 'model_3d_url' && rep.model3dUrl && (
-                          <div className="space-y-2">
-                            <div className="relative aspect-video overflow-hidden rounded-[var(--r)] border border-[var(--bd)] bg-black/5">
-                              <iframe src={rep.model3dUrl} title={`${o.name} 3D`} className="absolute inset-0 h-full w-full" allowFullScreen />
-                            </div>
-                            <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
-                            <div className="flex gap-2">
-                              <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
-                              <Button size="sm" variant="danger" onClick={() => deleteRep(o.id, level)} disabled={isBusy}>Eliminar</Button>
-                            </div>
-                            <a href={rep.model3dUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-[var(--ac)] break-all">{rep.model3dUrl}</a>
-                          </div>
-                        )}
-                        {rep?.mediaType !== 'model_3d_url' && rep?.fileUrl && (
-                          <>
-                            <img src={rep.fileUrl} alt={label} className="h-32 w-full rounded-[var(--r)] border border-[var(--bd)] object-cover bg-white" />
-                            <div className="flex gap-2">
-                              <label className="inline-flex items-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer whitespace-nowrap px-2.5 py-1 text-xs bg-[var(--sf)] text-[var(--tx)] border-[var(--bd)] hover:bg-[var(--bg2)]">
-                                Reemplazar
+                  {expanded === o.id && (
+                    <div className="border-t border-[var(--bd)] p-4 grid gap-4 xl:grid-cols-3">
+                      {[
+                        ['model_3d', 'URL 3D', reps.find(rep => rep.level === 'model_3d')],
+                        ['photo', 'Foto', reps.find(rep => rep.level === 'photo')],
+                        ['drawing', 'Dibujo', reps.find(rep => rep.level === 'drawing')],
+                      ].map(([level, label, rep]) => {
+                        const draftKey = repDraftKey(o.id, level);
+                        const isBusy = repActionKey === draftKey;
+                        const draftValue = repDrafts[draftKey] ?? rep?.model3dUrl ?? '';
+                        return (
+                          <div key={level} className="rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3 space-y-2">
+                            <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)] mb-2">{label}</p>
+                            {!rep && <p className="text-sm text-[var(--tx3)]">Sin contenido</p>}
+                            {rep?.mediaType === 'model_3d_url' && rep.model3dUrl && (
+                              <div className="space-y-2">
+                                <div className="relative aspect-video overflow-hidden rounded-[var(--r)] border border-[var(--bd)] bg-black/5">
+                                  <iframe src={rep.model3dUrl} title={`${o.name} 3D`} className="absolute inset-0 h-full w-full" allowFullScreen />
+                                </div>
+                                <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
+                                <div className="flex gap-2">
+                                  <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
+                                  <ActionIconButton action="delete" onClick={() => deleteRep(o.id, level)} disabled={isBusy} />
+                                </div>
+                                <a href={rep.model3dUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-[var(--ac)] break-all">{rep.model3dUrl}</a>
+                              </div>
+                            )}
+                            {rep?.mediaType !== 'model_3d_url' && rep?.fileUrl && (
+                              <>
+                                <img src={rep.fileUrl} alt={label} className="h-32 w-full rounded-[var(--r)] border border-[var(--bd)] object-cover bg-white" />
+                                <div className="flex gap-2">
+                                  <label className="inline-flex items-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer whitespace-nowrap px-2.5 py-1 text-xs bg-[var(--sf)] text-[var(--tx)] border-[var(--bd)] hover:bg-[var(--bg2)]">
+                                    Reemplazar
+                                    <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && replaceRep(o.id, level, e.target.files[0])} />
+                                  </label>
+                                  <ActionIconButton action="delete" onClick={() => deleteRep(o.id, level)} disabled={isBusy} />
+                                </div>
+                              </>
+                            )}
+                            {!rep && level === 'model_3d' && (
+                              <>
+                                <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
+                                <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
+                              </>
+                            )}
+                            {!rep && level !== 'model_3d' && (
+                              <label className="inline-flex w-full items-center justify-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer whitespace-nowrap px-2.5 py-2 text-xs bg-[var(--sf)] text-[var(--tx)] border-[var(--bd)] hover:bg-[var(--bg2)]">
+                                Subir archivo
                                 <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && replaceRep(o.id, level, e.target.files[0])} />
                               </label>
-                              <Button size="sm" variant="danger" onClick={() => deleteRep(o.id, level)} disabled={isBusy}>Eliminar</Button>
-                            </div>
-                          </>
-                        )}
-                        {!rep && level === 'model_3d' && (
-                          <>
-                            <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
-                            <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
-                          </>
-                        )}
-                        {!rep && level !== 'model_3d' && (
-                          <label className="inline-flex w-full items-center justify-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer whitespace-nowrap px-2.5 py-2 text-xs bg-[var(--sf)] text-[var(--tx)] border-[var(--bd)] hover:bg-[var(--bg2)]">
-                            Subir archivo
-                            <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && replaceRep(o.id, level, e.target.files[0])} />
-                          </label>
-                        )}
-                      </div>
-                    );})}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </ListGrid>
         </ListCollection>
       }
       <Modal open={modal} onClose={closeModal} title={editObj ? 'Editar objeto' : 'Nuevo objeto (público)'} maxWidth={860}>
@@ -1208,7 +1280,7 @@ function Objects() {
           {feedback && <Notice variant={feedback.type}>{feedback.message}</Notice>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Input label="Nombre" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-            <Input label="Emoji"  value={form.em}   onChange={e => setForm({ ...form, em: e.target.value })} />
+            <Input label="Emoji" value={form.em} onChange={e => setForm({ ...form, em: e.target.value })} />
             <Select label="Categoría" value={form.category_id} onChange={e => setForm({ ...form, category_id: e.target.value })}>
               <option value="">Selecciona…</option>
               {cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -1221,7 +1293,7 @@ function Objects() {
             placeholder="https://sketchfab.com/models/.../embed"
           />
           {form.model3d && (
-            <div className="space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
+            <div className="modal-panel space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
               <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Previsualización 3D</p>
               <div className="relative aspect-video overflow-hidden rounded-[var(--r)] border border-[var(--bd)] bg-black/5">
                 <iframe src={form.model3d} title="Vista previa 3D" className="absolute inset-0 h-full w-full" allowFullScreen />
@@ -1229,9 +1301,9 @@ function Objects() {
             </div>
           )}
           <div className="grid gap-3 md:grid-cols-2">
-            <div className="space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
+            <div className="modal-panel space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
               <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Foto</p>
-              <label className="flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white px-3 py-2 text-sm font-bold text-[var(--ac)]">
+              <label className="modal-upload flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--ac)]">
                 Subir foto
                 <input type="file" accept="image/*" className="hidden" onChange={e => setFilePreview('photoFile', 'photoPreview', e.target.files?.[0] || null)} />
               </label>
@@ -1241,9 +1313,9 @@ function Objects() {
                 <p className="text-sm text-[var(--tx3)]">Sin foto cargada</p>
               )}
             </div>
-            <div className="space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
+            <div className="modal-panel space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
               <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Dibujo</p>
-              <label className="flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white px-3 py-2 text-sm font-bold text-[var(--ac)]">
+              <label className="modal-upload flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--ac)]">
                 Subir dibujo
                 <input type="file" accept="image/*" className="hidden" onChange={e => setFilePreview('drawingFile', 'drawingPreview', e.target.files?.[0] || null)} />
               </label>
@@ -1259,30 +1331,33 @@ function Objects() {
             Publicar (visible para todos los especialistas)
           </label>
         </div>
-        <div className="flex gap-2 justify-end mt-4">
+        <div className="modal-actions flex gap-2 justify-end mt-4">
           <Button variant="secondary" onClick={closeModal} disabled={saving}>Cancelar</Button>
           <Button disabled={saving || !form.name || !form.category_id} onClick={save}>{saving ? 'Guardando...' : editObj ? 'Guardar' : 'Crear'}</Button>
         </div>
       </Modal>
       <Confirm open={!!delId} message="Se eliminará el objeto y todas sus representaciones." onConfirm={del} onCancel={() => setDelId(null)} />
+      <CategoryManagerModal open={categoriesModal} onClose={() => setCategoriesModal(false)} categories={cats} onRefresh={loadData} role="admin" />
     </div>
   );
 }
 
 /* ── Groups page (admin) ───────────────────────────────────────────────── */
 function Groups() {
-  const [groups,  setGroups]  = useState([]);
+  const [groups, setGroups] = useState([]);
   const [clients, setClients] = useState([]);
-  const [specs,   setSpecs]   = useState([]);
+  const [specs, setSpecs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState('');
-  const [modal,   setModal]   = useState(false);
+  const [search, setSearch] = useState('');
+  const [columnCount, setColumnCount] = useListColumns('admin.groups', 1);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [modal, setModal] = useState(false);
   const [editGrp, setEditGrp] = useState(null);
-  const [delId,   setDelId]   = useState(null);
-  const [form,    setForm]    = useState({ name: '', color: '#1A5FD4', specialist_id: '', client_ids: [] });
-  const [saving,  setSaving]  = useState(false);
+  const [delId, setDelId] = useState(null);
+  const [form, setForm] = useState({ name: '', color: '#1A5FD4', specialist_id: '', client_ids: [] });
+  const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
-  const COLORS = ['#1A5FD4','#1A7A3C','#C0392B','#B05000','#7B2D8B','#0077BB','#CC3300'];
+  const COLORS = ['#1A5FD4', '#1A7A3C', '#C0392B', '#B05000', '#7B2D8B', '#0077BB', '#CC3300'];
 
   useEffect(() => {
     Promise.all([groupsApi.list(), clientsApi.list(), specialistsApi.list()])
@@ -1290,16 +1365,18 @@ function Groups() {
       .finally(() => setLoading(false));
   }, []);
 
-  const openNew  = () => {
+  const openNew = () => {
     setEditGrp(null);
     setFeedback(null);
-    setForm({ name:'', color:'#1A5FD4', specialist_id:'', client_ids:[] });
+    setMemberSearch('');
+    setForm({ name: '', color: '#1A5FD4', specialist_id: '', client_ids: [] });
     setModal(true);
   };
-  const openEdit = g  => {
+  const openEdit = g => {
     setEditGrp(g);
     setFeedback(null);
-    setForm({ name:g.name, color:g.color, specialist_id: g.specId || '', client_ids: g.clients?.map(c=>c.id)||[] });
+    setMemberSearch('');
+    setForm({ name: g.name, color: g.color, specialist_id: g.specId || '', client_ids: g.clients?.map(c => c.id) || [] });
     setModal(true);
   };
   const save = async () => {
@@ -1308,12 +1385,12 @@ function Groups() {
     try {
       if (editGrp) {
         const r = await groupsApi.update(editGrp.id, form);
-        setGroups(p=>p.map(g=>g.id===editGrp.id?r.data.data:g));
+        setGroups(p => p.map(g => g.id === editGrp.id ? r.data.data : g));
         setFeedback({ type: 'success', message: 'Grupo actualizado correctamente.' });
       }
       else {
         const r = await groupsApi.create(form);
-        setGroups(p=>[...p, r.data.data]);
+        setGroups(p => [...p, r.data.data]);
         setFeedback({ type: 'success', message: 'Grupo creado correctamente.' });
       }
       window.setTimeout(() => {
@@ -1326,9 +1403,14 @@ function Groups() {
       setSaving(false);
     }
   };
-  const del = async () => { await groupsApi.delete(delId); setGroups(p=>p.filter(g=>g.id!==delId)); setDelId(null); };
+  const del = async () => { await groupsApi.delete(delId); setGroups(p => p.filter(g => g.id !== delId)); setDelId(null); };
   const filtered = groups.filter(g => !search || g.name.toLowerCase().includes(search.toLowerCase()));
   const selectableClients = clients.filter(c => !form.specialist_id || c.specialistId === form.specialist_id);
+  const normalizedMemberSearch = memberSearch.trim().toLowerCase();
+  const visibleSelectableClients = selectableClients.filter(client => {
+    if (!normalizedMemberSearch) return true;
+    return (client.childName || '').toLowerCase().includes(normalizedMemberSearch);
+  });
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
 
@@ -1340,28 +1422,40 @@ function Groups() {
         subtitle="Agrupaciones operativas para asignar actividades a varios alumnos."
         action={<Button className="entity-action-btn" onClick={openNew}>+ Nuevo grupo</Button>}
       />
-      <SearchBar value={search} onChange={setSearch} placeholder="🔍 Buscar grupo..." fieldClassName="entity-search-field" inputClassName="entity-search-input" extra={<Badge className="entity-item-badge" variant="default">{filtered.length} visibles</Badge>} />
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="🔍 Buscar grupo..."
+        fieldClassName="entity-search-field"
+        inputClassName="entity-search-input"
+        extra={(
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="search-visible-badge entity-item-badge" variant="default">{filtered.length} visibles</Badge>
+            <ColumnToggle value={columnCount} onChange={setColumnCount} />
+          </div>
+        )}
+      />
       {filtered.length === 0 ? <Empty icon="👥" title="Sin grupos" /> :
         <ListCollection className="entity-list-shell">
-          <div className="space-y-2">
-          {filtered.map(g => (
-            <ListRow
-              key={g.id}
-              className="entity-list-row"
-              accentColor={g.color}
-              avatar={<div className="flex p-[11px] h-11 w-11 items-center justify-center rounded-full text-sm font-black text-white" style={{ background: g.color }}>{g.clients?.length || 0}</div>}
-              title={g.name}
-              subtitle={`${g.clients?.length || 0} miembros`}
-              meta={<p className="text-xs text-[var(--tx3)]">{g.clients?.map(c => c.childName).join(', ') || 'Sin miembros'}</p>}
-              actions={(
-                <>
-                  <Button size="sm" variant="secondary" className="entity-action-btn" onClick={() => openEdit(g)}>Editar</Button>
-                  <Button size="sm" variant="danger" className="entity-action-btn" onClick={() => setDelId(g.id)}>Eliminar</Button>
-                </>
-              )}
-            />
-          ))}
-          </div>
+          <ListGrid columns={columnCount}>
+            {filtered.map(g => (
+              <ListRow
+                key={g.id}
+                className="entity-list-row"
+                accentColor={g.color}
+                avatar={<div className="flex p-[11px] h-11 w-11 items-center justify-center rounded-full text-sm font-black text-white" style={{ background: g.color }}>{g.clients?.length || 0}</div>}
+                title={g.name}
+                subtitle={`${g.clients?.length || 0} miembros`}
+                meta={<p className="text-xs text-[var(--tx3)]">{g.clients?.map(c => c.childName).join(', ') || 'Sin miembros'}</p>}
+                actions={(
+                  <>
+                    <ActionIconButton className="entity-action-btn" onClick={() => openEdit(g)} />
+                    <ActionIconButton action="delete" className="entity-action-btn" onClick={() => setDelId(g.id)} />
+                  </>
+                )}
+              />
+            ))}
+          </ListGrid>
         </ListCollection>
       }
       <Modal open={modal} onClose={() => setModal(false)} title={editGrp ? 'Editar grupo' : 'Nuevo grupo'} maxWidth={480}>
@@ -1380,26 +1474,32 @@ function Groups() {
             <option value="">Selecciona…</option>
             {specs.map(spec => <option key={spec.id} value={spec.id}>{spec.user?.name || 'Sin nombre'}</option>)}
           </Select>
-          <div>
+          <div className="modal-section">
             <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)] mb-2">Color</p>
             <div className="flex gap-2">{COLORS.map(c => <button key={c} onClick={() => setForm({ ...form, color: c })} className="w-8 h-8 rounded-full hover:scale-110 transition-transform" style={{ background: c, outline: form.color === c ? `3px solid ${c}` : undefined, outlineOffset: 2 }} />)}</div>
           </div>
-          <div>
+          <div className="modal-section">
             <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)] mb-2">Miembros</p>
-            <div className="border border-[var(--bd)] rounded-[var(--r)] max-h-36 overflow-y-auto">
-              {selectableClients.map(c => (
-                <label key={c.id} className="flex items-center gap-3 px-3 py-3 cursor-pointer hover:bg-[var(--acb)] border-b border-[var(--bd)] last:border-0">
+            <div className="modal-inline-search">
+              <Input value={memberSearch} onChange={e => setMemberSearch(e.target.value)} placeholder="Buscar miembro por nombre..." />
+            </div>
+            <div className="modal-list-panel border border-[var(--bd)] rounded-[var(--r)] max-h-36 overflow-y-auto">
+              {visibleSelectableClients.map(c => (
+                <label key={c.id} className="modal-list-row flex items-center gap-3 cursor-pointer hover:bg-[var(--acb)] border-b border-[var(--bd)] last:border-0">
                   <input type="checkbox" checked={form.client_ids.includes(c.id)} onChange={() => setForm(f => ({ ...f, client_ids: f.client_ids.includes(c.id) ? f.client_ids.filter(x => x !== c.id) : [...f.client_ids, c.id] }))} />
                   <span className="text-sm font-bold">{c.childName}</span>
                 </label>
               ))}
               {form.specialist_id && selectableClients.length === 0 && (
-                <p className="p-3 text-sm text-[var(--tx3)]">No hay clientes para el especialista seleccionado.</p>
+                <p className="modal-list-row text-sm text-[var(--tx3)]">No hay clientes para el especialista seleccionado.</p>
+              )}
+              {form.specialist_id && selectableClients.length > 0 && visibleSelectableClients.length === 0 && (
+                <p className="modal-list-row text-sm text-[var(--tx3)]">No hay coincidencias para esa búsqueda.</p>
               )}
             </div>
           </div>
         </div>
-        <div className="flex gap-2 justify-end mt-4">
+        <div className="modal-actions flex gap-2 justify-end mt-4">
           <Button variant="secondary" onClick={() => setModal(false)} disabled={saving}>Cancelar</Button>
           <Button disabled={saving || !form.name || !form.specialist_id} onClick={save}>{saving ? 'Guardando...' : editGrp ? 'Guardar' : 'Crear'}</Button>
         </div>
@@ -1412,11 +1512,12 @@ function Groups() {
 /* ── Subscriptions page ────────────────────────────────────────────────── */
 function Subscriptions() {
   const [specialists, setSpecialists] = useState([]);
-  const [clients,     setClients]     = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [search,      setSearch]      = useState('');
-  const [filter,      setFilter]      = useState('all');
-  const [subTarget,   setSubTarget]   = useState(null);
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [columnCount, setColumnCount] = useListColumns('admin.subscriptions', 1);
+  const [filter, setFilter] = useState('all');
+  const [subTarget, setSubTarget] = useState(null);
 
   useEffect(() => {
     Promise.all([specialistsApi.list(), clientsApi.list()])
@@ -1455,31 +1556,42 @@ function Subscriptions() {
 
   return (
     <div className="animate-in">
-      <h1 className="text-xl font-black mb-4">Gestión de suscripciones</h1>
-      <SearchBar value={search} onChange={setSearch} placeholder="🔍 Buscar..."
+      <ListPageHeader
+        title="Gestión de suscripciones"
+        count={`${allEntities.length}/${specialists.length + clients.length}`}
+        subtitle="Control de estados, vencimientos y acceso a la gestión de cobros."
+      />
+      <SearchBar value={search} onChange={setSearch} placeholder="🔍 Buscar..." fieldClassName="search-field" inputClassName="search-input"
         extra={
-          <Select value={filter} onChange={e => setFilter(e.target.value)} className="!w-auto text-sm">
-            <option value="all">Todos</option>
-            {Object.entries(filterMap).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </Select>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={filter} onChange={e => setFilter(e.target.value)} className="search-filter-select !w-auto text-sm">
+              <option value="all">Todos</option>
+              {Object.entries(filterMap).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </Select>
+            <Badge className="search-visible-badge" variant="default">{allEntities.length} visibles</Badge>
+            <ColumnToggle value={columnCount} onChange={setColumnCount} />
+          </div>
         }
       />
-      <div className="space-y-2">
-        {allEntities.map(e => (
-          <div key={e.id + e._type} className="flex items-center gap-3 p-3 bg-[var(--sf)] border border-[var(--bd)] rounded-[var(--r)]">
-            <Badge variant={e._type === 'specialist' ? 'blue' : 'default'}>{e._type === 'specialist' ? '🧑‍⚕️' : '👶'}</Badge>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm">{e._name}</p>
-              <p className="text-xs text-[var(--tx3)]">
-                {e._sub ? `${e._sub.plan} · ${e._sub.billing === 'month' ? 'Mensual' : 'Anual'} · vence ${e._sub.expires}` : 'Sin suscripción'}
-              </p>
-            </div>
-            <SubBadge sub={e._sub} />
-            <Button size="sm" onClick={() => setSubTarget({ entity: e, type: e._type })}>💳 Gestionar</Button>
-          </div>
-        ))}
-        {allEntities.length === 0 && <Empty icon="💳" title="Sin resultados" />}
-      </div>
+      {allEntities.length === 0 ? <Empty icon="💳" title="Sin resultados" /> : (
+        <ListCollection className="entity-list-shell">
+          <ListGrid columns={columnCount}>
+            {allEntities.map(e => (
+              <div key={e.id + e._type} className="entity-list-row flex items-center gap-3 bg-[var(--sf)] border border-[var(--bd)] rounded-[var(--r)]">
+                <Badge className="entity-item-badge" variant={e._type === 'specialist' ? 'blue' : 'default'}>{e._type === 'specialist' ? '🧑‍⚕️' : '👶'}</Badge>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm">{e._name}</p>
+                  <p className="text-xs text-[var(--tx3)]">
+                    {e._sub ? `${e._sub.plan} · ${e._sub.billing === 'month' ? 'Mensual' : 'Anual'} · vence ${e._sub.expires}` : 'Sin suscripción'}
+                  </p>
+                </div>
+                <SubBadge sub={e._sub} className="entity-item-badge" />
+                <Button size="sm" className="entity-action-btn" onClick={() => setSubTarget({ entity: e, type: e._type })}>💳 Gestionar</Button>
+              </div>
+            ))}
+          </ListGrid>
+        </ListCollection>
+      )}
       {subTarget && (
         <SubscriptionModal
           entity={subTarget.entity} entityType={subTarget.type}
@@ -1495,12 +1607,12 @@ function Subscriptions() {
 export default function AdminHome() {
   return (
     <Routes>
-      <Route index              element={<Dashboard />} />
+      <Route index element={<Dashboard />} />
       <Route path="specialists" element={<Specialists />} />
-      <Route path="clients"     element={<Clients />} />
-      <Route path="activities"  element={<Activities />} />
-      <Route path="objects"     element={<Objects />} />
-      <Route path="groups"      element={<Groups />} />
+      <Route path="clients" element={<Clients />} />
+      <Route path="activities" element={<Activities />} />
+      <Route path="objects" element={<Objects />} />
+      <Route path="groups" element={<Groups />} />
       <Route path="subscriptions" element={<Subscriptions />} />
     </Routes>
   );

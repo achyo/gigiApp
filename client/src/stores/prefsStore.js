@@ -47,7 +47,22 @@ function syncPreferences() {
   authStore.updatePreferences({
     tts_enabled: prefsStore.ttsEnabled,
     text_size: textSizeMap[prefsStore.fontSizeId] ?? 1,
+    list_layouts: prefsStore.listLayouts,
   }).catch(() => {});
+}
+
+function hydrateFromPreferences(preferences, currentState) {
+  if (!preferences) return currentState;
+
+  const textSizeByValue = ['s', 'm', 'l', 'xl'];
+  const nextFontSizeId = textSizeByValue[preferences.textSize] || 'm';
+
+  return {
+    ...currentState,
+    fontSizeId: nextFontSizeId,
+    ttsEnabled: preferences.ttsEnabled ?? currentState.ttsEnabled,
+    listLayouts: preferences.listLayouts || {},
+  };
 }
 
 const usePrefsStore = create(
@@ -56,6 +71,7 @@ const usePrefsStore = create(
       paletteId:  'def',
       fontSizeId: 'm',
       ttsEnabled: true,
+      listLayouts: {},
       PALETTES,
       FONT_SIZES,
 
@@ -73,6 +89,24 @@ const usePrefsStore = create(
 
       setTts: (v) => {
         set({ ttsEnabled: v });
+        syncPreferences();
+      },
+
+      hydrateUserPreferences: (preferences) => {
+        const nextState = hydrateFromPreferences(preferences, get());
+        applyPalette(nextState.paletteId);
+        applyZoom(nextState.fontSizeId);
+        set({
+          paletteId: nextState.paletteId,
+          fontSizeId: nextState.fontSizeId,
+          ttsEnabled: nextState.ttsEnabled,
+          listLayouts: nextState.listLayouts,
+        });
+      },
+
+      setListLayout: (key, value) => {
+        const nextLayouts = { ...get().listLayouts, [key]: value };
+        set({ listLayouts: nextLayouts });
         syncPreferences();
       },
 

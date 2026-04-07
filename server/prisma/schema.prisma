@@ -105,6 +105,7 @@ model UserPreference {
   ttsEnabled     Boolean  @default(true)  @map("tts_enabled")
   textSize       Int      @default(1)     @map("text_size")
   sequentialMode Boolean  @default(true)  @map("sequential_mode")
+  listLayouts    Json?    @map("list_layouts")
   updatedAt      DateTime @updatedAt      @map("updated_at")
 
   user         User          @relation(fields:[userId],         references:[id], onDelete:Cascade)
@@ -130,6 +131,7 @@ model ColorProfile {
 model Category {
   id           String         @id @default(uuid())
   name         String
+  color        String         @default("#1A5FD4")
   description  String?        @db.Text
   ownerId      String?        @map("owner_id")
   status       ApprovalStatus @default(private)

@@ -51,8 +51,17 @@ router.post('/login', async (req, res, next) => {
       },
     });
 
-    // Load preferences
-    const prefs = await prisma.userPreference.findUnique({ where: { userId: user.id } });
+    // Load or initialize preferences so UI state stays scoped to the current user.
+    const prefs = await prisma.userPreference.upsert({
+      where: { userId: user.id },
+      create: {
+        userId: user.id,
+        ttsEnabled: true,
+        textSize: 1,
+        sequentialMode: true,
+      },
+      update: {},
+    });
 
     res.json({
       success: true,

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 import useAuthStore from '../../stores/authStore';
 import { assignmentsApi, gameApi } from '../../api';
-import { Spinner, Badge, Button, Empty, Notice, SearchBar, Select } from '../../components/ui';
+import { Spinner, Badge, Button, Empty, Notice, SearchBar, ColumnToggle, Select } from '../../components/ui';
 import GameEngine from '../../components/game/GameEngine';
 
 export default function ClientHome() {
@@ -16,6 +16,7 @@ export default function ClientHome() {
   const [startError,  setStartError]  = useState('');
   const [search,      setSearch]      = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [columnCount, setColumnCount] = useState(2);
   const playAssignmentId = searchParams.get('play');
 
   useEffect(() => {
@@ -113,14 +114,17 @@ export default function ClientHome() {
         value={search}
         onChange={setSearch}
         placeholder="🔍 Buscar actividad por nombre..."
+        fieldClassName="search-field"
+        inputClassName="search-input"
         extra={(
-          <div className="flex items-center gap-2">
-            <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="!w-auto text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="search-filter-select !w-auto text-sm">
               <option value="all">Todas</option>
               <option value="pending">Pendientes</option>
               <option value="completed">Completadas</option>
             </Select>
-            <Badge variant="default">{filteredAssignments.length} visibles</Badge>
+            <Badge className="search-visible-badge" variant="default">{filteredAssignments.length} visibles</Badge>
+            <ColumnToggle value={columnCount} onChange={setColumnCount} />
           </div>
         )}
       />
@@ -134,7 +138,7 @@ export default function ClientHome() {
       )}
 
       {active.length > 0 && (
-        <div className="cgrid">
+        <div className="cgrid" style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}>
           {active.map(a => <ActivityCard key={a.id} assignment={a} onStart={startActivity} starting={startingId === a.id} />)}
         </div>
       )}
@@ -142,7 +146,7 @@ export default function ClientHome() {
       {done.length > 0 && (
         <>
           <h2 className="mt-8 mb-3 text-base font-bold text-[var(--tx2)]">Completadas</h2>
-          <div className="cgrid opacity-70">
+          <div className="cgrid opacity-70" style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}>
             {done.map(a => <ActivityCard key={a.id} assignment={a} onStart={startActivity} done starting={startingId === a.id} />)}
           </div>
         </>

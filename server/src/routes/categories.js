@@ -5,21 +5,28 @@ const { authenticateJWT, authorizeRole, canModify } = require('../middleware/aut
 router.get('/', authenticateJWT, async (req, res, next) => {
   try {
     const { search } = req.query;
-    const where = req.user.role === 'admin' ? {} : {
-      OR: [{ ownerId: req.user.sub }, { ownerId: null, status: 'approved' }],
+    const where = {
+      ...(req.user.role === 'admin' ? {} : { OR: [{ ownerId: req.user.sub }, { ownerId: null, status: 'approved' }] }),
       ...(search && { name: { contains: search, mode: 'insensitive' } }),
     };
-    const data = await prisma.category.findMany({ where, include: { _count: { select: { objects: true } } }, orderBy: { name: 'asc' } });
+    const data = await prisma.category.findMany({
+      where,
+      include: { _count: { select: { objects: true } } },
+      orderBy: [{ ownerId: 'asc' }, { name: 'asc' }],
+    });
     res.json({ success: true, data });
   } catch(e){ next(e); }
 });
 
 router.post('/', authenticateJWT, authorizeRole('admin','specialist'), async (req, res, next) => {
   try {
-    const { name, description, is_public } = req.body;
-    const ownerId = req.user.role === 'admin' && is_public ? null : req.user.sub;
-    const status  = req.user.role === 'admin' && is_public ? 'approved' : 'private';
-    const cat = await prisma.category.create({ data: { name, description, ownerId, status } });
+    const { name, description, color, is_public } = req.body;
+    const wantsPublic = req.user.role === 'admin' ? true : Boolean(is_public);
+    const ownerId = wantsPublic && req.user.role === 'admin' ? null : req.user.sub;
+    const status = wantsPublic ? (req.user.role === 'admin' ? 'approved' : 'pending') : 'private';
+    const cat = await prisma.category.create({
+      data: { name, description, color: color || '#1A5FD4', ownerId, status },
+    });
     res.status(201).json({ success: true, data: cat });
   } catch(e){ next(e); }
 });
@@ -29,8 +36,21 @@ router.patch('/:id', authenticateJWT, async (req, res, next) => {
     const cat = await prisma.category.findUnique({ where: { id: req.params.id } });
     if (!cat) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
     if (!canModify(req.user, cat)) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
-    const { name, description } = req.body;
-    const updated = await prisma.category.update({ where: { id: req.params.id }, data: { name, description } });
+    const { name, description, color, is_public } = req.body;
+    const wantsPublic = req.user.role === 'admin' ? true : Boolean(is_public);
+    const nextStatus = wantsPublic ? (req.user.role === 'admin' ? 'approved' : 'pending') : 'private';
+    const nextOwnerId = wantsPublic && req.user.role === 'admin' ? null : req.user.sub;
+    const updated = await prisma.category.update({
+      where: { id: req.params.id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(description !== undefined && { description }),
+        ...(color !== undefined && { color }),
+        status: nextStatus,
+        ownerId: nextOwnerId,
+        ...(nextStatus !== 'rejected' && { rejectedNote: null }),
+      },
+    });
     res.json({ success: true, data: updated });
   } catch(e){ next(e); }
 });

@@ -17,6 +17,26 @@ export function Button({ variant = 'primary', size = 'md', className = '', child
   );
 }
 
+export function ActionIconButton({ action = 'edit', className = '', ...props }) {
+  const config = action === 'delete'
+    ? { icon: '🗑', label: 'Eliminar', variant: 'danger' }
+    : { icon: '✏️', label: 'Editar', variant: 'secondary' };
+
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant={config.variant}
+      className={`action-icon-btn ${className}`}
+      aria-label={config.label}
+      title={config.label}
+      {...props}
+    >
+      <span aria-hidden="true">{config.icon}</span>
+    </Button>
+  );
+}
+
 /* ── Badge ───────────────────────────────────────────────────────────────── */
 export function Badge({ variant = 'default', children, className = '' }) {
   const variants = {
@@ -105,17 +125,17 @@ export function Modal({ open, onClose, title, children, maxWidth = 640, classNam
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 pt-[4vh] overflow-y-auto"
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div
-        className={`bg-[var(--sf)] rounded-[var(--rl)] px-[26px] py-[22px] w-full scale-in ${className}`}
+        className={`app-modal bg-[var(--sf)] rounded-[var(--rl)] px-[26px] py-[22px] w-full scale-in ${className}`}
         style={{ maxWidth }}
       >
         {title && (
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-black text-base">{title}</h2>
-            <button onClick={onClose} className="text-[var(--tx3)] hover:text-[var(--tx)] text-xl leading-none">&times;</button>
+          <div className="app-modal-header flex items-center justify-between mb-4">
+            <h2 className="app-modal-title font-black text-base">{title}</h2>
+            <button onClick={onClose} className="app-modal-close text-[var(--tx3)] hover:text-[var(--tx)] text-xl leading-none">&times;</button>
           </div>
         )}
         {children}
@@ -154,6 +174,24 @@ export function SearchBar({ value, onChange, placeholder = '🔍 Buscar...', ext
         />
       </div>
       {extra}
+    </div>
+  );
+}
+
+export function ColumnToggle({ value = 1, onChange, className = '' }) {
+  return (
+    <div className={`search-layout-group inline-flex items-center gap-1 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] p-1 ${className}`}>
+      {[1, 2, 3].map((count) => (
+        <Button
+          key={count}
+          type="button"
+          variant={value === count ? 'primary' : 'secondary'}
+          className="search-layout-btn"
+          onClick={() => onChange(count)}
+        >
+          {count} col
+        </Button>
+      ))}
     </div>
   );
 }

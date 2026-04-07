@@ -20,7 +20,7 @@ router.get('/', authenticateJWT, authorizeRole('admin', 'specialist'), scopeFilt
     const [data, total] = await Promise.all([
       prisma.object.findMany({
         where, skip, take,
-        include: { representations: true, category: { select: { id: true, name: true } } },
+        include: { representations: true, category: { select: { id: true, name: true, color: true } } },
         orderBy: { createdAt: 'desc' },
       }),
       prisma.object.count({ where }),
@@ -45,12 +45,21 @@ router.get('/:id', authenticateJWT, authorizeRole('admin', 'specialist'), async 
 router.post('/', authenticateJWT, authorizeRole('admin', 'specialist'), async (req, res, next) => {
   try {
     const { name, category_id, em, is_public } = req.body;
+    const category = await prisma.category.findFirst({
+      where: {
+        id: category_id,
+        ...(req.user.role === 'admin' ? {} : {
+          OR: [{ ownerId: req.user.sub }, { ownerId: null, status: 'approved' }],
+        }),
+      },
+    });
+    if (!category) return res.status(400).json({ success: false, error: { code: 'INVALID_CATEGORY' } });
     const ownerId = req.user.role === 'admin' && is_public ? null : req.user.sub;
     const status  = req.user.role === 'admin' && is_public ? 'approved' : 'private';
 
     const obj = await prisma.object.create({
       data: { name, em: em || '📦', categoryId: category_id, ownerId, status },
-      include: { representations: true, category: { select: { id: true, name: true } } },
+      include: { representations: true, category: { select: { id: true, name: true, color: true } } },
     });
     res.status(201).json({ success: true, data: obj });
   } catch (e) { next(e); }
@@ -63,15 +72,30 @@ router.patch('/:id', authenticateJWT, authorizeRole('admin', 'specialist'), asyn
     if (!obj) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
     if (!canModify(req.user, obj)) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
 
-    const { name, category_id, em } = req.body;
+    const { name, category_id, em, is_public } = req.body;
+    if (category_id) {
+      const category = await prisma.category.findFirst({
+        where: {
+          id: category_id,
+          ...(req.user.role === 'admin' ? {} : {
+            OR: [{ ownerId: req.user.sub }, { ownerId: null, status: 'approved' }],
+          }),
+        },
+      });
+      if (!category) return res.status(400).json({ success: false, error: { code: 'INVALID_CATEGORY' } });
+    }
     const updated = await prisma.object.update({
       where: { id: req.params.id },
       data: {
         ...(name && { name }),
         ...(category_id && { categoryId: category_id }),
         ...(typeof em === 'string' && { em }),
+        ...(req.user.role === 'admin' && typeof is_public === 'boolean' && {
+          ownerId: is_public ? null : req.user.sub,
+          status: is_public ? 'approved' : 'private',
+        }),
       },
-      include: { representations: true, category: { select: { id: true, name: true } } },
+      include: { representations: true, category: { select: { id: true, name: true, color: true } } },
     });
     res.json({ success: true, data: updated });
   } catch (e) { next(e); }

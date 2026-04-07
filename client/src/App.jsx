@@ -31,7 +31,12 @@ function RoleRedirect() {
 export default function App() {
   // 🔧 CORREGIDO: se aplican preferencias globales al montar la app.
   const applyAll = usePrefsStore(s => s.applyAll);
+  const hydrateUserPreferences = usePrefsStore(s => s.hydrateUserPreferences);
+  const preferences = useAuthStore(s => s.preferences);
   useEffect(() => { applyAll(); }, [applyAll]);
+  useEffect(() => {
+    hydrateUserPreferences(preferences);
+  }, [hydrateUserPreferences, preferences]);
 
   return (
     <Routes>

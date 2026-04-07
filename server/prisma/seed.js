@@ -61,18 +61,28 @@ async function main() {
   console.log('  ✅ Client:', cliUser.email);
 
   // ── Categories ────────────────────────────────────────────────────────────
-  const catNames = ['Animales', 'Frutas', 'Hogar', 'Transporte'];
+  const categorySeeds = [
+    { name: 'Animales', color: '#2E8B57' },
+    { name: 'Frutas', color: '#D96C06' },
+    { name: 'Hogar', color: '#6B5B95' },
+    { name: 'Transporte', color: '#1A5FD4' },
+  ];
   const cats = {};
-  for (const name of catNames) {
+  for (const categorySeed of categorySeeds) {
     let cat = await prisma.category.findFirst({
-      where: { name, ownerId: null },
+      where: { name: categorySeed.name, ownerId: null },
     });
     if (!cat) {
       cat = await prisma.category.create({
-        data: { name, ownerId: null, status: 'approved' },
+        data: { name: categorySeed.name, color: categorySeed.color, ownerId: null, status: 'approved' },
+      });
+    } else if (cat.color !== categorySeed.color) {
+      cat = await prisma.category.update({
+        where: { id: cat.id },
+        data: { color: categorySeed.color },
       });
     }
-    cats[name] = cat;
+    cats[categorySeed.name] = cat;
   }
   console.log('  ✅ Categories');
 

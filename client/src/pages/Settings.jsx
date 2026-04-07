@@ -86,8 +86,8 @@ export default function Settings() {
         <form onSubmit={changePassword} className="space-y-3">
           <Input label="Contraseña actual" type="password" value={pwForm.current} onChange={e=>setPwForm({...pwForm,current:e.target.value})} required />
           <Input label="Nueva contraseña" type="password" value={pwForm.next} error={passwordError || undefined} onChange={e=>setPwForm({...pwForm,next:e.target.value})} required minLength={8} />
-          <Input label="Confirmar nueva contraseña" type="password" value={pwForm.confirm} error={passwordConfirmError || undefined} onChange={e=>setPwForm({...pwForm,confirm:e.target.value})} required />
           <p className="text-xs text-[var(--tx3)]">{PASSWORD_RULE_HINT}</p>
+          <Input label="Confirmar nueva contraseña" type="password" value={pwForm.confirm} error={passwordConfirmError || undefined} onChange={e=>setPwForm({...pwForm,confirm:e.target.value})} required />          
           {pwMsg && <p className={`text-xs p-2 rounded ${pwMsg.type==='ok'?'bg-[var(--okb)] text-[var(--ok)]':'bg-[var(--erb)] text-[var(--er)]'}`}>{pwMsg.text}</p>}
           <Button type="submit" disabled={!pwForm.current || !pwForm.next || !pwForm.confirm || !!passwordError || !!passwordConfirmError}>Actualizar contraseña</Button>
         </form>

@@ -2,13 +2,46 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router';
 import { clientsApi, activitiesApi, groupsApi, assignmentsApi, objectsApi, categoriesApi } from '../../api';
 import useAuthStore from '../../stores/authStore';
-import { Button, Badge, Card, Input, Select, Textarea, SearchBar, TabBar, Confirm, Modal, Empty, Spinner, SubBadge, Notice } from '../../components/ui';
+import { Button, Badge, Card, Input, Select, Textarea, SearchBar, ColumnToggle, TabBar, Confirm, Modal, Empty, Spinner, SubBadge, Notice, ActionIconButton } from '../../components/ui';
+import CategoryManagerModal from '../../components/modals/CategoryManagerModal';
 import SubscriptionModal from '../../components/modals/SubscriptionModal';
+import useListColumns from '../../hooks/useListColumns';
 import { getPasswordStrengthError, PASSWORD_RULE_HINT } from '../../lib/password';
 
 function getApiErrorMessage(error, fallback) {
   return error?.response?.data?.error?.message || error?.message || fallback;
 }
+
+function getSubscriptionState(sub) {
+  if (!sub) return 'none';
+  const now = new Date();
+  const exp = new Date(sub.expires);
+  const days = (exp - now) / 864e5;
+  if (sub.status === 'trial') return 'trial';
+  if (days > 0 && days <= 15) return 'expiring';
+  if (days > 0) return 'active';
+  if (days > -15) return 'grace';
+  return 'expired';
+}
+
+const SUBSCRIPTION_STATE_LABELS = {
+  all: 'Todas las suscripciones',
+  none: 'Sin suscripción',
+  trial: 'Prueba 15d',
+  active: 'Activa',
+  expiring: 'Vence pronto',
+  grace: 'Cortesía 15d',
+  expired: 'Caducada',
+};
+
+const SUBSCRIPTION_STATE_ORDER = {
+  none: 0,
+  trial: 1,
+  active: 2,
+  expiring: 3,
+  grace: 4,
+  expired: 5,
+};
 
 function DashboardMetricCard({ value, label }) {
   return (
@@ -48,6 +81,14 @@ function ListPageHeader({ title, count, subtitle, action }) {
 
 function ListCollection({ children, className = '' }) {
   return <Card className={className}>{children}</Card>;
+}
+
+function ListGrid({ columns = 1, children, className = '' }) {
+  return (
+    <div className={`grid items-start gap-2 ${className}`} style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+      {children}
+    </div>
+  );
 }
 
 function ListRow({ avatar, title, subtitle, meta, badges, actions, accentColor, className = '' }) {
@@ -180,6 +221,11 @@ function Clients() {
   const [groups,   setGroups]   = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [search,   setSearch]   = useState('');
+  const [columnCount, setColumnCount] = useListColumns('specialist.clients', 1);
+  const [groupFilter, setGroupFilter] = useState('all');
+  const [subscriptionFilter, setSubscriptionFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('name');
+  const [page, setPage] = useState(1);
   const [modal,    setModal]    = useState(null); // null | 'new' | client obj
   const [delId,    setDelId]    = useState(null);
   const [form,     setForm]     = useState({});
@@ -230,8 +276,44 @@ function Clients() {
     setDelId(null);
   };
 
-  const filtered = clients.filter(c => !search ||
-    (c.childName + (c.user?.name||'')).toLowerCase().includes(search.toLowerCase()));
+  const getClientGroupLabel = (client) => {
+    const names = (client.groups || []).map(group => group.name).sort((left, right) => left.localeCompare(right, 'es'));
+    return names[0] || 'Sin grupo';
+  };
+
+  const filtered = [...clients]
+    .filter((client) => {
+      const matchesSearch = !search || (client.childName + (client.user?.name || '')).toLowerCase().includes(search.toLowerCase());
+      const matchesGroup = groupFilter === 'all'
+        || (groupFilter === 'none' ? !(client.groups || []).length : (client.groups || []).some(group => group.id === groupFilter));
+      const matchesSubscription = subscriptionFilter === 'all' || getSubscriptionState(client.subscription) === subscriptionFilter;
+      return matchesSearch && matchesGroup && matchesSubscription;
+    })
+    .sort((left, right) => {
+      if (sortBy === 'group') {
+        return getClientGroupLabel(left).localeCompare(getClientGroupLabel(right), 'es');
+      }
+      if (sortBy === 'subscription') {
+        const stateDiff = SUBSCRIPTION_STATE_ORDER[getSubscriptionState(left.subscription)] - SUBSCRIPTION_STATE_ORDER[getSubscriptionState(right.subscription)];
+        if (stateDiff !== 0) return stateDiff;
+      }
+      return (left.childName || '').localeCompare(right.childName || '', 'es');
+    });
+
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visibleClients = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, groupFilter, subscriptionFilter, sortBy]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   const renderClientGroups = (client) => {
     if (!client?.groups?.length) return <p className="text-xs text-[var(--tx3)]">Sin grupos</p>;
@@ -267,12 +349,30 @@ function Clients() {
         placeholder="🔍 Buscar alumno o tutor..."
         fieldClassName="clients-search-field"
         inputClassName="clients-search-input"
-        extra={<Badge variant="default">{filtered.length} visibles</Badge>}
+        extra={(
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={sortBy} onChange={e => setSortBy(e.target.value)} className="search-filter-select clients-filter-select !w-auto text-sm">
+              <option value="name">Ordenar: nombre</option>
+              <option value="group">Ordenar: grupo</option>
+              <option value="subscription">Ordenar: suscripción</option>
+            </Select>
+            <Select value={groupFilter} onChange={e => setGroupFilter(e.target.value)} className="search-filter-select clients-filter-select !w-auto text-sm">
+              <option value="all">Todos los grupos</option>
+              <option value="none">Sin grupo</option>
+              {groups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}
+            </Select>
+            <Select value={subscriptionFilter} onChange={e => setSubscriptionFilter(e.target.value)} className="search-filter-select clients-filter-select !w-auto text-sm">
+              {Object.entries(SUBSCRIPTION_STATE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </Select>
+            <Badge className="search-visible-badge clients-visible-badge" variant="default">{filtered.length} visibles</Badge>
+            <ColumnToggle value={columnCount} onChange={setColumnCount} />
+          </div>
+        )}
       />
       {filtered.length === 0 ? <Empty icon="👶" title="Sin clientes" subtitle="Añade tu primer alumno" /> :
         <ListCollection className="clients-list-shell">
-          <div className="space-y-2">
-          {filtered.map(c => (
+          <ListGrid columns={columnCount}>
+          {visibleClients.map(c => (
             <ListRow
               key={c.id}
               className="clients-list-row"
@@ -283,45 +383,58 @@ function Clients() {
               badges={<span className="cursor-pointer" onClick={() => setSubTarget({ entity: c, type: 'client' })}><SubBadge sub={c.subscription} className="clients-item-badge" /></span>}
               actions={(
                 <>
-                  <Button size="sm" variant="secondary" className="clients-action-btn" onClick={() => openEdit(c)}>Editar</Button>
-                  <Button size="sm" variant="danger" className="clients-action-btn" onClick={() => setDelId(c.id)}>Eliminar</Button>
+                  <ActionIconButton className="clients-action-btn" onClick={() => openEdit(c)} />
+                  <ActionIconButton action="delete" className="clients-action-btn" onClick={() => setDelId(c.id)} />
                 </>
               )}
             />
           ))}
-          </div>
+          </ListGrid>
         </ListCollection>
       }
-      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nuevo cliente' : 'Editar cliente'} maxWidth={640}>
-        {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Input label="Nombre tutor"   value={form.name||''}        onChange={e=>setForm({...form,name:e.target.value})}       />
-          <Input label="Nombre alumno"  value={form.child_name||''}  onChange={e=>setForm({...form,child_name:e.target.value})} />
-          <Input label="Email"          value={form.email||''}       onChange={e=>setForm({...form,email:e.target.value})}      />
-          <Input
-            label={modal === 'new' ? 'Contraseña' : 'Nueva contraseña'}
-            type="password"
-            value={form.password||''}
-            error={passwordError || undefined}
-            placeholder={modal === 'new' ? '' : 'Déjala vacía para no cambiarla'}
-            onChange={e=>setForm({...form,password:e.target.value})}
-          />
-          <Input
-            label={modal === 'new' ? 'Confirmar contraseña' : 'Confirmar nueva contraseña'}
-            type="password"
-            value={form.confirm_password||''}
-            error={passwordConfirmError || undefined}
-            placeholder={modal === 'new' ? '' : 'Repítela solo si vas a cambiarla'}
-            onChange={e=>setForm({...form,confirm_password:e.target.value})}
-          />
+      {filtered.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-[var(--tx3)]">
+            Mostrando {filtered.length === 0 ? 0 : ((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, filtered.length)} de {filtered.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="secondary" className="clients-action-btn" onClick={() => setPage(currentPage - 1)} disabled={currentPage === 1}>Anterior</Button>
+            <Badge className="search-visible-badge clients-visible-badge" variant="blue">Página {currentPage} de {totalPages}</Badge>
+            <Button size="sm" variant="secondary" className="clients-action-btn" onClick={() => setPage(currentPage + 1)} disabled={currentPage === totalPages}>Siguiente</Button>
+          </div>
         </div>
-        <p className="mt-2 text-xs text-[var(--tx3)]">{PASSWORD_RULE_HINT}</p>
-        <div className="mt-3"><Textarea label="Notas clínicas" rows={2} value={form.diagnosis_notes||''} onChange={e=>setForm({...form,diagnosis_notes:e.target.value})} /></div>
-        <div className="mt-3">
+      )}
+      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'new' ? 'Nuevo cliente' : 'Editar cliente'} maxWidth={640} className="client-form-modal">
+        {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
+        <div className="client-form-body">
+          <div className="client-form-grid grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Input label="Nombre tutor"   value={form.name||''}        onChange={e=>setForm({...form,name:e.target.value})}       />
+            <Input label="Nombre alumno"  value={form.child_name||''}  onChange={e=>setForm({...form,child_name:e.target.value})} />
+            <Input label="Email"          value={form.email||''}       onChange={e=>setForm({...form,email:e.target.value})}      />
+            <Input
+              label={modal === 'new' ? 'Contraseña' : 'Nueva contraseña'}
+              type="password"
+              value={form.password||''}
+              error={passwordError || undefined}
+              placeholder={modal === 'new' ? '' : 'Déjala vacía para no cambiarla'}
+              onChange={e=>setForm({...form,password:e.target.value})}
+            />
+            <Input
+              label={modal === 'new' ? 'Confirmar contraseña' : 'Confirmar nueva contraseña'}
+              type="password"
+              value={form.confirm_password||''}
+              error={passwordConfirmError || undefined}
+              placeholder={modal === 'new' ? '' : 'Repítela solo si vas a cambiarla'}
+              onChange={e=>setForm({...form,confirm_password:e.target.value})}
+            />
+          </div>
+          <p className="client-form-hint text-xs text-[var(--tx3)]">{PASSWORD_RULE_HINT}</p>
+          <div className="client-form-section"><Textarea label="Notas clínicas" rows={2} value={form.diagnosis_notes||''} onChange={e=>setForm({...form,diagnosis_notes:e.target.value})} /></div>
+          <div className="client-form-section">
           <p className="mb-2 text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Grupos</p>
-          <div className="max-h-40 overflow-y-auto rounded-[var(--r)] border border-[var(--bd)]">
+          <div className="client-form-groups max-h-40 overflow-y-auto rounded-[var(--r)] border border-[var(--bd)]">
             {groups.map(group => (
-              <label key={group.id} className="flex cursor-pointer items-center gap-2 border-b border-[var(--bd)] p-2 last:border-0 hover:bg-[var(--acb)]">
+              <label key={group.id} className="client-form-group-row flex cursor-pointer items-center gap-2 border-b border-[var(--bd)] p-2 last:border-0 hover:bg-[var(--acb)]">
                 <input
                   type="checkbox"
                   checked={(form.group_ids || []).includes(group.id)}
@@ -335,12 +448,13 @@ function Clients() {
                 <span className="text-sm font-bold">{group.name}</span>
               </label>
             ))}
-            {groups.length === 0 && <p className="p-3 text-sm text-[var(--tx3)]">No hay grupos disponibles.</p>}
+            {groups.length === 0 && <p className="client-form-group-empty p-3 text-sm text-[var(--tx3)]">No hay grupos disponibles.</p>}
           </div>
-        </div>
-        <div className="flex gap-2 justify-end mt-4">
-          <Button variant="secondary" onClick={() => setModal(null)} disabled={saving}>Cancelar</Button>
-          <Button disabled={saving || !form.child_name || !form.email || !!passwordError || !!passwordConfirmError} onClick={save}>{saving ? 'Guardando...' : modal === 'new' ? 'Crear' : 'Guardar'}</Button>
+          </div>
+          <div className="client-form-actions flex gap-2 justify-end mt-4">
+            <Button variant="secondary" className="clients-action-btn" onClick={() => setModal(null)} disabled={saving}>Cancelar</Button>
+            <Button className="clients-action-btn" disabled={saving || !form.child_name || !form.email || !!passwordError || !!passwordConfirmError} onClick={save}>{saving ? 'Guardando...' : modal === 'new' ? 'Crear' : 'Guardar'}</Button>
+          </div>
         </div>
       </Modal>
       <Confirm open={!!delId} message="Se eliminará el cliente y sus asignaciones." onConfirm={del} onCancel={() => setDelId(null)} />
@@ -357,6 +471,7 @@ function Activities() {
   const [objects,  setObjects] = useState([]);
   const [loading,  setLoading] = useState(true);
   const [search,   setSearch]  = useState('');
+  const [columnCount, setColumnCount] = useListColumns('specialist.activities', 1);
   const [statusFilter, setStatusFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
   const [modal,    setModal]   = useState(false);
@@ -507,7 +622,7 @@ function Activities() {
         title="Actividades"
         count={`${filtered.length}/${acts.length}`}
         subtitle="Tus actividades, objetos incluidos y destino de asignación activo."
-        action={<Button className="entity-action-btn" onClick={openNew}>+ Nueva</Button>}
+        action={<Button className="entity-action-btn" onClick={openNew}>+ Nueva actividad</Button>}
       />
       <SearchBar
         value={search}
@@ -517,22 +632,23 @@ function Activities() {
         inputClassName="entity-search-input"
         extra={(
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="!w-auto text-sm">
+            <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="search-filter-select !w-auto text-sm">
               <option value="all">Todas</option>
               <option value="pending">Pendientes</option>
               <option value="completed">Completadas</option>
             </Select>
-            <Select value={clientFilter} onChange={e => setClientFilter(e.target.value)} className="!w-auto text-sm">
+            <Select value={clientFilter} onChange={e => setClientFilter(e.target.value)} className="search-filter-select !w-auto text-sm">
               <option value="all">Todos los clientes</option>
               {clients.map(client => <option key={client.id} value={client.id}>{client.childName}</option>)}
             </Select>
-            <Badge variant="default">{filtered.length} visibles</Badge>
+            <Badge className="search-visible-badge" variant="default">{filtered.length} visibles</Badge>
+            <ColumnToggle value={columnCount} onChange={setColumnCount} />
           </div>
         )}
       />
       {filtered.length === 0 ? <Empty icon="📋" title="Sin actividades" /> :
         <ListCollection className="entity-list-shell">
-          <div className="space-y-2">
+          <ListGrid columns={columnCount}>
           {filtered.map(a => (
             <ListRow
               key={a.id}
@@ -543,13 +659,13 @@ function Activities() {
               meta={<p className="text-[11px] text-[var(--tx3)]">{getAssignmentDetail(a)}</p>}
               actions={(
                 <>
-                  <Button size="sm" variant="secondary" className="entity-action-btn" onClick={() => openEdit(a)}>Editar</Button>
-                  <Button size="sm" variant="danger" className="entity-action-btn" onClick={() => setDelId(a.id)}>Eliminar</Button>
+                  <ActionIconButton className="entity-action-btn" onClick={() => openEdit(a)} />
+                  <ActionIconButton action="delete" className="entity-action-btn" onClick={() => setDelId(a.id)} />
                 </>
               )}
             />
           ))}
-          </div>
+          </ListGrid>
         </ListCollection>
       }
       <Modal open={modal} onClose={() => setModal(false)} title={editAct ? 'Editar actividad' : 'Nueva actividad'} maxWidth={860}>
@@ -561,13 +677,13 @@ function Activities() {
         <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tx3)]">Objetos</div>
         <div className="flex gap-1.5 flex-wrap mb-2">
           {['Todos',...cats].map(c=>(
-            <button key={c} onClick={()=>setCat(c)} className={`px-3 py-2 rounded text-xs font-bold border ${cat===c?'bg-[var(--ac)] text-white border-[var(--ac)]':'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>{c}</button>
+            <button key={c} onClick={()=>setCat(c)} className={`modal-choice rounded text-xs font-bold border ${cat===c?'bg-[var(--ac)] text-white border-[var(--ac)]':'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>{c}</button>
           ))}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 max-h-56 overflow-y-auto p-1">
           {visObjs.map(o=>(
             <div key={o.id} onClick={()=>setForm(f=>({...f,selObjs:f.selObjs.includes(o.id)?f.selObjs.filter(x=>x!==o.id):[...f.selObjs,o.id]}))}
-              className={`flex flex-col items-center gap-1.5 px-3 py-3 border-2 rounded-lg cursor-pointer transition-all text-center ${form.selObjs.includes(o.id)?'border-[var(--ac)] bg-[var(--acb)]':'border-[var(--bd)] hover:border-[var(--ac)]'}`}>
+              className={`modal-choice flex flex-col items-center gap-1.5 border-2 rounded-lg cursor-pointer transition-all text-center ${form.selObjs.includes(o.id)?'border-[var(--ac)] bg-[var(--acb)]':'border-[var(--bd)] hover:border-[var(--ac)]'}`}>
               <span className="text-xl">{o.em}</span>
               <span className="text-[.65rem] font-bold text-[var(--tx2)] leading-tight">{o.name}</span>
             </div>
@@ -577,36 +693,36 @@ function Activities() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
           {[['all','🌐','Todos los usuarios'],['clients','👤','Clientes'],['groups','👥','Grupos']].map(([m,ic,lb])=>(
             <div key={m} onClick={()=>setForm({...form,assignMode:m})}
-              className={`px-3 py-3 border-2 rounded-[var(--r)] cursor-pointer text-center text-xs font-bold ${form.assignMode===m?'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]':'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}>
+              className={`modal-choice border-2 rounded-[var(--r)] cursor-pointer text-center text-xs font-bold ${form.assignMode===m?'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]':'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}>
               <div className="text-lg">{ic}</div>{lb}
             </div>
           ))}
         </div>
         {editAct && <p className="mb-3 text-xs text-[var(--tx3)]">Guardar actualizará también los destinatarios activos de esta actividad.</p>}
         {form.assignMode==='clients' && (
-          <div className="border border-[var(--bd)] rounded-[var(--r)] max-h-40 overflow-y-auto mb-3">
+          <div className="modal-list-panel border border-[var(--bd)] rounded-[var(--r)] max-h-40 overflow-y-auto mb-3">
             {clients.map(c=>(
-              <label key={c.id} className="flex items-center gap-3 px-3 py-3 cursor-pointer hover:bg-[var(--acb)] border-b border-[var(--bd)] last:border-0">
+              <label key={c.id} className="modal-list-row flex items-center gap-3 cursor-pointer hover:bg-[var(--acb)] border-b border-[var(--bd)] last:border-0">
                 <input type="checkbox" checked={form.selClients.includes(c.id)} onChange={()=>setForm(f=>({...f,selClients:f.selClients.includes(c.id)?f.selClients.filter(x=>x!==c.id):[...f.selClients,c.id]}))} />
                 <span className="text-sm font-bold">{c.childName}</span>
                 <span className="text-xs text-[var(--tx3)]">{c.user?.name}</span>
               </label>
             ))}
-            {clients.length === 0 && <p className="p-3 text-sm text-[var(--tx3)]">No hay clientes disponibles.</p>}
+            {clients.length === 0 && <p className="modal-list-row text-sm text-[var(--tx3)]">No hay clientes disponibles.</p>}
           </div>
         )}
         {form.assignMode==='groups' && (
           <div className="flex flex-wrap gap-2 mb-3">
             {groups.map(g=>(
               <div key={g.id} onClick={()=>setForm(f=>({...f,selGroups:f.selGroups.includes(g.id)?f.selGroups.filter(x=>x!==g.id):[...f.selGroups,g.id]}))}
-                className={`px-4 py-3 rounded-full border-2 cursor-pointer text-xs font-bold ${form.selGroups.includes(g.id)?'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]':'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}>
+                className={`modal-chip rounded-full border-2 cursor-pointer text-xs font-bold ${form.selGroups.includes(g.id)?'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]':'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}>
                 {g.name} ({g.clients?.length||0})
               </div>
             ))}
             {groups.length === 0 && <p className="text-sm text-[var(--tx3)]">No hay grupos disponibles.</p>}
           </div>
         )}
-        <div className="flex gap-2 justify-end mt-2">
+        <div className="modal-actions flex gap-2 justify-end mt-2">
           <Button variant="secondary" onClick={() => setModal(false)} disabled={saving}>Cancelar</Button>
           <Button disabled={saving || !form.title || form.selObjs.length === 0 || (form.assignMode === 'clients' && form.selClients.length === 0) || (form.assignMode === 'groups' && form.selGroups.length === 0)} onClick={save}>{saving ? 'Guardando...' : editAct ? 'Guardar y reasignar' : 'Crear y asignar'}</Button>
         </div>
@@ -623,8 +739,10 @@ function Objects() {
   const [loading,  setLoading]  = useState(true);
   const [search,   setSearch]   = useState('');
   const [catF,     setCatF]     = useState('Todos');
+  const [columnCount, setColumnCount] = useListColumns('specialist.objects', 1);
   const [expanded, setExpanded] = useState(null);
   const [modal,    setModal]    = useState(false);
+  const [categoriesModal, setCategoriesModal] = useState(false);
   const [editObj,  setEditObj]  = useState(null);
   const [delId,    setDelId]    = useState(null);
   const [saving,   setSaving]   = useState(false);
@@ -643,10 +761,14 @@ function Objects() {
   };
   const [form, setForm] = useState(emptyForm);
 
+  const loadData = async () => {
+    const [objectsResponse, categoriesResponse] = await Promise.all([objectsApi.list(), categoriesApi.list()]);
+    setObjects(objectsResponse.data.data);
+    setCats(categoriesResponse.data.data);
+  };
+
   useEffect(() => {
-    Promise.all([objectsApi.list(), categoriesApi.list()])
-      .then(([or, cr]) => { setObjects(or.data.data); setCats(cr.data.data); })
-      .finally(() => setLoading(false));
+    loadData().finally(() => setLoading(false));
   }, []);
 
   const revokePreview = (url) => {
@@ -670,6 +792,16 @@ function Objects() {
   const refreshObject = async (objectId) => {
     const refreshed = await objectsApi.get(objectId);
     setObjects(prev => prev.map(object => object.id === objectId ? refreshed.data.data : object));
+  };
+
+  const renderCategoryChip = (category) => {
+    if (!category) return null;
+    return (
+      <span className="object-category-chip" style={{ backgroundColor: `${category.color || '#1A5FD4'}14` }}>
+        <span className="object-category-dot" style={{ backgroundColor: category.color || '#1A5FD4' }} />
+        {category.name}
+      </span>
+    );
   };
 
   const openNew = () => {
@@ -803,19 +935,26 @@ function Objects() {
     <div className="animate-in">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="text-xl font-black">Objetos</h1>
-        <Button className="entity-action-btn" onClick={openNew}>+ Nuevo</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" className="entity-action-btn" onClick={() => setCategoriesModal(true)}>Categorías</Button>
+          <Button className="entity-action-btn" onClick={openNew}>+ Nuevo objeto</Button>
+        </div>
       </div>
       <SearchBar value={search} onChange={setSearch} placeholder="🔍 Buscar objeto..."
         fieldClassName="entity-search-field"
         inputClassName="entity-search-input"
         extra={
-          <Select value={catF} onChange={e=>setCatF(e.target.value)} className="!w-auto text-sm">
-            <option>Todos</option>
-            {cats.map(c=><option key={c.id}>{c.name}</option>)}
-          </Select>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={catF} onChange={e=>setCatF(e.target.value)} className="search-filter-select !w-auto text-sm">
+              <option>Todos</option>
+              {cats.map(c=><option key={c.id}>{c.name}</option>)}
+            </Select>
+            <Badge className="search-visible-badge" variant="default">{filtered.length} visibles</Badge>
+            <ColumnToggle value={columnCount} onChange={setColumnCount} />
+          </div>
         }
       />
-      {filtered.length === 0 ? <Empty icon="📦" title="Sin objetos" subtitle="Añade tu primer objeto" /> : <ListCollection className="entity-list-shell"><div className="space-y-2">
+      {filtered.length === 0 ? <Empty icon="📦" title="Sin objetos" subtitle="Añade tu primer objeto" /> : <ListCollection className="entity-list-shell"><ListGrid columns={columnCount}>
         {filtered.map(o => {
           const reps = o.representations || [];
           const has3d = reps.some(r=>r.level==='model_3d');
@@ -823,15 +962,32 @@ function Objects() {
           const hasDraw  = reps.some(r=>r.level==='drawing');
           return (
             <div key={o.id} className={`bg-[var(--sf)] border-2 rounded-[var(--rl)] overflow-hidden transition-colors ${expanded===o.id?'border-[var(--ac)]':'border-[var(--bd)]'}`}>
-              <div className="entity-list-row flex flex-wrap items-center gap-2 md:gap-3 cursor-pointer" onClick={()=>setExpanded(expanded===o.id?null:o.id)}>
-                <span className="text-2xl">{o.em}</span>
-                <div className="min-w-0 flex-1"><p className="font-bold text-sm">{o.name}</p><p className="text-xs text-[var(--tx3)]">{o.category?.name}</p></div>
-                <Badge className="entity-item-badge" variant={has3d?'green':'amber'}>🧊{has3d?'✓':'✗'}</Badge>
-                <Badge className="entity-item-badge" variant={hasPhoto?'green':'amber'}>📷{hasPhoto?'✓':'✗'}</Badge>
-                <Badge className="entity-item-badge" variant={hasDraw?'green':'amber'}>📝{hasDraw?'✓':'✗'}</Badge>
-                <Button size="sm" variant="secondary" className="entity-action-btn" onClick={e=>{e.stopPropagation();openEdit(o);}}>✏️</Button>
-                <Button size="sm" variant="danger" className="entity-action-btn" onClick={e=>{e.stopPropagation();setDelId(o.id);}}>🗑</Button>
-                <span className="text-[var(--tx3)]">{expanded===o.id?'▲':'▼'}</span>
+              <div className="object-card entity-list-row cursor-pointer" onClick={()=>setExpanded(expanded===o.id?null:o.id)}>
+                <div className="object-card__row object-card__row--top">
+                  <div className="object-card__title">
+                    <span className="object-card__emoji text-2xl">{o.em}</span>
+                    <div className="object-card__title-copy">
+                      <p className="font-bold text-sm">{o.name}</p>
+                    </div>
+                  </div>
+                  <div className="object-card__badges">
+                    <Badge className="entity-item-badge" variant={has3d?'green':'amber'}>🧊 {has3d?'✓':'✗'}</Badge>
+                    <Badge className="entity-item-badge" variant={hasPhoto?'green':'amber'}>📷 {hasPhoto?'✓':'✗'}</Badge>
+                    <Badge className="entity-item-badge" variant={hasDraw?'green':'amber'}>📝 {hasDraw?'✓':'✗'}</Badge>
+                  </div>
+                </div>
+
+                <div className="object-card__row object-card__row--meta">
+                  {renderCategoryChip(o.category)}
+                  <Badge className="entity-item-badge" variant={o.ownerId ? 'default' : 'green'}>{o.ownerId ? 'Privado' : 'Público'}</Badge>
+                </div>
+
+                <div className="object-card__row object-card__row--actions">
+                  <div className="object-card__actions">
+                    <ActionIconButton className="entity-action-btn" onClick={e=>{e.stopPropagation();openEdit(o);}} />
+                    <ActionIconButton action="delete" className="entity-action-btn" onClick={e=>{e.stopPropagation();setDelId(o.id);}} />
+                  </div>
+                </div>
               </div>
               {expanded===o.id && (
                 <div className="border-t border-[var(--bd)] p-4 grid gap-4 xl:grid-cols-3">
@@ -852,7 +1008,7 @@ function Objects() {
                                   <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
                                   <div className="flex gap-2">
                                     <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
-                                    <Button size="sm" variant="danger" onClick={() => deleteRep(o.id, lvl)} disabled={isBusy}>Eliminar</Button>
+                                    <ActionIconButton action="delete" onClick={() => deleteRep(o.id, lvl)} disabled={isBusy} />
                                   </div>
                                 </>
                               )
@@ -864,7 +1020,7 @@ function Objects() {
                                       Reemplazar
                                       <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadRep(o.id, n, e.target.files[0])} />
                                     </label>
-                                    <Button size="sm" variant="danger" onClick={() => deleteRep(o.id, lvl)} disabled={isBusy}>Eliminar</Button>
+                                    <ActionIconButton action="delete" onClick={() => deleteRep(o.id, lvl)} disabled={isBusy} />
                                   </div>
                                 </>
                               )
@@ -896,7 +1052,7 @@ function Objects() {
             </div>
           );
         })}
-      </div></ListCollection>}
+      </ListGrid></ListCollection>}
       <Modal open={modal} onClose={closeModal} title={editObj?'Editar objeto':'Nuevo objeto'} maxWidth={860}>
         <div className="space-y-3">
           {feedback && <Notice variant={feedback.type}>{feedback.message}</Notice>}
@@ -910,7 +1066,7 @@ function Objects() {
           </div>
           <Input label="URL del fichero 3D" value={form.model3d} onChange={e=>setForm({...form,model3d:e.target.value})} placeholder="https://sketchfab.com/models/.../embed" />
           {form.model3d && (
-            <div className="space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
+            <div className="modal-panel space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
               <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Previsualización 3D</p>
               <div className="relative aspect-video overflow-hidden rounded-[var(--r)] border border-[var(--bd)] bg-black/5">
                 <iframe src={form.model3d} title="Vista previa 3D" className="absolute inset-0 h-full w-full" allowFullScreen />
@@ -918,9 +1074,9 @@ function Objects() {
             </div>
           )}
           <div className="grid gap-3 md:grid-cols-2">
-            <div className="space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
+            <div className="modal-panel space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
               <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Foto</p>
-              <label className="flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white px-3 py-2 text-sm font-bold text-[var(--ac)]">
+              <label className="modal-upload flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--ac)]">
                 Subir foto
                 <input type="file" accept="image/*" className="hidden" onChange={e => setFilePreview('photoFile', 'photoPreview', e.target.files?.[0] || null)} />
               </label>
@@ -930,9 +1086,9 @@ function Objects() {
                 <p className="text-sm text-[var(--tx3)]">Sin foto cargada</p>
               )}
             </div>
-            <div className="space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
+            <div className="modal-panel space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
               <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Dibujo</p>
-              <label className="flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white px-3 py-2 text-sm font-bold text-[var(--ac)]">
+              <label className="modal-upload flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--ac)]">
                 Subir dibujo
                 <input type="file" accept="image/*" className="hidden" onChange={e => setFilePreview('drawingFile', 'drawingPreview', e.target.files?.[0] || null)} />
               </label>
@@ -944,12 +1100,13 @@ function Objects() {
             </div>
           </div>
         </div>
-        <div className="flex gap-2 justify-end mt-4">
+        <div className="modal-actions flex gap-2 justify-end mt-4">
           <Button variant="secondary" onClick={closeModal} disabled={saving}>Cancelar</Button>
           <Button disabled={saving || !form.name || !form.category_id} onClick={save}>{saving ? 'Guardando...' : editObj?'Guardar':'Crear'}</Button>
         </div>
       </Modal>
       <Confirm open={!!delId} message="Se eliminará el objeto y sus representaciones." onConfirm={del} onCancel={()=>setDelId(null)} />
+      <CategoryManagerModal open={categoriesModal} onClose={() => setCategoriesModal(false)} categories={cats} onRefresh={loadData} role="specialist" />
     </div>
   );
 }
@@ -963,6 +1120,7 @@ function Groups() {
   const [editGrp, setEditGrp] = useState(null);
   const [delId,   setDelId]   = useState(null);
   const [search,  setSearch]  = useState('');
+  const [columnCount, setColumnCount] = useListColumns('specialist.groups', 1);
   const [form,    setForm]    = useState({ name:'', color:'#1A5FD4', client_ids:[] });
   const COLORS = ['#1A5FD4','#1A7A3C','#C0392B','#B05000','#7B2D8B','#0077BB','#CC3300'];
 
@@ -993,10 +1151,22 @@ function Groups() {
         subtitle="Conjuntos de alumnos para asignaciones rápidas y seguimiento."
         action={<Button className="entity-action-btn" onClick={openNew}>+ Nuevo grupo</Button>}
       />
-      <SearchBar value={search} onChange={setSearch} placeholder="🔍 Buscar grupo..." fieldClassName="entity-search-field" inputClassName="entity-search-input" extra={<Badge className="entity-item-badge" variant="default">{filtered.length} visibles</Badge>} />
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="🔍 Buscar grupo..."
+        fieldClassName="entity-search-field"
+        inputClassName="entity-search-input"
+        extra={(
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="search-visible-badge entity-item-badge" variant="default">{filtered.length} visibles</Badge>
+            <ColumnToggle value={columnCount} onChange={setColumnCount} />
+          </div>
+        )}
+      />
       {filtered.length === 0 ? <Empty icon="👥" title="Sin grupos" subtitle="Los grupos permiten asignar actividades a varios clientes a la vez" /> :
         <ListCollection className="entity-list-shell">
-          <div className="space-y-2">
+          <ListGrid columns={columnCount}>
           {filtered.map(g=>(
             <ListRow
               key={g.id}
@@ -1008,13 +1178,13 @@ function Groups() {
               meta={<p className="text-xs text-[var(--tx3)]">{g.clients?.map(c => c.childName).join(', ') || 'Sin miembros'}</p>}
               actions={(
                 <>
-                  <Button size="sm" variant="secondary" className="entity-action-btn" onClick={() => openEdit(g)}>Editar</Button>
-                  <Button size="sm" variant="danger" className="entity-action-btn" onClick={() => setDelId(g.id)}>Eliminar</Button>
+                  <ActionIconButton className="entity-action-btn" onClick={() => openEdit(g)} />
+                  <ActionIconButton action="delete" className="entity-action-btn" onClick={() => setDelId(g.id)} />
                 </>
               )}
             />
           ))}
-          </div>
+          </ListGrid>
         </ListCollection>
       }
       <Modal open={modal} onClose={()=>setModal(false)} title={editGrp?'Editar grupo':'Nuevo grupo'} maxWidth={480}>
@@ -1032,9 +1202,9 @@ function Groups() {
         </div>
         <div>
           <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)] mb-2">Miembros</p>
-          <div className="border border-[var(--bd)] rounded-[var(--r)] max-h-40 overflow-y-auto">
+          <div className="modal-list-panel border border-[var(--bd)] rounded-[var(--r)] max-h-40 overflow-y-auto">
             {clients.map(c=>(
-              <label key={c.id} className="flex items-center gap-3 px-3 py-3 cursor-pointer hover:bg-[var(--acb)] border-b border-[var(--bd)] last:border-0">
+              <label key={c.id} className="modal-list-row flex items-center gap-3 cursor-pointer hover:bg-[var(--acb)] border-b border-[var(--bd)] last:border-0">
                 <input type="checkbox" checked={form.client_ids.includes(c.id)} onChange={()=>toggleClient(c.id)} />
                 <span className="text-sm font-bold">{c.childName}</span>
                 <span className="text-xs text-[var(--tx3)]">{c.user?.name}</span>
@@ -1042,7 +1212,7 @@ function Groups() {
             ))}
           </div>
         </div>
-        <div className="flex gap-2 justify-end mt-4">
+        <div className="modal-actions flex gap-2 justify-end mt-4">
           <Button variant="secondary" onClick={()=>setModal(false)}>Cancelar</Button>
           <Button disabled={!form.name} onClick={save}>{editGrp?'Guardar':'Crear grupo'}</Button>
         </div>
