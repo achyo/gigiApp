@@ -7,6 +7,7 @@ import { CategoryManagementView } from '../../components/modals/CategoryManagerM
 import SubscriptionModal from '../../components/modals/SubscriptionModal';
 import ClientActivityModal from '../../components/modals/ClientActivityModal';
 import useListColumns from '../../hooks/useListColumns';
+import usePersistentViewState from '../../hooks/usePersistentViewState';
 import { getPasswordStrengthError, PASSWORD_RULE_HINT } from '../../lib/password';
 
 function getApiErrorMessage(error, fallback) {
@@ -398,13 +399,21 @@ function Dashboard() {
 function Clients() {
   const [clients,  setClients]  = useState([]);
   const [groups,   setGroups]   = useState([]);
+  const [activities, setActivities] = useState([]);
   const [loading,  setLoading]  = useState(true);
-  const [search,   setSearch]   = useState('');
+  const [viewState, setViewState] = usePersistentViewState('specialist.clients.filters', {
+    search: '',
+    groupFilter: 'all',
+    subscriptionFilter: 'all',
+    sortBy: 'name',
+    page: 1,
+  });
+  const [search,   setSearch]   = useState(viewState.search);
   const [columnCount, setColumnCount] = useListColumns('specialist.clients', 1);
-  const [groupFilter, setGroupFilter] = useState('all');
-  const [subscriptionFilter, setSubscriptionFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('name');
-  const [page, setPage] = useState(1);
+  const [groupFilter, setGroupFilter] = useState(viewState.groupFilter);
+  const [subscriptionFilter, setSubscriptionFilter] = useState(viewState.subscriptionFilter);
+  const [sortBy, setSortBy] = useState(viewState.sortBy);
+  const [page, setPage] = useState(viewState.page);
   const [modal,    setModal]    = useState(null); // null | 'new' | client obj
   const [activityClient, setActivityClient] = useState(null);
   const [delId,    setDelId]    = useState(null);
@@ -412,16 +421,28 @@ function Clients() {
   const [saving,   setSaving]   = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [subTarget, setSubTarget] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkActivityId, setBulkActivityId] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [pageFeedback, setPageFeedback] = useState(null);
   const passwordError = getPasswordStrengthError(form.password || '', { required: modal === 'new' });
   const passwordConfirmError = (form.password || '') && form.password !== form.confirm_password
     ? 'Las contrasenas no coinciden.'
     : '';
 
   useEffect(() => {
-    Promise.all([clientsApi.list(), groupsApi.list()])
-      .then(([cr, gr]) => { setClients(cr.data.data); setGroups(gr.data.data); })
+    Promise.all([clientsApi.list(), groupsApi.list(), activitiesApi.list()])
+      .then(([cr, gr, ar]) => {
+        setClients(cr.data.data);
+        setGroups(gr.data.data);
+        setActivities(ar.data.data);
+      })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    setViewState({ search, groupFilter, subscriptionFilter, sortBy, page });
+  }, [groupFilter, page, search, setViewState, sortBy, subscriptionFilter]);
 
   const openNew  = ()  => { setForm({ name:'', email:'', child_name:'', age:'', group_ids:[], password:'', confirm_password:'' }); setFeedback(null); setModal('new'); };
   const openEdit = (c) => { setForm({ name: c.user?.name, email: c.user?.email, child_name: c.childName, diagnosis_notes: c.diagnosisNotes, group_ids: c.groups?.map(group => group.id) || [], password:'', confirm_password:'' }); setFeedback(null); setModal(c); };
@@ -453,7 +474,62 @@ function Clients() {
   const del = async () => {
     await clientsApi.delete(delId);
     setClients(p => p.filter(c => c.id !== delId));
+    setSelectedIds(p => p.filter(id => id !== delId));
     setDelId(null);
+  };
+
+  const handleToggleClient = (clientId) => {
+    setSelectedIds((current) => current.includes(clientId)
+      ? current.filter((id) => id !== clientId)
+      : [...current, clientId]);
+  };
+
+  const handleToggleVisibleClients = () => {
+    const visibleIds = visibleClients.map((client) => client.id);
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+    setSelectedIds((current) => allVisibleSelected
+      ? current.filter((id) => !visibleIds.includes(id))
+      : [...new Set([...current, ...visibleIds])]);
+  };
+
+  const handleBulkAssign = async () => {
+    if (!bulkActivityId || selectedIds.length === 0) return;
+
+    setBulkBusy(true);
+    setPageFeedback(null);
+    try {
+      await assignmentsApi.bulk({
+        activity_id: bulkActivityId,
+        client_ids: selectedIds,
+        assign_all: false,
+      });
+      const refreshed = await activitiesApi.list();
+      setActivities(refreshed.data.data);
+      setSelectedIds([]);
+      setBulkActivityId('');
+      setPageFeedback({ type: 'success', message: 'Actividad asignada a los clientes seleccionados.' });
+    } catch (error) {
+      setPageFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudo asignar la actividad seleccionada.') });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleBulkDeactivate = async () => {
+    if (selectedIds.length === 0) return;
+
+    setBulkBusy(true);
+    setPageFeedback(null);
+    try {
+      await Promise.all(selectedIds.map((id) => clientsApi.delete(id)));
+      setClients((current) => current.filter((client) => !selectedIds.includes(client.id)));
+      setSelectedIds([]);
+      setPageFeedback({ type: 'success', message: 'Clientes desactivados correctamente.' });
+    } catch (error) {
+      setPageFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudieron desactivar los clientes seleccionados.') });
+    } finally {
+      setBulkBusy(false);
+    }
   };
 
   const getClientGroupLabel = (client) => {
@@ -484,10 +560,15 @@ function Clients() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const visibleClients = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const allVisibleSelected = visibleClients.length > 0 && visibleClients.every((client) => selectedIds.includes(client.id));
 
   useEffect(() => {
     setPage(1);
   }, [search, groupFilter, subscriptionFilter, sortBy]);
+
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => clients.some((client) => client.id === id)));
+  }, [clients]);
 
   useEffect(() => {
     if (page > totalPages) {
@@ -549,6 +630,22 @@ function Clients() {
           </div>
         )}
       />
+      {pageFeedback && <Notice variant={pageFeedback.type} className="mb-3">{pageFeedback.message}</Notice>}
+      {filtered.length > 0 && (
+        <Card className="mb-3 flex flex-wrap items-center gap-2 p-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-[var(--tx2)]">
+            <input type="checkbox" checked={allVisibleSelected} onChange={handleToggleVisibleClients} />
+            Seleccionar visibles
+          </label>
+          <Badge className="search-visible-badge clients-visible-badge" variant="blue">{selectedIds.length} seleccionados</Badge>
+          <Select value={bulkActivityId} onChange={e => setBulkActivityId(e.target.value)} className="search-filter-select clients-filter-select !w-auto min-w-[220px] text-sm">
+            <option value="">Asignar actividad...</option>
+            {activities.map(activity => <option key={activity.id} value={activity.id}>{activity.title}</option>)}
+          </Select>
+          <Button size="sm" onClick={handleBulkAssign} disabled={bulkBusy || !bulkActivityId || selectedIds.length === 0}>Asignar a selección</Button>
+          <Button size="sm" variant="danger" onClick={handleBulkDeactivate} disabled={bulkBusy || selectedIds.length === 0}>Desactivar selección</Button>
+        </Card>
+      )}
       {filtered.length === 0 ? <Empty icon="👶" title="Sin clientes" subtitle="Añade tu primer alumno" action={<Button onClick={openNew}>Crear alumno</Button>} /> :
         <ListCollection className="clients-list-shell">
           <ListGrid columns={columnCount}>
@@ -556,7 +653,7 @@ function Clients() {
             <ListRow
               key={c.id}
               className="clients-list-row"
-              avatar={<div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">{(c.childName || '?').slice(0, 2).toUpperCase()}</div>}
+              avatar={<div className="flex items-center gap-2"><input type="checkbox" checked={selectedIds.includes(c.id)} onChange={() => handleToggleClient(c.id)} aria-label={`Seleccionar ${c.childName || 'cliente'}`} /><div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">{(c.childName || '?').slice(0, 2).toUpperCase()}</div></div>}
               title={c.childName}
               subtitle={c.user?.name}
               meta={renderClientGroups(c)}
@@ -654,10 +751,15 @@ function Activities() {
   const [objects,  setObjects] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading,  setLoading] = useState(true);
-  const [search,   setSearch]  = useState('');
+  const [viewState, setViewState] = usePersistentViewState('specialist.activities.filters', {
+    search: '',
+    statusFilter: 'all',
+    clientFilter: 'all',
+  });
+  const [search,   setSearch]  = useState(viewState.search);
   const [columnCount, setColumnCount] = useListColumns('specialist.activities', 1);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [clientFilter, setClientFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(viewState.statusFilter);
+  const [clientFilter, setClientFilter] = useState(viewState.clientFilter);
   const [modal,    setModal]   = useState(false);
   const [editAct,  setEditAct] = useState(null);
   const [delId,    setDelId]   = useState(null);
@@ -666,6 +768,9 @@ function Activities() {
   const [form,     setForm]    = useState({ title:'', instructions:'', selObjs:[], assignMode:'all', selClients:[], selGroups:[] });
   const [saving,   setSaving]  = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [pageFeedback, setPageFeedback] = useState(null);
 
   const getAudience = (activity) => activity?.audience || null;
   const getAssignedClientIds = (activity) => [...new Set((activity.assignments || []).map(assignment => assignment.clientId))];
@@ -728,6 +833,10 @@ function Activities() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    setViewState({ search, statusFilter, clientFilter });
+  }, [clientFilter, search, setViewState, statusFilter]);
 
   const openNew  = () => {
     setEditAct(null);
@@ -815,6 +924,55 @@ function Activities() {
     return matchesSearch && matchesClient && matchesStatus;
   });
 
+  const handleToggleActivity = (activityId) => {
+    setSelectedIds((current) => current.includes(activityId)
+      ? current.filter((id) => id !== activityId)
+      : [...current, activityId]);
+  };
+
+  const handleAssignSelectionToAll = async () => {
+    if (selectedIds.length === 0) return;
+
+    setBulkBusy(true);
+    setPageFeedback(null);
+    try {
+      await Promise.all(selectedIds.map((activityId) => assignmentsApi.bulk({
+        activity_id: activityId,
+        assign_all: true,
+        replace_existing: true,
+      })));
+      const refreshed = await activitiesApi.list();
+      setActs(refreshed.data.data);
+      setSelectedIds([]);
+      setPageFeedback({ type: 'success', message: 'Actividades reasignadas a todos tus clientes.' });
+    } catch (error) {
+      setPageFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudieron reasignar las actividades seleccionadas.') });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+
+    setBulkBusy(true);
+    setPageFeedback(null);
+    try {
+      await Promise.all(selectedIds.map((activityId) => activitiesApi.delete(activityId)));
+      setActs((current) => current.filter((activity) => !selectedIds.includes(activity.id)));
+      setSelectedIds([]);
+      setPageFeedback({ type: 'success', message: 'Actividades eliminadas correctamente.' });
+    } catch (error) {
+      setPageFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudieron eliminar las actividades seleccionadas.') });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => acts.some((activity) => activity.id === id)));
+  }, [acts]);
+
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32}/></div>;
 
   return (
@@ -847,6 +1005,14 @@ function Activities() {
           </div>
         )}
       />
+      {pageFeedback && <Notice variant={pageFeedback.type} className="mb-3">{pageFeedback.message}</Notice>}
+      {filtered.length > 0 && (
+        <Card className="mb-3 flex flex-wrap items-center gap-2 p-3">
+          <Badge className="search-visible-badge" variant="blue">{selectedIds.length} seleccionadas</Badge>
+          <Button size="sm" onClick={handleAssignSelectionToAll} disabled={bulkBusy || selectedIds.length === 0}>Asignar selección a todos</Button>
+          <Button size="sm" variant="danger" onClick={handleBulkDelete} disabled={bulkBusy || selectedIds.length === 0}>Eliminar selección</Button>
+        </Card>
+      )}
       {filtered.length === 0 ? <Empty icon="📋" title="Sin actividades" subtitle="Crea tu primera actividad para poder asignarla a tus alumnos." action={<Button onClick={openNew}>Crear actividad</Button>} /> :
         <ListCollection className="entity-list-shell">
           <ListGrid columns={columnCount}>
@@ -854,7 +1020,7 @@ function Activities() {
             <ListRow
               key={a.id}
               className="entity-list-row"
-              avatar={<div className="flex min-h-11 min-w-11 items-center justify-center rounded-[16px] bg-[var(--bg2)] px-2 text-lg">{a.activityObjects?.slice(0, 4).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div>}
+              avatar={<div className="flex items-center gap-2"><input type="checkbox" checked={selectedIds.includes(a.id)} onChange={() => handleToggleActivity(a.id)} aria-label={`Seleccionar ${a.title || 'actividad'}`} /><div className="flex min-h-11 min-w-11 items-center justify-center rounded-[16px] bg-[var(--bg2)] px-2 text-lg">{a.activityObjects?.slice(0, 4).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div></div>}
               title={a.title}
               subtitle={`${a.activityObjects?.length || 0} objetos · ${getAssignmentSummary(a)}`}
               meta={<p className="text-[11px] text-[var(--tx3)]">{getAssignmentDetail(a)}</p>}

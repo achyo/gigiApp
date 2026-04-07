@@ -11,6 +11,7 @@ import {
 import { CategoryManagementView } from '../../components/modals/CategoryManagerModal';
 import SubscriptionModal from '../../components/modals/SubscriptionModal';
 import useListColumns from '../../hooks/useListColumns';
+import usePersistentViewState from '../../hooks/usePersistentViewState';
 import { getPasswordStrengthError, PASSWORD_RULE_HINT } from '../../lib/password';
 
 function getApiErrorMessage(error, fallback) {
@@ -46,9 +47,25 @@ function getToneVariant(tone) {
   return 'default';
 }
 
+const ADMIN_ICONS = {
+  alerts: '⛭',
+  learning: '◔',
+  subscriptions: '◷',
+  audit: '⌘',
+};
+
+function formatAuditAction(action) {
+  if (!action) return 'Acción';
+  return action
+    .split(/[._]/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 function AlertCenterPanel({ items, onApprove, onReject, onOpenSubscriptions, onOpenClients }) {
   return (
-    <DashboardPanel icon="🚨" title={`Centro de alertas (${items.length})`} className="min-h-[268px] admin-alert-panel">
+    <DashboardPanel icon={ADMIN_ICONS.alerts} title={`Centro de alertas (${items.length})`} className="min-h-[268px] admin-alert-panel">
       {items.length === 0 ? (
         <Empty
           icon="✅"
@@ -140,15 +157,17 @@ function Dashboard() {
   const [pending, setPending] = useState({ objects: [], categories: [] });
   const [specialists, setSpecialists] = useState([]);
   const [clients, setClients] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([adminApi.stats(), adminApi.pendingApprovals(), specialistsApi.list(), clientsApi.list()])
-      .then(([sr, pr, specRes, clientRes]) => {
+    Promise.all([adminApi.stats(), adminApi.pendingApprovals(), specialistsApi.list(), clientsApi.list(), adminApi.auditLogs({ limit: 6 })])
+      .then(([sr, pr, specRes, clientRes, auditRes]) => {
         setStats(sr.data.data);
         setPending(pr.data.data);
         setSpecialists(specRes.data.data);
         setClients(clientRes.data.data);
+        setAuditLogs(auditRes.data.data || []);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -285,7 +304,7 @@ function Dashboard() {
           onOpenClients={() => navigate('/admin/clients')}
         />
 
-        <DashboardPanel icon="📚" title="Pulso pedagógico" className="min-h-[268px] admin-learning-panel">
+        <DashboardPanel icon={ADMIN_ICONS.learning} title="Pulso pedagógico" className="min-h-[268px] admin-learning-panel">
           <div className="admin-learning-grid">
             {[
               ['Alumnos con actividad', `${stats?.learning?.summary?.studentsWithAssignments || 0}/${stats?.clients || 0}`],
@@ -323,7 +342,7 @@ function Dashboard() {
           )}
         </DashboardPanel>
 
-        <DashboardPanel icon="📊" title="Estado suscripciones" className="min-h-[268px] admin-subscription-panel">
+        <DashboardPanel icon={ADMIN_ICONS.subscriptions} title="Estado suscripciones" className="min-h-[268px] admin-subscription-panel">
           <div className="admin-subscription-list divide-y divide-[var(--bd)]/80">
             {[
               ['Activa', subCounts.active || 0, 'green'],
@@ -338,6 +357,27 @@ function Dashboard() {
               </div>
             ))}
           </div>
+        </DashboardPanel>
+
+        <DashboardPanel icon={ADMIN_ICONS.audit} title="Auditoría reciente" className="min-h-[268px] admin-subscription-panel">
+          {auditLogs.length === 0 ? (
+            <Empty icon={ADMIN_ICONS.audit} title="Sin movimientos recientes" subtitle="Las acciones administrativas aparecerán aquí cuando haya actividad." />
+          ) : (
+            <div className="admin-learning-list">
+              {auditLogs.map((entry) => (
+                <div key={entry.id} className="admin-learning-row">
+                  <div>
+                    <p className="admin-learning-row__title">{entry.message || formatAuditAction(entry.action)}</p>
+                    <p className="admin-learning-row__meta">{entry.actor?.name || 'Sistema'} · {entry.entityType || 'recurso'} · {new Date(entry.createdAt).toLocaleString('es-ES')}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Badge variant="default">{formatAuditAction(entry.action)}</Badge>
+                    <Badge variant="blue">{entry.actorRole || 'admin'}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </DashboardPanel>
       </div>
     </div>
@@ -593,13 +633,22 @@ function Clients() {
   const [clients, setClients] = useState([]);
   const [specs, setSpecs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [viewState, setViewState] = usePersistentViewState('admin.clients.filters', {
+    search: '',
+    specialistFilter: 'all',
+  });
+  const [search, setSearch] = useState(viewState.search);
   const [columnCount, setColumnCount] = useListColumns('admin.clients', 1);
+  const [specialistFilter, setSpecialistFilter] = useState(viewState.specialistFilter);
   const [modal, setModal] = useState(null);
   const [delId, setDelId] = useState(null);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkSpecialistId, setBulkSpecialistId] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [pageFeedback, setPageFeedback] = useState(null);
   const passwordError = getPasswordStrengthError(form.password || '', { required: modal === 'new' });
   const passwordConfirmError = (form.password || '') && form.password !== form.confirm_password
     ? 'Las contrasenas no coinciden.'
@@ -610,6 +659,10 @@ function Clients() {
       .then(([cr, sr]) => { setClients(cr.data.data); setSpecs(sr.data.data); })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    setViewState({ search, specialistFilter });
+  }, [search, setViewState, specialistFilter]);
 
   const openNew = () => {
     setForm({ name: '', email: '', password: '', confirm_password: '', child_name: '', diagnosis_notes: '', specialist_id: '' });
@@ -655,9 +708,72 @@ function Clients() {
     }
   };
 
-  const filtered = clients.filter(c =>
-    !search || (c.childName + (c.user?.name || '')).toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = clients.filter(c => {
+    const matchesSearch = !search || (c.childName + (c.user?.name || '')).toLowerCase().includes(search.toLowerCase());
+    const matchesSpecialist = specialistFilter === 'all' || c.specialistId === specialistFilter;
+    return matchesSearch && matchesSpecialist;
+  });
+
+  const handleToggleClient = (clientId) => {
+    setSelectedIds((current) => current.includes(clientId)
+      ? current.filter((id) => id !== clientId)
+      : [...current, clientId]);
+  };
+
+  const handleToggleVisibleClients = () => {
+    const visibleIds = filtered.map((client) => client.id);
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+    setSelectedIds((current) => allVisibleSelected
+      ? current.filter((id) => !visibleIds.includes(id))
+      : [...new Set([...current, ...visibleIds])]);
+  };
+
+  const handleBulkReassign = async () => {
+    if (!bulkSpecialistId || selectedIds.length === 0) return;
+
+    setBulkBusy(true);
+    setPageFeedback(null);
+    try {
+      const selectedClients = clients.filter((client) => selectedIds.includes(client.id));
+      await Promise.all(selectedClients.map((client) => clientsApi.update(client.id, {
+        name: client.user?.name || '',
+        email: client.user?.email || '',
+        child_name: client.childName || '',
+        diagnosis_notes: client.diagnosisNotes || '',
+        specialist_id: bulkSpecialistId,
+      })));
+      const refreshed = await clientsApi.list();
+      setClients(refreshed.data.data);
+      setSelectedIds([]);
+      setBulkSpecialistId('');
+      setPageFeedback({ type: 'success', message: 'Clientes reasignados correctamente.' });
+    } catch (error) {
+      setPageFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudieron reasignar los clientes seleccionados.') });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleBulkDeactivate = async () => {
+    if (selectedIds.length === 0) return;
+
+    setBulkBusy(true);
+    setPageFeedback(null);
+    try {
+      await Promise.all(selectedIds.map((id) => clientsApi.delete(id)));
+      setClients((current) => current.filter((client) => !selectedIds.includes(client.id)));
+      setSelectedIds([]);
+      setPageFeedback({ type: 'success', message: 'Clientes desactivados correctamente.' });
+    } catch (error) {
+      setPageFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudieron desactivar los clientes seleccionados.') });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => clients.some((client) => client.id === id)));
+  }, [clients]);
 
   const renderClientGroups = (client) => {
     if (!client?.groups?.length) {
@@ -701,11 +817,31 @@ function Clients() {
         inputClassName="clients-search-input"
         extra={(
           <div className="flex flex-wrap items-center gap-2">
+            <Select value={specialistFilter} onChange={e => setSpecialistFilter(e.target.value)} className="search-filter-select clients-filter-select !w-auto text-sm">
+              <option value="all">Todos los especialistas</option>
+              {specs.map(spec => <option key={spec.id} value={spec.id}>{spec.user?.name || 'Sin nombre'}</option>)}
+            </Select>
             <Badge className="search-visible-badge" variant="default">{filtered.length} visibles</Badge>
             <ColumnToggle value={columnCount} onChange={setColumnCount} />
           </div>
         )}
       />
+      {pageFeedback && <Notice variant={pageFeedback.type} className="mb-3">{pageFeedback.message}</Notice>}
+      {filtered.length > 0 && (
+        <Card className="mb-3 flex flex-wrap items-center gap-2 p-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-[var(--tx2)]">
+            <input type="checkbox" checked={filtered.length > 0 && filtered.every((client) => selectedIds.includes(client.id))} onChange={handleToggleVisibleClients} />
+            Seleccionar visibles
+          </label>
+          <Badge className="search-visible-badge" variant="blue">{selectedIds.length} seleccionados</Badge>
+          <Select value={bulkSpecialistId} onChange={e => setBulkSpecialistId(e.target.value)} className="search-filter-select clients-filter-select !w-auto min-w-[220px] text-sm">
+            <option value="">Reasignar a especialista...</option>
+            {specs.map(spec => <option key={spec.id} value={spec.id}>{spec.user?.name || 'Sin nombre'}</option>)}
+          </Select>
+          <Button size="sm" onClick={handleBulkReassign} disabled={bulkBusy || !bulkSpecialistId || selectedIds.length === 0}>Reasignar selección</Button>
+          <Button size="sm" variant="danger" onClick={handleBulkDeactivate} disabled={bulkBusy || selectedIds.length === 0}>Desactivar selección</Button>
+        </Card>
+      )}
       {filtered.length === 0 ? <Empty icon="👶" title="Sin clientes" subtitle="Añade el primer alumno y asígnalo a un especialista." action={<Button onClick={openNew}>Crear cliente</Button>} /> :
         <ListCollection className="clients-list-shell">
           <ListGrid columns={columnCount}>
@@ -715,7 +851,7 @@ function Clients() {
                 <ListRow
                   key={c.id}
                   className="clients-list-row"
-                  avatar={<div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">{(c.childName || '?').slice(0, 2).toUpperCase()}</div>}
+                  avatar={<div className="flex items-center gap-2"><input type="checkbox" checked={selectedIds.includes(c.id)} onChange={() => handleToggleClient(c.id)} aria-label={`Seleccionar ${c.childName || 'cliente'}`} /><div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">{(c.childName || '?').slice(0, 2).toUpperCase()}</div></div>}
                   title={c.childName}
                   subtitle={`${c.user?.name || 'Sin tutor'} · Esp: ${spec?.user?.name || '—'}`}
                   meta={renderClientGroups(c)}
@@ -790,11 +926,17 @@ function Activities() {
   const [categories, setCategories] = useState([]);
   const [specs, setSpecs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [viewState, setViewState] = usePersistentViewState('admin.activities.filters', {
+    search: '',
+    statusFilter: 'all',
+    clientFilter: 'all',
+    specialistFilter: 'all',
+  });
+  const [search, setSearch] = useState(viewState.search);
   const [columnCount, setColumnCount] = useListColumns('admin.activities', 1);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [clientFilter, setClientFilter] = useState('all');
-  const [specialistFilter, setSpecialistFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(viewState.statusFilter);
+  const [clientFilter, setClientFilter] = useState(viewState.clientFilter);
+  const [specialistFilter, setSpecialistFilter] = useState(viewState.specialistFilter);
   const [modal, setModal] = useState(false);
   const [editAct, setEditAct] = useState(null);
   const [delId, setDelId] = useState(null);
@@ -803,6 +945,9 @@ function Activities() {
   const [form, setForm] = useState({ title: '', specialist_id: '', selObjs: [], assignMode: 'all', selClients: [], selGroups: [] });
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [pageFeedback, setPageFeedback] = useState(null);
 
   const getAudience = (activity) => activity?.audience || null;
   const getVisibleClientsForSpecialist = (specialistId) => clients.filter(client => !specialistId || client.specialistId === specialistId);
@@ -872,6 +1017,10 @@ function Activities() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    setViewState({ search, statusFilter, clientFilter, specialistFilter });
+  }, [clientFilter, search, setViewState, specialistFilter, statusFilter]);
 
   useEffect(() => {
     setForm(current => {
@@ -988,6 +1137,67 @@ function Activities() {
       || (statusFilter === 'completed' && relevantAssignments.some((assignment) => Boolean(assignment.completedAt)));
     return matchesSearch && matchesSpecialist && matchesClient && matchesStatus;
   });
+
+  const handleToggleActivity = (activityId) => {
+    setSelectedIds((current) => current.includes(activityId)
+      ? current.filter((id) => id !== activityId)
+      : [...current, activityId]);
+  };
+
+  const handleToggleVisibleActivities = () => {
+    const visibleIds = filtered.map((activity) => activity.id);
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+    setSelectedIds((current) => allVisibleSelected
+      ? current.filter((id) => !visibleIds.includes(id))
+      : [...new Set([...current, ...visibleIds])]);
+  };
+
+  const handleAssignSelectionToAll = async () => {
+    if (selectedIds.length === 0) return;
+
+    setBulkBusy(true);
+    setPageFeedback(null);
+    try {
+      await Promise.all(selectedIds.map((activityId) => {
+        const activity = acts.find((item) => item.id === activityId);
+        return assignmentsApi.bulk({
+          activity_id: activityId,
+          specialist_id: activity?.specialistId || undefined,
+          assign_all: true,
+          replace_existing: true,
+        });
+      }));
+      const refreshed = await activitiesApi.list();
+      setActs(refreshed.data.data);
+      setSelectedIds([]);
+      setPageFeedback({ type: 'success', message: 'Actividades reasignadas a todos los clientes del especialista correspondiente.' });
+    } catch (error) {
+      setPageFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudieron reasignar las actividades seleccionadas.') });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+
+    setBulkBusy(true);
+    setPageFeedback(null);
+    try {
+      await Promise.all(selectedIds.map((activityId) => activitiesApi.delete(activityId)));
+      setActs((current) => current.filter((activity) => !selectedIds.includes(activity.id)));
+      setSelectedIds([]);
+      setPageFeedback({ type: 'success', message: 'Actividades eliminadas correctamente.' });
+    } catch (error) {
+      setPageFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudieron eliminar las actividades seleccionadas.') });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => acts.some((activity) => activity.id === id)));
+  }, [acts]);
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
 
   const normalizedObjectSearch = objectSearch.trim().toLowerCase();
@@ -1033,6 +1243,18 @@ function Activities() {
           </div>
         )}
       />
+      {pageFeedback && <Notice variant={pageFeedback.type} className="mb-3">{pageFeedback.message}</Notice>}
+      {filtered.length > 0 && (
+        <Card className="mb-3 flex flex-wrap items-center gap-2 p-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-[var(--tx2)]">
+            <input type="checkbox" checked={filtered.length > 0 && filtered.every((activity) => selectedIds.includes(activity.id))} onChange={handleToggleVisibleActivities} />
+            Seleccionar visibles
+          </label>
+          <Badge className="search-visible-badge" variant="blue">{selectedIds.length} seleccionadas</Badge>
+          <Button size="sm" onClick={handleAssignSelectionToAll} disabled={bulkBusy || selectedIds.length === 0}>Asignar selección a todos</Button>
+          <Button size="sm" variant="danger" onClick={handleBulkDelete} disabled={bulkBusy || selectedIds.length === 0}>Eliminar selección</Button>
+        </Card>
+      )}
       {filtered.length === 0 ? <Empty icon="📋" title="Sin actividades" /> :
         <ListCollection className="entity-list-shell">
           <ListGrid columns={columnCount}>
@@ -1040,7 +1262,7 @@ function Activities() {
               <ListRow
                 key={a.id}
                 className="entity-list-row"
-                avatar={<div className="flex min-h-11 min-w-11 items-center justify-center rounded-[16px] bg-[var(--bg2)] px-2 text-lg">{a.activityObjects?.slice(0, 4).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div>}
+                avatar={<div className="flex items-center gap-2"><input type="checkbox" checked={selectedIds.includes(a.id)} onChange={() => handleToggleActivity(a.id)} aria-label={`Seleccionar ${a.title || 'actividad'}`} /><div className="flex min-h-11 min-w-11 items-center justify-center rounded-[16px] bg-[var(--bg2)] px-2 text-lg">{a.activityObjects?.slice(0, 4).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div></div>}
                 title={a.title}
                 subtitle={`${a.activityObjects?.length || 0} objetos · ${getAssignmentSummary(a)}`}
                 meta={<p className="text-[11px] text-[var(--tx3)]">{getAssignmentDetail(a)}</p>}

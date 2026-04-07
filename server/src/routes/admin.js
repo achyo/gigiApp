@@ -1,7 +1,8 @@
 const router = require('express').Router();
 const { prisma } = require('../lib/prisma');
-const { authenticateJWT, authorizeRole } = require('../middleware/auth');
+const { authenticateJWT, authorizeRole, paginateQuery, paginatedResponse } = require('../middleware/auth');
 const { buildAdminLearningOverview } = require('../lib/progressMetrics');
+const { recordAdminAudit } = require('../lib/adminAudit');
 
 router.get('/stats', authenticateJWT, authorizeRole('admin'), async (req, res, next) => {
   try {
@@ -67,6 +68,22 @@ router.get('/pending-approvals', authenticateJWT, authorizeRole('admin'), async 
   } catch(e){ next(e); }
 });
 
+router.get('/audit-logs', authenticateJWT, authorizeRole('admin'), async (req, res, next) => {
+  try {
+    const { page, limit, skip, take } = paginateQuery(req.query);
+    const { action, entity_type } = req.query;
+    const where = {
+      ...(action ? { action } : {}),
+      ...(entity_type ? { entityType: entity_type } : {}),
+    };
+    const [data, total] = await Promise.all([
+      prisma.auditLog.findMany({ where, skip, take, orderBy: { createdAt: 'desc' } }),
+      prisma.auditLog.count({ where }),
+    ]);
+    res.json(paginatedResponse(data, total, page, limit));
+  } catch (e) { next(e); }
+});
+
 router.patch('/approve/:type/:id', authenticateJWT, authorizeRole('admin'), async (req, res, next) => {
   try {
     if (!['object', 'category'].includes(req.params.type)) {
@@ -74,6 +91,13 @@ router.patch('/approve/:type/:id', authenticateJWT, authorizeRole('admin'), asyn
     }
     const model = req.params.type === 'object' ? prisma.object : prisma.category;
     const updated = await model.update({ where: { id: req.params.id }, data: { status: 'approved', ownerId: null } });
+    await recordAdminAudit({
+      user: req.user,
+      action: 'approval.approve',
+      entityType: req.params.type,
+      entityId: req.params.id,
+      message: `${req.params.type} aprobado.`,
+    });
     res.json({ success: true, data: updated });
   } catch(e){ next(e); }
 });
@@ -85,6 +109,14 @@ router.patch('/reject/:type/:id', authenticateJWT, authorizeRole('admin'), async
     }
     const model = req.params.type === 'object' ? prisma.object : prisma.category;
     const updated = await model.update({ where: { id: req.params.id }, data: { status: 'rejected', rejectedNote: req.body.note } });
+    await recordAdminAudit({
+      user: req.user,
+      action: 'approval.reject',
+      entityType: req.params.type,
+      entityId: req.params.id,
+      message: `${req.params.type} rechazado.`,
+      diff: { note: req.body.note || null },
+    });
     res.json({ success: true, data: updated });
   } catch(e){ next(e); }
 });

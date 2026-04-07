@@ -5,6 +5,7 @@ const { prisma } = require('../lib/prisma');
 const { assertStrongPassword } = require('../lib/password');
 const { authenticateJWT, authorizeRole } = require('../middleware/auth');
 const { buildSpecialistProgressOverview } = require('../lib/progressMetrics');
+const { recordAdminAudit } = require('../lib/adminAudit');
 
 router.get('/', authenticateJWT, authorizeRole('admin'), async (req, res, next) => {
   try {
@@ -99,6 +100,15 @@ router.patch('/:id', authenticateJWT, authorizeRole('admin'), async (req, res, n
         }),
       },
       include: { user: { select:{id:1,name:1,email:1,active:1} }, _count:{select:{clients:true,activities:true}} },
+    });
+
+    await recordAdminAudit({
+      user: req.user,
+      action: 'specialist.update',
+      entityType: 'specialist',
+      entityId: updated.id,
+      message: `Especialista ${updated.user?.email || updated.id} actualizado.`,
+      diff: { name, email, bio, passwordChanged: Boolean(passwordHash) },
     });
 
     res.json({ success: true, data: updated });

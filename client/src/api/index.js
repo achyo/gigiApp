@@ -165,6 +165,7 @@ export const subscriptionsApi = {
 export const adminApi = {
   stats:           ()           => api.get('/admin/stats'),
   pendingApprovals: ()          => api.get('/admin/pending-approvals'),
+  auditLogs:       (params)     => api.get('/admin/audit-logs', { params }),
   approve:         (type, id)   => api.patch(`/admin/approve/${type}/${id}`),
   reject:          (type, id, note) => api.patch(`/admin/reject/${type}/${id}`, { note }),
 };

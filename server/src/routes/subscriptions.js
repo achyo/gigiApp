@@ -1,6 +1,8 @@
 const router = require('express').Router();
 const { prisma } = require('../lib/prisma');
 const { authenticateJWT, authorizeRole } = require('../middleware/auth');
+const { recordAdminAudit } = require('../lib/adminAudit');
+const { syncSubscriptionReminderJob } = require('../lib/subscriptionReminderJobs');
 
 const VALID_ENTITY_TYPES = new Set(['specialist', 'client']);
 const VALID_PLANS = new Set(['basic', 'premium']);
@@ -113,10 +115,15 @@ router.post('/', authenticateJWT, authorizeRole('admin','specialist'), async (re
         where: { id: entity_id },
         data: { subscription },
       });
-      // Schedule expiry email (in production use a queue; here we simulate)
-      if (subscription.status === 'active') {
-        _scheduleExpiryAlert(entity_id, 'specialist', expiryDate);
-      }
+      await syncSubscriptionReminderJob({ entityType: 'specialist', entityId: entity_id, subscription });
+      await recordAdminAudit({
+        user: req.user,
+        action: 'subscription.update',
+        entityType: 'specialist',
+        entityId: entity_id,
+        message: `Suscripción de especialista actualizada a ${subscription.status}.`,
+        diff: subscription,
+      });
       return res.json({ success: true, data: serializeSubscription(s, 'specialist') });
     }
 
@@ -124,9 +131,15 @@ router.post('/', authenticateJWT, authorizeRole('admin','specialist'), async (re
       where: { id: entity_id },
       data: { subscription },
     });
-    if (subscription.status === 'active') {
-      _scheduleExpiryAlert(entity_id, 'client', expiryDate);
-    }
+    await syncSubscriptionReminderJob({ entityType: 'client', entityId: entity_id, subscription });
+    await recordAdminAudit({
+      user: req.user,
+      action: 'subscription.update',
+      entityType: 'client',
+      entityId: entity_id,
+      message: `Suscripción de cliente actualizada a ${subscription.status}.`,
+      diff: subscription,
+    });
     return res.json({ success: true, data: serializeSubscription(c, 'client') });
   } catch(e){ next(e); }
 });
@@ -179,41 +192,5 @@ router.get('/status/:entityType/:entityId', authenticateJWT, async (req, res, ne
     });
   } catch(e){ next(e); }
 });
-
-// Internal: schedule expiry warning email 15 days before
-function _scheduleExpiryAlert(entityId, entityType, expiresDate) {
-  const alertDate = new Date(expiresDate);
-  alertDate.setDate(alertDate.getDate() - 15);
-  const delay = alertDate - new Date();
-  if (delay > 0 && delay < 30 * 24 * 60 * 60 * 1000) { // only schedule if within 30d
-    setTimeout(async () => {
-      try {
-        const nodemailer = require('nodemailer');
-        const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST, port: process.env.SMTP_PORT,
-          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-        });
-        // Fetch email from DB
-        let email = '';
-        if (entityType === 'specialist') {
-          const s = await prisma.specialist.findUnique({ where:{id:entityId}, include:{user:true} });
-          email = s?.user?.email;
-        } else {
-          const c = await prisma.client.findUnique({ where:{id:entityId}, include:{user:true} });
-          email = c?.user?.email;
-        }
-        if (email) {
-          await transporter.sendMail({
-            from: process.env.SMTP_FROM,
-            to: email,
-            subject: 'Proyecto Gigi — Tu suscripción vence en 15 días',
-            html: `<p>Tu suscripción a Proyecto Gigi vence el <strong>${expiresDate.toLocaleDateString('es-ES')}</strong>.</p>
-                   <p>Renuévala en <a href="${process.env.FRONTEND_URL}/settings/subscription">Mi suscripción</a> para seguir sin interrupciones.</p>`,
-          });
-        }
-      } catch(e){ console.error('Expiry email error:', e); }
-    }, delay);
-  }
-}
 
 module.exports = router;
