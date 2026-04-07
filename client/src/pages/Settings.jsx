@@ -7,18 +7,31 @@ import { useTTS } from '../hooks/useTTS';
 import { getPasswordStrengthError, PASSWORD_RULE_HINT } from '../lib/password';
 
 const PRESET_COLORS = ['#F5F3EF', '#000000', '#FFFFFF', '#FFFF99', '#1A5FD4', '#0077BB', '#CC3300', '#003399'];
+const LANGUAGE_LABELS = {
+  'es-ES': 'Español (España)',
+  'es-MX': 'Español (México)',
+  'en-US': 'Inglés (Estados Unidos)',
+};
+
+function getVoiceId(voice) {
+  return voice.voiceURI || `${voice.lang}::${voice.name}`;
+}
+
+function getVoiceLabel(voice) {
+  return voice.name;
+}
 
 export default function Settings() {
   const user = useAuthStore((state) => state.user);
   const {
     PALETTES,
     FONT_SIZES,
-    TTS_LANGUAGE_OPTIONS,
     TTS_RATE_OPTIONS,
     paletteId,
     fontSizeId,
     ttsEnabled,
     ttsLanguage,
+    ttsVoiceId,
     ttsRate,
     ttsVolume,
     setPalette,
@@ -35,15 +48,16 @@ export default function Settings() {
   const [paletteToDelete, setPaletteToDelete] = useState(null);
   const [paletteMsg, setPaletteMsg] = useState(null);
   const [paletteSaving, setPaletteSaving] = useState(false);
-  const [availableVoiceLanguages, setAvailableVoiceLanguages] = useState([]);
+  const [availableVoices, setAvailableVoices] = useState([]);
   const { speak, stop } = useTTS();
 
   const activePalette = PALETTES.find((palette) => palette.id === paletteId) || PALETTES[0];
   const activeFontSize = FONT_SIZES.find((size) => size.id === fontSizeId) || FONT_SIZES[1];
-  const activeLanguage = TTS_LANGUAGE_OPTIONS.find((option) => option.id === ttsLanguage);
+  const activeVoice = availableVoices.find((voice) => getVoiceId(voice) === ttsVoiceId);
+  const activeLanguageLabel = LANGUAGE_LABELS[activeVoice?.lang || ttsLanguage] || activeVoice?.lang || ttsLanguage;
   const activeRate = TTS_RATE_OPTIONS.find((option) => option.id === ttsRate);
   const isAdmin = user?.role === 'admin';
-  const hasInstalledVoice = availableVoiceLanguages.some((voiceLanguage) => voiceLanguage === ttsLanguage || voiceLanguage.startsWith(`${ttsLanguage.split('-')[0]}-`));
+  const hasInstalledVoice = availableVoices.some((voice) => voice.lang === ttsLanguage || voice.lang.startsWith(`${ttsLanguage.split('-')[0]}-`));
 
   const passwordError = getPasswordStrengthError(pwForm.next, { required: true });
   const passwordConfirmError = pwForm.next && pwForm.next !== pwForm.confirm
@@ -57,13 +71,29 @@ export default function Settings() {
 
     const readVoices = () => {
       const voices = window.speechSynthesis.getVoices?.() || [];
-      setAvailableVoiceLanguages(voices.map((voice) => voice.lang));
+      const nextVoices = voices
+        .filter((voice) => Boolean(voice.lang && voice.name))
+        .sort((left, right) => getVoiceLabel(left).localeCompare(getVoiceLabel(right), 'es'));
+      setAvailableVoices(nextVoices);
     };
 
     readVoices();
     window.speechSynthesis.addEventListener('voiceschanged', readVoices);
     return () => window.speechSynthesis.removeEventListener('voiceschanged', readVoices);
   }, []);
+
+  useEffect(() => {
+    if (!availableVoices.length) return;
+    if (availableVoices.some((voice) => getVoiceId(voice) === ttsVoiceId)) return;
+
+    const fallbackVoice = availableVoices.find((voice) => voice.lang === ttsLanguage)
+      || availableVoices.find((voice) => voice.lang.startsWith(`${ttsLanguage.split('-')[0]}-`))
+      || availableVoices[0];
+
+    if (fallbackVoice) {
+      setTtsSettings({ ttsLanguage: fallbackVoice.lang, ttsVoiceId: getVoiceId(fallbackVoice) });
+    }
+  }, [availableVoices, ttsLanguage, ttsVoiceId, setTtsSettings]);
 
   const resetPaletteForm = (clearMessage = true) => {
     setEditingPaletteId('');
@@ -245,7 +275,7 @@ export default function Settings() {
             </div>
             <div className="settings-summary-item">
               <span className="settings-summary-item__label">Idioma</span>
-              <span className="settings-summary-item__value">{activeLanguage?.label || 'Español (España)'}</span>
+              <span className="settings-summary-item__value">{activeVoice ? getVoiceLabel(activeVoice) : activeLanguageLabel}</span>
             </div>
             <div className="settings-summary-item">
               <span className="settings-summary-item__label">Velocidad</span>
@@ -282,7 +312,7 @@ export default function Settings() {
                     <span className="settings-swatch" style={{ background: palette.ac }} />
                   </div>
                   <span className="settings-choice-card__label">{palette.label}</span>
-                  {palette.isDefault && <Badge variant="default">Base</Badge>}
+                  {palette.isDefault && <Badge variant="default" className="settings-palette-badge">Base</Badge>}
                 </button>
               ))}
             </div>
@@ -335,12 +365,21 @@ export default function Settings() {
             <div className="settings-tts-grid">
               <div className="settings-slider-card settings-control-card">
                 <div className="settings-slider-card__head">
-                  <label className="settings-slider-card__label" htmlFor="tts-language">Idioma</label>
-                  <Badge variant="blue" className="settings-control-badge">{activeLanguage?.label || 'Español (España)'}</Badge>
+                  <label className="settings-slider-card__label" htmlFor="tts-language">Idioma y voz</label>
+                  <Badge variant="blue" className="settings-control-badge">{activeVoice ? getVoiceLabel(activeVoice) : activeLanguageLabel}</Badge>
                 </div>
-                <Select id="tts-language" value={ttsLanguage} onChange={(event) => setTtsSettings({ ttsLanguage: event.target.value })} className="settings-select">
-                  {TTS_LANGUAGE_OPTIONS.map((option) => (
-                    <option key={option.id} value={option.id}>{option.label}</option>
+                <Select
+                  id="tts-language"
+                  value={ttsVoiceId || ''}
+                  onChange={(event) => {
+                    const selectedVoice = availableVoices.find((voice) => getVoiceId(voice) === event.target.value);
+                    if (!selectedVoice) return;
+                    setTtsSettings({ ttsLanguage: selectedVoice.lang, ttsVoiceId: getVoiceId(selectedVoice) });
+                  }}
+                  className="settings-select"
+                >
+                  {availableVoices.map((voice) => (
+                    <option key={getVoiceId(voice)} value={getVoiceId(voice)}>{getVoiceLabel(voice)}</option>
                   ))}
                 </Select>
               </div>
@@ -386,7 +425,7 @@ export default function Settings() {
             </div>
 
             {!hasInstalledVoice && (
-              <Notice variant="info">No hay una voz instalada en este navegador para {activeLanguage?.label || ttsLanguage}. El idioma se guarda, pero para oír un cambio real necesitas instalar una voz del sistema compatible.</Notice>
+              <Notice variant="info">No hay voces TTS instaladas en este navegador. Cuando haya voces disponibles, la lista mostrará solo las opciones reales, incluyendo variantes masculina o femenina si existen.</Notice>
             )}
           </Card>
 
@@ -435,8 +474,8 @@ export default function Settings() {
                       <div>
                         <p className="settings-admin-palette-row__title">{palette.label}</p>
                         <div className="flex flex-wrap gap-1.5 mt-1">
-                          {palette.isDefault && <Badge variant="blue">Predeterminada</Badge>}
-                          {palette.id === paletteId && <Badge variant="green">Activa ahora</Badge>}
+                          {palette.isDefault && <Badge variant="blue" className="settings-palette-badge">Predeterminada</Badge>}
+                          {palette.id === paletteId && <Badge variant="green" className="settings-palette-badge">Activa ahora</Badge>}
                         </div>
                       </div>
                     </div>

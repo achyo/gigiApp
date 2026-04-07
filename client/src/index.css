@@ -863,6 +863,12 @@ body {
   font-size: 0.82rem;
 }
 
+.settings-palette-badge {
+  min-height: 34px;
+  padding: 7px 14px;
+  font-size: 0.83rem;
+}
+
 .settings-slider {
   width: 100%;
   accent-color: var(--ac);

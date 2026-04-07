@@ -19,12 +19,6 @@ const FONT_SIZES = [
   { id: 'xl', label: 'A++', px: '20px', zoom: 1.45 },
 ];
 
-const TTS_LANGUAGE_OPTIONS = [
-  { id: 'es-ES', label: 'Español (España)' },
-  { id: 'es-MX', label: 'Español (México)' },
-  { id: 'en-US', label: 'Inglés (Estados Unidos)' },
-];
-
 const TTS_RATE_OPTIONS = [
   { id: 0.7, label: 'Lenta' },
   { id: 0.9, label: 'Normal' },
@@ -181,12 +175,12 @@ const usePrefsStore = create(
       fontSizeId: 'm',
       ttsEnabled: true,
       ttsLanguage: 'es-ES',
+      ttsVoiceId: '',
       ttsRate: 0.9,
       ttsVolume: 1,
       listLayouts: {},
       PALETTES: FALLBACK_PALETTES,
       FONT_SIZES,
-      TTS_LANGUAGE_OPTIONS,
       TTS_RATE_OPTIONS,
 
       setPalette: (id) => {
@@ -210,6 +204,7 @@ const usePrefsStore = create(
       setTtsSettings: (nextSettings) => {
         set((current) => ({
           ttsLanguage: nextSettings.ttsLanguage ?? current.ttsLanguage,
+          ttsVoiceId: nextSettings.ttsVoiceId ?? current.ttsVoiceId,
           ttsRate: nextSettings.ttsRate ?? current.ttsRate,
           ttsVolume: nextSettings.ttsVolume ?? current.ttsVolume,
         }));
@@ -241,6 +236,7 @@ const usePrefsStore = create(
           fontSizeId: nextState.fontSizeId,
           ttsEnabled: nextState.ttsEnabled,
           ttsLanguage: nextState.ttsLanguage,
+          ttsVoiceId: get().ttsVoiceId,
           ttsRate: nextState.ttsRate,
           ttsVolume: nextState.ttsVolume,
           listLayouts: nextState.listLayouts,
