@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import usePrefsStore from '../stores/prefsStore';
-import { Button, Card, Input } from '../components/ui';
+import { Badge, Button, Card, Input, Notice } from '../components/ui';
 import { authApi } from '../api';
 import { getPasswordStrengthError, PASSWORD_RULE_HINT } from '../lib/password';
 
 export default function Settings() {
-  // 🔧 CORREGIDO: preferencias visuales y de voz alineadas con el panel de configuracion del mockup.
   const { PALETTES, FONT_SIZES, paletteId, fontSizeId, ttsEnabled,
           setPalette, setFontSize, setTts } = usePrefsStore();
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
@@ -29,69 +28,150 @@ export default function Settings() {
     }
   };
 
+  const activePalette = PALETTES.find((palette) => palette.id === paletteId);
+  const activeFontSize = FONT_SIZES.find((size) => size.id === fontSizeId);
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-in">
-      <h1 className="text-2xl font-black">Configuración</h1>
-
-      <Card className="shadow-soft">
-        <h2 className="mb-1 font-bold">🎨 Paleta de accesibilidad</h2>
-        <p className="mb-3 text-sm text-[var(--tx2)]">Se aplica a toda la interfaz y mantiene el contraste alto en todas las vistas.</p>
-        <div className="space-y-2">
-          {PALETTES.map(p => (
-            <div key={p.id} onClick={() => setPalette(p.id)}
-              className={`flex items-center gap-3 p-3 rounded-[var(--r)] cursor-pointer border-2 transition-all
-                ${paletteId === p.id ? 'border-[var(--ac)] bg-[var(--acb)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}>
-              <div className="w-7 h-7 rounded-full flex-shrink-0 border-2"
-                style={{ background: p.bg, borderColor: p.ac }} />
-              <span className="font-bold text-sm flex-1">{p.label}</span>
-              {paletteId === p.id && <span className="text-[var(--ac)] font-black">✓</span>}
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card className="shadow-soft">
-        <h2 className="mb-1 font-bold">📏 Tamaño de texto</h2>
-        <p className="mb-3 text-sm text-[var(--tx2)]">El zoom modifica tarjetas, iconos, imagenes y espaciados de toda la aplicacion.</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {FONT_SIZES.map(f => (
-            <div key={f.id} onClick={() => setFontSize(f.id)}
-              className={`p-3 rounded-[var(--r)] text-center cursor-pointer border-2 font-black transition-all
-                ${fontSizeId === f.id ? 'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}
-              style={{ fontSize: f.px }}>
-              {f.label}
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card className="shadow-soft">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <h2 className="font-bold">🔊 Texto a voz (TTS)</h2>
-            <p className="text-sm text-[var(--tx2)] mt-0.5">{ttsEnabled ? 'Activo — lee nombres y retroalimentación' : 'Desactivado'}</p>
+    <div className="settings-page animate-in">
+      <div className="settings-header">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black">Configuración</h1>
+            <Badge variant="blue">Preferencias</Badge>
           </div>
-          <button
-            onClick={() => setTts(!ttsEnabled)}
-            className="relative w-12 h-6 rounded-full transition-colors flex-shrink-0"
-            style={{ background: ttsEnabled ? 'var(--ac)' : 'var(--bd)' }}>
-            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-all shadow ${ttsEnabled ? 'left-6' : 'left-0.5'}`} />
-          </button>
+          <p className="settings-header__subtitle">Ajusta accesibilidad, lectura en voz alta y seguridad de la cuenta con la misma disposición visual que el resto de la aplicación.</p>
         </div>
-      </Card>
+      </div>
 
-      <Card className="shadow-soft">
-        <h2 className="mb-1 font-bold">🔑 Cambiar contraseña</h2>
-        <p className="mb-3 text-sm text-[var(--tx2)]">Se valida la nueva clave antes de enviarla para evitar errores de confirmacion.</p>
-        <form onSubmit={changePassword} className="space-y-3">
-          <Input label="Contraseña actual" type="password" value={pwForm.current} onChange={e=>setPwForm({...pwForm,current:e.target.value})} required />
-          <Input label="Nueva contraseña" type="password" value={pwForm.next} error={passwordError || undefined} onChange={e=>setPwForm({...pwForm,next:e.target.value})} required minLength={8} />
-          <p className="text-xs text-[var(--tx3)]">{PASSWORD_RULE_HINT}</p>
-          <Input label="Confirmar nueva contraseña" type="password" value={pwForm.confirm} error={passwordConfirmError || undefined} onChange={e=>setPwForm({...pwForm,confirm:e.target.value})} required />          
-          {pwMsg && <p className={`text-xs p-2 rounded ${pwMsg.type==='ok'?'bg-[var(--okb)] text-[var(--ok)]':'bg-[var(--erb)] text-[var(--er)]'}`}>{pwMsg.text}</p>}
-          <Button type="submit" disabled={!pwForm.current || !pwForm.next || !pwForm.confirm || !!passwordError || !!passwordConfirmError}>Actualizar contraseña</Button>
-        </form>
-      </Card>
+      <div className="settings-layout">
+        <Card className="settings-summary-card shadow-soft">
+          <div className="settings-section-head">
+            <div className="settings-section-head__icon">⚙️</div>
+            <div>
+              <p className="settings-section-head__eyebrow">Resumen rápido</p>
+              <h2 className="settings-section-head__title">Estado actual</h2>
+            </div>
+          </div>
+
+          <div className="settings-summary-list">
+            <div className="settings-summary-item">
+              <span className="settings-summary-item__label">Paleta activa</span>
+              <div className="settings-summary-item__value">
+                <span className="settings-color-dot" style={{ background: activePalette?.bg, borderColor: activePalette?.ac }} />
+                {activePalette?.label || 'Sin definir'}
+              </div>
+            </div>
+            <div className="settings-summary-item">
+              <span className="settings-summary-item__label">Escala de texto</span>
+              <span className="settings-summary-item__value">{activeFontSize?.label || 'Normal'}</span>
+            </div>
+            <div className="settings-summary-item">
+              <span className="settings-summary-item__label">Texto a voz</span>
+              <Badge variant={ttsEnabled ? 'green' : 'default'}>{ttsEnabled ? 'Activo' : 'Desactivado'}</Badge>
+            </div>
+          </div>
+        </Card>
+
+        <div className="settings-stack">
+          <Card className="settings-panel shadow-soft">
+            <div className="settings-section-head">
+              <div className="settings-section-head__icon">🎨</div>
+              <div>
+                <p className="settings-section-head__eyebrow">Accesibilidad visual</p>
+                <h2 className="settings-section-head__title">Paleta de accesibilidad</h2>
+                <p className="settings-section-head__text">Se aplica a toda la interfaz y mantiene el contraste alto en todas las vistas.</p>
+              </div>
+            </div>
+            <div className="settings-palette-grid">
+              {PALETTES.map((palette) => (
+                <button
+                  key={palette.id}
+                  type="button"
+                  onClick={() => setPalette(palette.id)}
+                  className={`settings-choice-card ${paletteId === palette.id ? 'is-selected' : ''}`}
+                >
+                  <div className="settings-choice-card__swatches">
+                    <span className="settings-swatch settings-swatch--large" style={{ background: palette.bg, borderColor: palette.ac }} />
+                    <span className="settings-swatch" style={{ background: palette.tx || '#111111' }} />
+                    <span className="settings-swatch" style={{ background: palette.ac }} />
+                  </div>
+                  <span className="settings-choice-card__label">{palette.label}</span>
+                  {paletteId === palette.id && <Badge variant="blue">Activa</Badge>}
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="settings-panel shadow-soft">
+            <div className="settings-section-head">
+              <div className="settings-section-head__icon">📏</div>
+              <div>
+                <p className="settings-section-head__eyebrow">Legibilidad</p>
+                <h2 className="settings-section-head__title">Tamaño de texto</h2>
+                <p className="settings-section-head__text">El zoom modifica tarjetas, iconos, imágenes y espaciados de toda la aplicación.</p>
+              </div>
+            </div>
+            <div className="settings-font-grid">
+              {FONT_SIZES.map((fontSize) => (
+                <button
+                  key={fontSize.id}
+                  type="button"
+                  onClick={() => setFontSize(fontSize.id)}
+                  className={`settings-font-card ${fontSizeId === fontSize.id ? 'is-selected' : ''}`}
+                >
+                  <span className="settings-font-card__sample" style={{ fontSize: fontSize.px }}>Aa</span>
+                  <span className="settings-font-card__label">{fontSize.label}</span>
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="settings-panel shadow-soft">
+            <div className="settings-toggle-row">
+              <div className="settings-section-head settings-section-head--compact">
+                <div className="settings-section-head__icon">🔊</div>
+                <div>
+                  <p className="settings-section-head__eyebrow">Asistencia auditiva</p>
+                  <h2 className="settings-section-head__title">Texto a voz (TTS)</h2>
+                  <p className="settings-section-head__text">{ttsEnabled ? 'Activo: lee nombres y retroalimentación durante el uso.' : 'Desactivado: la interfaz no reproducirá nombres ni ayudas por voz.'}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-pressed={ttsEnabled}
+                onClick={() => setTts(!ttsEnabled)}
+                className={`settings-toggle ${ttsEnabled ? 'is-on' : ''}`}
+              >
+                <span className="settings-toggle__thumb" />
+              </button>
+            </div>
+          </Card>
+
+          <Card className="settings-panel shadow-soft">
+            <div className="settings-section-head">
+              <div className="settings-section-head__icon">🔑</div>
+              <div>
+                <p className="settings-section-head__eyebrow">Cuenta</p>
+                <h2 className="settings-section-head__title">Cambiar contraseña</h2>
+                <p className="settings-section-head__text">Se valida la nueva clave antes de enviarla para evitar errores de confirmación.</p>
+              </div>
+            </div>
+
+            <form onSubmit={changePassword} className="settings-password-form">
+              <div className="settings-password-grid">
+                <Input label="Contraseña actual" type="password" value={pwForm.current} onChange={e=>setPwForm({...pwForm,current:e.target.value})} required />
+                <Input label="Nueva contraseña" type="password" value={pwForm.next} error={passwordError || undefined} onChange={e=>setPwForm({...pwForm,next:e.target.value})} required minLength={8} />
+                <Input label="Confirmar nueva contraseña" type="password" value={pwForm.confirm} error={passwordConfirmError || undefined} onChange={e=>setPwForm({...pwForm,confirm:e.target.value})} required />
+              </div>
+              <p className="settings-password-hint">{PASSWORD_RULE_HINT}</p>
+              {pwMsg && <Notice variant={pwMsg.type === 'ok' ? 'success' : 'error'}>{pwMsg.text}</Notice>}
+              <div className="settings-password-actions">
+                <Button type="submit" disabled={!pwForm.current || !pwForm.next || !pwForm.confirm || !!passwordError || !!passwordConfirmError}>Actualizar contraseña</Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

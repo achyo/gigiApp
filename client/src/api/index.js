@@ -123,6 +123,7 @@ export const activitiesApi = {
 export const assignmentsApi = {
   list:        (params)  => api.get('/assignments', { params }),
   forClient:   (clientId)=> api.get(`/assignments/client/${clientId}`),
+  progress:    (id)      => api.get(`/assignments/${id}/progress`),
   create:      (data)    => api.post('/assignments', data),
   bulk:        (data)    => api.post('/assignments/bulk', data),
   toggle:      (id, on)  => api.patch(`/assignments/${id}`, { is_active: on }),
@@ -138,7 +139,9 @@ export const groupsApi = {
 
 export const gameApi = {
   session: (assignmentId)    => api.get(`/game/session/${assignmentId}`),
+  progress: (data)           => api.post('/game/progress', data),
   result:  (data)            => api.post('/game/result', data),
+  updateStepComment: (id, comment) => api.patch(`/game/step-progress/${id}/comment`, { comment }),
 };
 
 export const colorProfilesApi = {

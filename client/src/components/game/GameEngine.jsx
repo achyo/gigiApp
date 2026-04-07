@@ -320,34 +320,52 @@ function FeedbackPanel({ feedback, currentStep, remainingSteps, onPick, onComple
   );
 }
 
-export default function GameEngine({ session, onResult, onBack, onComplete }) {
-  // 🔧 CORREGIDO: flujo secuencial por objeto/nivel/ejercicio y feedback en flujo normal.
+export default function GameEngine({ session, onResult, onBack, onComplete, onProgressChange }) {
   const { speak } = useTTS();
   const steps = session?.steps || [];
-  const [remIds, setRemIds] = useState(() => steps.map(step => step.object_id));
-  const [objPos, setObjPos] = useState(0);
-  const [lvlIdx, setLvlIdx] = useState(0);
-  const [exIdx, setExIdx] = useState(0);
-  const [doneKeys, setDoneKeys] = useState(() => new Set());
+  const [currentObjectId, setCurrentObjectId] = useState(() => session?.progress?.current_object_id || steps[0]?.object_id || null);
+  const [currentLevelId, setCurrentLevelId] = useState(() => session?.progress?.current_level || 'l1');
+  const [currentExerciseId, setCurrentExerciseId] = useState(() => session?.progress?.current_exercise || 'show');
+  const [doneKeys, setDoneKeys] = useState(() => new Set(session?.progress?.completed_keys || []));
   const [feedback, setFeedback] = useState(null);
   const exerciseStartedAt = useRef(Date.now());
 
+  const getFirstPendingState = (objectId, completed = doneKeys) => {
+    for (const levelId of LEVEL_ORDER) {
+      const exercisesForLevel = getLevelExercises(levelId);
+      for (const exercise of exercisesForLevel) {
+        const key = `${objectId}_${levelId}_${exercise.id}`;
+        if (!completed.has(key)) {
+          return { levelId, exerciseId: exercise.id };
+        }
+      }
+    }
+
+    const fallbackLevel = LEVEL_ORDER.at(-1) || 'l1';
+    const fallbackExercise = getLevelExercises(fallbackLevel).at(-1)?.id || 'show';
+    return { levelId: fallbackLevel, exerciseId: fallbackExercise };
+  };
+
   useEffect(() => {
-    setRemIds(steps.map(step => step.object_id));
-    setObjPos(0);
-    setLvlIdx(0);
-    setExIdx(0);
-    setDoneKeys(new Set());
+    const nextDoneKeys = new Set(session?.progress?.completed_keys || []);
+    const defaultObjectId = session?.progress?.current_object_id || steps[0]?.object_id || null;
+    const nextObjectId = steps.some((step) => step.object_id === defaultObjectId) ? defaultObjectId : steps[0]?.object_id || null;
+    const fallbackState = nextObjectId ? getFirstPendingState(nextObjectId, nextDoneKeys) : { levelId: 'l1', exerciseId: 'show' };
+
+    setCurrentObjectId(nextObjectId);
+    setCurrentLevelId(session?.progress?.current_level || fallbackState.levelId);
+    setCurrentExerciseId(session?.progress?.current_exercise || fallbackState.exerciseId);
+    setDoneKeys(nextDoneKeys);
     setFeedback(null);
   }, [session?.assignment_id, steps]);
 
-  const currentObjectId = remIds[objPos];
   const currentStep = steps.find(step => step.object_id === currentObjectId) || steps[0] || null;
-  const currentLevelId = LEVEL_ORDER[lvlIdx];
   const exercises = getLevelExercises(currentLevelId);
-  const currentExercise = exercises[exIdx];
+  const currentExercise = exercises.find((exercise) => exercise.id === currentExerciseId) || exercises[0];
   const currentKey = currentStep ? `${currentStep.object_id}_${currentLevelId}_${currentExercise.id}` : '';
-  const remainingChoices = steps.filter(step => remIds.includes(step.object_id) && step.object_id !== currentObjectId);
+  const remainingChoices = steps.filter(step => step.object_id !== currentObjectId && !LEVEL_ORDER.every((levelId) =>
+    getLevelExercises(levelId).every((exercise) => doneKeys.has(`${step.object_id}_${levelId}_${exercise.id}`))
+  ));
   const totalExercises = steps.length * LEVEL_ORDER.reduce((count, levelId) => count + getLevelExercises(levelId).length, 0);
   const progress = totalExercises ? Math.round((doneKeys.size / totalExercises) * 100) : 0;
   const isObjectComplete = (objectId) => LEVEL_ORDER.every((levelId) =>
@@ -360,7 +378,17 @@ export default function GameEngine({ session, onResult, onBack, onComplete }) {
       speak(currentStep.object_name);
       exerciseStartedAt.current = Date.now();
     }
-  }, [currentObjectId, lvlIdx, exIdx, currentStep, speak]);
+  }, [currentObjectId, currentLevelId, currentExerciseId, currentStep, speak]);
+
+  useEffect(() => {
+    if (!session?.assignment_id || !currentStep || feedback === 'done') return;
+    onProgressChange?.({
+      assignment_id: session.assignment_id,
+      current_object_id: currentStep.object_id,
+      current_level: currentLevelId,
+      current_exercise: currentExercise.id,
+    });
+  }, [session?.assignment_id, currentStep, currentLevelId, currentExercise?.id, feedback, onProgressChange]);
 
   const emitResult = (isCorrect) => {
     if (!currentStep || !currentExercise) return;
@@ -375,29 +403,59 @@ export default function GameEngine({ session, onResult, onBack, onComplete }) {
     });
   };
 
-  const advance = () => {
-    setDoneKeys(current => {
-      const next = new Set(current);
-      next.add(currentKey);
-      return next;
-    });
+  const goToObject = (objectId, options = {}) => {
+    const nextObject = steps.find((step) => step.object_id === objectId);
+    if (!nextObject) return;
 
-    if (exIdx + 1 < exercises.length) {
-      setExIdx(exIdx + 1);
+    const targetState = options.keepCurrentStep
+      ? {
+          levelId: options.levelId || currentLevelId,
+          exerciseId: options.exerciseId || currentExercise.id,
+        }
+      : getFirstPendingState(objectId, options.doneKeys || doneKeys);
+
+    setCurrentObjectId(objectId);
+    setCurrentLevelId(targetState.levelId);
+    setCurrentExerciseId(targetState.exerciseId);
+    setFeedback(null);
+  };
+
+  const goToLevel = (levelId) => {
+    if (!currentStep) return;
+    const nextExercises = getLevelExercises(levelId);
+    const nextExercise = nextExercises.find((exercise) => exercise.id === currentExercise.id)?.id || nextExercises[0]?.id || 'show';
+    setCurrentLevelId(levelId);
+    setCurrentExerciseId(nextExercise);
+    setFeedback(null);
+  };
+
+  const goToExercise = (exerciseId) => {
+    setCurrentExerciseId(exerciseId);
+    setFeedback(null);
+  };
+
+  const advance = (completedSet) => {
+    const exerciseIndex = exercises.findIndex((exercise) => exercise.id === currentExercise.id);
+    const levelIndex = LEVEL_ORDER.indexOf(currentLevelId);
+
+    if (exerciseIndex + 1 < exercises.length) {
+      setCurrentExerciseId(exercises[exerciseIndex + 1].id);
       return;
     }
 
-    if (lvlIdx + 1 < LEVEL_ORDER.length) {
+    if (levelIndex + 1 < LEVEL_ORDER.length) {
       setFeedback('lvl');
       window.setTimeout(() => {
         setFeedback(null);
-        setLvlIdx(current => current + 1);
-        setExIdx(0);
+        const nextLevelId = LEVEL_ORDER[levelIndex + 1];
+        setCurrentLevelId(nextLevelId);
+        setCurrentExerciseId(getLevelExercises(nextLevelId)[0]?.id || 'show');
       }, 1400);
       return;
     }
 
-    if (remIds.length > 1) {
+    const pendingObjects = steps.filter((step) => !isObjectComplete(step.object_id, completedSet));
+    if (pendingObjects.length > 0) {
       setFeedback('objdone');
       return;
     }
@@ -410,9 +468,12 @@ export default function GameEngine({ session, onResult, onBack, onComplete }) {
     setFeedback(ok ? 'ok' : 'ko');
 
     if (ok) {
+      const nextDoneKeys = new Set(doneKeys);
+      nextDoneKeys.add(currentKey);
+      setDoneKeys(nextDoneKeys);
       window.setTimeout(() => {
         setFeedback(null);
-        advance();
+        advance(nextDoneKeys);
       }, 1400);
       return;
     }
@@ -421,13 +482,7 @@ export default function GameEngine({ session, onResult, onBack, onComplete }) {
   };
 
   const pickNext = (objectId) => {
-    const nextIds = remIds.filter(id => id !== currentObjectId);
-    const nextIndex = nextIds.indexOf(objectId);
-    setRemIds(nextIds);
-    setObjPos(nextIndex >= 0 ? nextIndex : 0);
-    setLvlIdx(0);
-    setExIdx(0);
-    setFeedback(null);
+    goToObject(objectId, { doneKeys });
   };
 
   if (!currentStep) {
@@ -456,14 +511,18 @@ export default function GameEngine({ session, onResult, onBack, onComplete }) {
           const isDone = isObjectComplete(step.object_id) || ((feedback === 'objdone' || feedback === 'done') && step.object_id === currentObjectId);
 
           return (
-            <div
+            <button
               key={step.object_id}
+              type="button"
               className={`ochip ${isCurrent ? 'on' : ''} ${isDone ? 'done' : ''}`}
               title={step.object_name}
               aria-label={step.object_name}
+              onMouseEnter={() => speak(step.object_name)}
+              onClick={() => goToObject(step.object_id, { doneKeys })}
             >
-              <span>{step.object_emoji}</span>
-            </div>
+              <span className="ochip__emoji">{step.object_emoji}</span>
+              <span className="ochip__name">{step.object_name}</span>
+            </button>
           );
         })}
       </div>
@@ -480,30 +539,36 @@ export default function GameEngine({ session, onResult, onBack, onComplete }) {
         <div className="lvlprog mt-3">
           {LEVEL_ORDER.map((levelId, index) => (
             <React.Fragment key={levelId}>
-              <div className={`lpdot ${index < lvlIdx ? 'done' : index === lvlIdx ? 'curr' : 'lock'}`}>
-                {index < lvlIdx ? '✓' : LEVEL_META[levelId].icon}
-              </div>
-              {index < LEVEL_ORDER.length - 1 && <div className={`lpline ${index < lvlIdx ? 'done' : ''}`} />}
+              <button
+                type="button"
+                className={`lpdot ${doneKeys.has(`${currentStep.object_id}_${levelId}_${getLevelExercises(levelId).at(-1)?.id || 'show'}`) ? 'done' : levelId === currentLevelId ? 'curr' : 'lock'}`}
+                onClick={() => goToLevel(levelId)}
+                title={`${LEVEL_META[levelId].label} · ${LEVEL_META[levelId].sub}`}
+              >
+                {doneKeys.has(`${currentStep.object_id}_${levelId}_${getLevelExercises(levelId).at(-1)?.id || 'show'}`) ? '✓' : LEVEL_META[levelId].icon}
+              </button>
+              {index < LEVEL_ORDER.length - 1 && <div className={`lpline ${LEVEL_ORDER.indexOf(currentLevelId) > index ? 'done' : ''}`} />}
             </React.Fragment>
           ))}
         </div>
       </div>
 
-      {currentLevelId !== 'l1' && (
-        <div className="mb-4 flex flex-wrap justify-center gap-1.5">
-          {exercises.map((exercise, index) => {
-            const done = doneKeys.has(`${currentStep.object_id}_${currentLevelId}_${exercise.id}`);
-            return (
-              <div
-                key={exercise.id}
-                className={`rounded-[var(--r)] border px-3 py-1 text-xs font-bold ${done ? 'border-[var(--okbd)] bg-[var(--okb)] text-[var(--ok)]' : index === exIdx ? 'border-[var(--ac)] bg-[var(--ac)] text-white' : 'border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx2)]'}`}
-              >
-                {exercise.icon} {exercise.label}{done ? ' ✓' : ''}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <div className="mb-4 flex flex-wrap justify-center gap-1.5">
+        {exercises.map((exercise) => {
+          const done = doneKeys.has(`${currentStep.object_id}_${currentLevelId}_${exercise.id}`);
+          const active = currentExercise.id === exercise.id;
+          return (
+            <button
+              key={exercise.id}
+              type="button"
+              onClick={() => goToExercise(exercise.id)}
+              className={`rounded-[var(--r)] border px-3 py-1 text-xs font-bold ${done ? 'border-[var(--okbd)] bg-[var(--okb)] text-[var(--ok)]' : active ? 'border-[var(--ac)] bg-[var(--ac)] text-white' : 'border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx2)]'}`}
+            >
+              {exercise.icon} {exercise.label}{done ? ' ✓' : ''}
+            </button>
+          );
+        })}
+      </div>
 
       <div className="gpanel">
         {feedback ? (

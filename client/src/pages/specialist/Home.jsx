@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router';
 import { clientsApi, activitiesApi, groupsApi, assignmentsApi, objectsApi, categoriesApi } from '../../api';
 import useAuthStore from '../../stores/authStore';
-import { Button, Badge, Card, Input, Select, Textarea, SearchBar, ColumnToggle, TabBar, Confirm, Modal, Empty, Spinner, SubBadge, Notice, ActionIconButton, ColorPickerField } from '../../components/ui';
+import { Button, Badge, Card, Input, Select, Textarea, SearchBar, ColumnToggle, TabBar, Confirm, Modal, Empty, Spinner, SubBadge, Notice, ActionIconButton, ColorPickerField, IconButton } from '../../components/ui';
 import { CategoryManagementView } from '../../components/modals/CategoryManagerModal';
 import SubscriptionModal from '../../components/modals/SubscriptionModal';
+import ClientActivityModal from '../../components/modals/ClientActivityModal';
 import useListColumns from '../../hooks/useListColumns';
 import { getPasswordStrengthError, PASSWORD_RULE_HINT } from '../../lib/password';
 
@@ -227,6 +228,7 @@ function Clients() {
   const [sortBy, setSortBy] = useState('name');
   const [page, setPage] = useState(1);
   const [modal,    setModal]    = useState(null); // null | 'new' | client obj
+  const [activityClient, setActivityClient] = useState(null);
   const [delId,    setDelId]    = useState(null);
   const [form,     setForm]     = useState({});
   const [saving,   setSaving]   = useState(false);
@@ -383,6 +385,7 @@ function Clients() {
               badges={<span className="cursor-pointer" onClick={() => setSubTarget({ entity: c, type: 'client' })}><SubBadge sub={c.subscription} className="clients-item-badge" /></span>}
               actions={(
                 <>
+                  <IconButton icon="🎯" label="Actividades y progreso" variant="primary" className="clients-action-btn client-activity-launch-btn" onClick={() => setActivityClient(c)} />
                   <ActionIconButton className="clients-action-btn" onClick={() => openEdit(c)} />
                   <ActionIconButton action="delete" className="clients-action-btn" onClick={() => setDelId(c.id)} />
                 </>
@@ -458,6 +461,7 @@ function Clients() {
         </div>
       </Modal>
       <Confirm open={!!delId} message="Se eliminará el cliente y sus asignaciones." onConfirm={del} onCancel={() => setDelId(null)} />
+      <ClientActivityModal client={activityClient} open={!!activityClient} onClose={() => setActivityClient(null)} />
       {subTarget && <SubscriptionModal entity={subTarget.entity} entityType={subTarget.type} onClose={() => setSubTarget(null)} onSave={() => { clientsApi.list().then(r => setClients(r.data.data)); setSubTarget(null); }} />}
     </div>
   );

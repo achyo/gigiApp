@@ -211,6 +211,7 @@ model ActivityObject {
   activity Activity @relation(fields:[activityId], references:[id], onDelete:Cascade)
   object   Object   @relation(fields:[objectId],   references:[id])
   results  GameResult[]
+  stepProgress AssignmentStepProgress[]
 
   @@map("activity_objects")
 }
@@ -220,15 +221,41 @@ model Assignment {
   activityId  String    @map("activity_id")
   clientId    String    @map("client_id")
   isActive    Boolean   @default(true) @map("is_active")
+  currentObjectId String?   @map("current_object_id")
+  currentLevel    String?   @map("current_level")
+  currentExercise String?   @map("current_exercise")
+  startedAt       DateTime? @map("started_at")
+  progressUpdatedAt DateTime? @map("progress_updated_at")
   assignedAt  DateTime  @default(now()) @map("assigned_at")
   completedAt DateTime? @map("completed_at")
 
   activity Activity     @relation(fields:[activityId], references:[id])
   client   Client       @relation(fields:[clientId],   references:[id])
   results  GameResult[]
+  stepProgress AssignmentStepProgress[]
 
   @@unique([activityId, clientId])
   @@map("assignments")
+}
+
+model AssignmentStepProgress {
+  id               String   @id @default(uuid())
+  assignmentId     String   @map("assignment_id")
+  activityObjectId String   @map("activity_object_id")
+  level            String
+  exercise         String
+  timeMs           Int?     @map("time_ms")
+  comment          String?  @db.Text
+  completedAt      DateTime @default(now()) @map("completed_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt      @map("updated_at")
+
+  assignment     Assignment     @relation(fields:[assignmentId], references:[id], onDelete:Cascade)
+  activityObject ActivityObject @relation(fields:[activityObjectId], references:[id], onDelete:Cascade)
+
+  @@unique([assignmentId, activityObjectId, level, exercise])
+  @@index([assignmentId, completedAt])
+  @@map("assignment_step_progress")
 }
 
 model GameResult {

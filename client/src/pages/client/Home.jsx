@@ -72,10 +72,15 @@ export default function ClientHome() {
     gameApi.result(result).catch(console.error);
   };
 
+  const handleProgress = (progressState) => {
+    gameApi.progress(progressState).catch(console.error);
+  };
+
   if (session) return (
     <GameEngine
       session={session.gameData}
       onResult={handleResult}
+      onProgressChange={handleProgress}
       onBack={() => setSearchParams({}, { replace: true })}
       onComplete={() => {
         assignmentsApi.complete(session.assignmentId).catch(console.error);
@@ -158,6 +163,7 @@ export default function ClientHome() {
 function ActivityCard({ assignment, onStart, done, starting }) {
   const act  = assignment.activity;
   const objs = act?.activityObjects || [];
+  const progressSummary = assignment.progressSummary;
 
   const handleStart = () => {
     if (!starting) onStart(assignment.id);
@@ -179,8 +185,12 @@ function ActivityCard({ assignment, onStart, done, starting }) {
       <div className="ac-thumb">{objs.slice(0, 5).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div>
       <h3 className="text-base font-black">{act?.title}</h3>
       {act?.instructions && <p className="text-xs text-[var(--tx2)] mb-2">{act.instructions}</p>}
+      {progressSummary?.phaseLabel && !done && (
+        <p className="mb-2 text-xs text-[var(--tx3)]">Fase actual: {progressSummary.phaseLabel}</p>
+      )}
       <div className="flex items-center gap-2 flex-wrap">
         <Badge variant="default">{objs.length} objeto{objs.length !== 1 ? 's' : ''}</Badge>
+        {progressSummary && <Badge variant="default">{progressSummary.completedSteps}/{progressSummary.totalSteps} pasos</Badge>}
         {done
           ? <Badge variant="green">🏆 Completada</Badge>
           : <Badge variant="blue">▶ En curso</Badge>
@@ -196,7 +206,7 @@ function ActivityCard({ assignment, onStart, done, starting }) {
         }}
         disabled={starting}
       >
-        {starting ? 'Cargando…' : done ? '↻ Repetir' : '▶ Empezar'}
+        {starting ? 'Cargando…' : done ? '↻ Repetir' : progressSummary?.startedAt ? '▶ Continuar' : '▶ Empezar'}
       </Button>
     </div>
   );

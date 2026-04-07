@@ -127,16 +127,16 @@ export function Textarea({ label, className = '', ...props }) {
 }
 
 /* ── Modal ───────────────────────────────────────────────────────────────── */
-export function Modal({ open, onClose, title, children, maxWidth = 640, className = '' }) {
+export function Modal({ open, onClose, title, children, maxWidth = 640, className = '', fullScreen = false }) {
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto"
+      className={`fixed inset-0 z-50 flex ${fullScreen ? 'app-modal-overlay--fullscreen items-stretch justify-stretch p-0 overflow-hidden' : 'bg-black/50 items-center justify-center p-4 overflow-y-auto'}`}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div
-        className={`app-modal bg-[var(--sf)] rounded-[var(--rl)] px-[26px] py-[22px] w-full scale-in ${className}`}
-        style={{ maxWidth }}
+        className={`app-modal bg-[var(--sf)] rounded-[var(--rl)] px-[26px] py-[22px] w-full ${fullScreen ? 'app-modal--fullscreen' : 'scale-in'} ${className}`}
+        style={fullScreen ? undefined : { maxWidth }}
       >
         {title && (
           <div className="app-modal-header flex items-center justify-between mb-4">
