@@ -129,6 +129,48 @@ body {
   padding: 5px !important;
 }
 
+.sub-status-badge {
+  min-height: 24px;
+  padding: 2px 10px !important;
+  font-size: 0.75rem;
+}
+
+.sub-status-badge.entity-item-badge,
+.sub-status-badge.clients-item-badge {
+  padding: 2px 10px !important;
+}
+
+.admin-subscription-badge {
+  min-height: 34px;
+  padding: 7px 14px;
+  font-size: 0.83rem;
+}
+
+.admin-subscription-panel {
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+}
+
+.admin-subscription-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-subscription-row {
+  align-items: center;
+  min-height: 52px;
+}
+
+.admin-subscription-count {
+  min-width: 28px;
+  text-align: right;
+}
+
+.subscription-trial-notice {
+  font-size: 0.74rem !important;
+  padding: 16px 20px !important;
+}
+
 .entity-chip,
 .clients-group-chip {
   padding: 5px !important;

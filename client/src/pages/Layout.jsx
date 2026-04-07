@@ -16,7 +16,6 @@ const NAV = {
   admin: [
     { to: '/admin',                 icon: '📊', label: 'Panel'        },
     { to: '/admin/specialists',     icon: '🧑‍⚕️', label: 'Especialistas' },
-    { to: '/admin/clients',         icon: '👶', label: 'Clientes'     },
     { to: '/admin/activities',      icon: '📋', label: 'Actividades'  },
     { to: '/admin/objects',         icon: '📦', label: 'Objetos'      },
     { to: '/admin/categories',      icon: '🗂', label: 'Categorías'   },

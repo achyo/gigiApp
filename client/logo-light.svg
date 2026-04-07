@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="37.516567mm"
+   height="8.2550039mm"
+   viewBox="0 0 37.516567 8.2550039"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <g
+     id="layer1"
+     transform="translate(-79.904155,-54.504164)">
+    <circle
+       cx="84.031662"
+       cy="58.631664"
+       r="2.3812499"
+       fill="#185fa5"
+       id="circle38"
+       style="stroke-width:0.264583" />
+    <circle
+       cx="84.031662"
+       cy="58.631664"
+       r="3.96875"
+       fill="none"
+       stroke="#185fa5"
+       stroke-width="0.3175"
+       opacity="0.4"
+       id="circle39" />
+    <circle
+       cx="85.354576"
+       cy="57.308746"
+       r="0.79374999"
+       fill="#ffffff"
+       id="circle40"
+       style="stroke-width:0.264583" />
+    <text
+       x="91.393761"
+       y="61.36396"
+       class="brand-name-sm"
+       fill="#0c447c"
+       id="text40"
+       style="font-weight:500;font-size:7.7611px;font-family:Arial, Helvetica, sans-serif;stroke-width:0.264583">Percibo</text>
+  </g>
+</svg>

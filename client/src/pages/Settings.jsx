@@ -227,11 +227,13 @@ export default function Settings() {
   };
 
   const previewTts = () => {
+    console.log(activeVoice);
     const voiceName = activeVoice?.name || 'la voz seleccionada';
     const previewByLanguage = {
       'es-ES': `Esta es una prueba de voz con ${voiceName}.`,
       'es-MX': `Esta es una prueba de voz con ${voiceName}.`,
       'en-US': `This is a voice preview using ${voiceName}.`,
+      'en-GB': `This is a voice preview using ${voiceName}.`,
     };
     speak(previewByLanguage[ttsLanguage] || previewByLanguage['es-ES'], { force: true });
   };

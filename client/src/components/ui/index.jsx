@@ -86,11 +86,13 @@ export function Card({ children, className = '', ...props }) {
 
 /* ── Input ───────────────────────────────────────────────────────────────── */
 export function Input({ label, error, className = '', ...props }) {
+  const isDateInput = props.type === 'date';
   return (
     <div className="flex flex-col gap-1">
       {label && <label className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">{label}</label>}
       <input
         className={`w-full px-3.5 py-2.5 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)] focus:bg-[var(--sf)] transition-colors ${className}`}
+        {...(isDateInput ? { lang: 'es-ES' } : {})}
         {...props}
       />
       {error && <span className="text-xs text-[var(--er)]">{error}</span>}
@@ -305,15 +307,17 @@ export function Spinner({ size = 24 }) {
 
 /* ── SubStatus badge ─────────────────────────────────────────────────────── */
 export function SubBadge({ sub, className = '' }) {
-  if (!sub) return <Badge variant="default" className={className}>Sin suscripción</Badge>;
+  const badgeClassName = `sub-status-badge ${className}`.trim();
+  if (!sub) return <Badge variant="default" className={badgeClassName}>Sin suscripción</Badge>;
   const now  = new Date();
   const exp  = new Date(sub.expires);
   const days = (exp - now) / 864e5;
-  if (sub.status === 'trial')           return <Badge variant="blue" className={className}>Prueba 15d</Badge>;
-  if (days > 0  && days <= 15)          return <Badge variant="amber" className={className}>Vence pronto</Badge>;
-  if (days > 0)                         return <Badge variant="green" className={className}>Activa</Badge>;
-  if (days > -15)                       return <Badge variant="amber" className={className}>Cortesía 15d</Badge>;
-  return <Badge variant="red" className={className}>Caducada</Badge>;
+  if (sub.status === 'inactive')        return <Badge variant="default" className={badgeClassName}>Desactivada</Badge>;
+  if (sub.status === 'trial')           return <Badge variant="blue" className={badgeClassName}>Prueba 15d</Badge>;
+  if (days > 0  && days <= 15)          return <Badge variant="amber" className={badgeClassName}>Vence pronto</Badge>;
+  if (days > 0)                         return <Badge variant="green" className={badgeClassName}>Activa</Badge>;
+  if (days > -15)                       return <Badge variant="amber" className={badgeClassName}>Cortesía 15d</Badge>;
+  return <Badge variant="red" className={badgeClassName}>Caducada</Badge>;
 }
 
 /* ── Divider ─────────────────────────────────────────────────────────────── */

@@ -129,58 +129,61 @@ function Dashboard() {
     ...pending.categories.map(x => ({ ...x, _type: 'category' })),
   ];
 
-  const allSubscriptions = [
-    ...specialists.map(item => item.subscription).filter(Boolean),
-    ...clients.map(item => item.subscription).filter(Boolean),
-  ];
+  const normalizeDate = (value) => {
+    const date = new Date(value);
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  };
+
+  const getSubscriptionDaysLeft = (expires) => {
+    const today = normalizeDate(new Date());
+    const expiry = normalizeDate(expires);
+    return Math.round((expiry - today) / 86400000);
+  };
 
   const getSubState = (sub) => {
     if (!sub) return 'none';
-    const diffDays = (new Date(sub.expires) - new Date()) / 864e5;
+    if (sub.status === 'inactive') return 'inactive';
+    const diffDays = getSubscriptionDaysLeft(sub.expires);
     if (sub.status === 'trial') return 'trial';
     if (diffDays > 15) return 'active';
-    if (diffDays > 0) return 'expiring';
+    if (diffDays >= 0) return 'expiring';
     if (diffDays > -15) return 'grace';
     return 'expired';
   };
-
-  const expiringSoon = allSubscriptions.filter(sub => {
-    const diffDays = Math.ceil((new Date(sub.expires) - new Date()) / 864e5);
-    return diffDays >= 0 && diffDays <= 15;
-  }).length;
 
   const activeSpecialists = specialists.filter(item => item.user?.active).length;
   const activeClients = clients.filter(item => item.user?.active).length;
 
   const expiringEntries = [
-    ...specialists
-      .filter(item => item.subscription)
-      .map(item => ({
-        id: item.id,
-        kind: 'Especialista',
-        name: item.user?.name || 'Sin nombre',
-        expires: item.subscription?.expires,
-        daysLeft: Math.ceil((new Date(item.subscription?.expires) - new Date()) / 864e5),
-      })),
-    ...clients
-      .filter(item => item.subscription)
-      .map(item => ({
-        id: item.id,
-        kind: 'Cliente',
-        name: item.childName || item.user?.name || 'Sin nombre',
-        expires: item.subscription?.expires,
-        daysLeft: Math.ceil((new Date(item.subscription?.expires) - new Date()) / 864e5),
-      })),
+    ...specialists.filter(item => item.subscription).map(item => ({
+      id: item.id,
+      kind: 'Especialista',
+      name: item.user?.name || 'Sin nombre',
+      expires: item.subscription?.expires,
+      daysLeft: getSubscriptionDaysLeft(item.subscription?.expires),
+      state: getSubState(item.subscription),
+    })),
+    ...clients.filter(item => item.subscription).map(item => ({
+      id: item.id,
+      kind: 'Cliente',
+      name: item.childName || item.user?.name || 'Sin nombre',
+      expires: item.subscription?.expires,
+      daysLeft: getSubscriptionDaysLeft(item.subscription?.expires),
+      state: getSubState(item.subscription),
+    })),
   ]
-    .filter(item => item.daysLeft >= 0 && item.daysLeft <= 15)
+    .filter(item => item.state === 'expiring')
     .sort((left, right) => left.daysLeft - right.daysLeft)
     .slice(0, 6);
 
-  const subCounts = allSubscriptions.reduce((acc, sub) => {
+  const subCounts = [
+    ...specialists.map(item => item.subscription).filter(Boolean),
+    ...clients.map(item => item.subscription).filter(Boolean),
+  ].reduce((acc, sub) => {
     const key = getSubState(sub);
     acc[key] = (acc[key] || 0) + 1;
     return acc;
-  }, { active: 0, trial: 0, grace: 0, expired: 0, expiring: 0 });
+  }, { active: 0, trial: 0, grace: 0, expired: 0, expiring: 0, inactive: 0 });
 
   return (
     <div className="animate-in space-y-5">
@@ -218,17 +221,18 @@ function Dashboard() {
           )}
         </DashboardPanel>
 
-        <DashboardPanel icon="📊" title="Estado suscripciones" className="min-h-[236px]">
-          <div className="divide-y divide-[var(--bd)]/80">
+        <DashboardPanel icon="📊" title="Estado suscripciones" className="min-h-[236px] admin-subscription-panel">
+          <div className="admin-subscription-list divide-y divide-[var(--bd)]/80">
             {[
               ['Activa', subCounts.active || 0, 'green'],
               ['Prueba 15d', subCounts.trial || 0, 'blue'],
+              ['Vence pronto', subCounts.expiring || 0, 'amber'],
               ['Gracia 15d', subCounts.grace || 0, 'amber'],
               ['Caducada', subCounts.expired || 0, 'red'],
             ].map(([label, value, variant]) => (
-              <div key={label} className="flex items-center justify-between gap-3 py-3.5 first:pt-0 last:pb-0">
-                <Badge variant={variant}>{label}</Badge>
-                <span className="text-2xl font-black text-[var(--tx)]">{value}</span>
+              <div key={label} className="admin-subscription-row flex items-center justify-between gap-4 py-4 first:pt-1 last:pb-1">
+                <Badge variant={variant} className="admin-subscription-badge">{label}</Badge>
+                <span className="admin-subscription-count text-2xl font-black text-[var(--tx)]">{value}</span>
               </div>
             ))}
           </div>
@@ -415,7 +419,6 @@ function Clients() {
   const [search, setSearch] = useState('');
   const [columnCount, setColumnCount] = useListColumns('admin.clients', 1);
   const [modal, setModal] = useState(null);
-  const [sub, setSub] = useState(null);
   const [delId, setDelId] = useState(null);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
@@ -539,7 +542,7 @@ function Clients() {
                   title={c.childName}
                   subtitle={`${c.user?.name || 'Sin tutor'} · Esp: ${spec?.user?.name || '—'}`}
                   meta={renderClientGroups(c)}
-                  badges={<span className="cursor-pointer" onClick={() => setSub({ entity: c, type: 'client' })}><SubBadge sub={c.subscription} className="clients-item-badge" /></span>}
+                  badges={<SubBadge sub={c.subscription} className="clients-item-badge" />}
                   actions={(
                     <>
                       <ActionIconButton className="clients-action-btn" onClick={() => openEdit(c)} />
@@ -597,7 +600,6 @@ function Clients() {
         </div>
       </Modal>
       <Confirm open={!!delId} message="Se desactivará el cliente." onConfirm={async () => { await clientsApi.delete(delId); setClients(p => p.filter(c => c.id !== delId)); setDelId(null); }} onCancel={() => setDelId(null)} />
-      {sub && <SubscriptionModal entity={sub.entity} entityType={sub.type} onClose={() => setSub(null)} onSave={() => { clientsApi.list().then(r => setClients(r.data.data)); setSub(null); }} />}
     </div>
   );
 }
@@ -1580,7 +1582,6 @@ function Categories() {
 /* ── Subscriptions page ────────────────────────────────────────────────── */
 function Subscriptions() {
   const [specialists, setSpecialists] = useState([]);
-  const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [columnCount, setColumnCount] = useListColumns('admin.subscriptions', 1);
@@ -1588,27 +1589,29 @@ function Subscriptions() {
   const [subTarget, setSubTarget] = useState(null);
 
   useEffect(() => {
-    Promise.all([specialistsApi.list(), clientsApi.list()])
-      .then(([sr, cr]) => { setSpecialists(sr.data.data); setClients(cr.data.data); })
+    specialistsApi.list()
+      .then((sr) => { setSpecialists(sr.data.data); })
       .finally(() => setLoading(false));
   }, []);
 
   const subStatus = (sub) => {
     if (!sub) return 'none';
-    const days = (new Date(sub.expires) - new Date()) / 864e5;
+    const today = new Date();
+    const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const expiry = new Date(sub.expires);
+    const startExpiry = new Date(expiry.getFullYear(), expiry.getMonth(), expiry.getDate());
+    const days = Math.round((startExpiry - startToday) / 86400000);
+    if (sub.status === 'inactive') return 'inactive';
     if (sub.status === 'trial') return 'trial';
-    if (days > 0 && days <= 15) return 'expiring';
+    if (days >= 0 && days <= 15) return 'expiring';
     if (days > 0) return 'active';
     if (days > -15) return 'grace';
     return 'expired';
   };
 
-  const filterMap = { trial: 'Prueba', active: 'Activa', expiring: 'Por vencer', grace: 'Cortesía', expired: 'Caducada', none: 'Sin suscripción' };
+  const filterMap = { trial: 'Prueba', active: 'Activa', expiring: 'Por vencer', grace: 'Cortesía', expired: 'Caducada', inactive: 'Desactivada', none: 'Sin suscripción' };
 
-  const allEntities = [
-    ...specialists.map(s => ({ ...s, _type: 'specialist', _name: s.user?.name, _sub: s.subscription })),
-    ...clients.map(c => ({ ...c, _type: 'client', _name: c.childName, _sub: c.subscription })),
-  ].filter(e => {
+  const allEntities = specialists.map(s => ({ ...s, _type: 'specialist', _name: s.user?.name, _sub: s.subscription })).filter(e => {
     const q = search.toLowerCase();
     const matchQ = !q || e._name?.toLowerCase().includes(q);
     const matchF = filter === 'all' || subStatus(e._sub) === filter;
@@ -1616,8 +1619,8 @@ function Subscriptions() {
   });
 
   const refresh = () => {
-    Promise.all([specialistsApi.list(), clientsApi.list()])
-      .then(([sr, cr]) => { setSpecialists(sr.data.data); setClients(cr.data.data); });
+    specialistsApi.list()
+      .then((sr) => { setSpecialists(sr.data.data); });
   };
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
@@ -1626,8 +1629,8 @@ function Subscriptions() {
     <div className="animate-in">
       <ListPageHeader
         title="Gestión de suscripciones"
-        count={`${allEntities.length}/${specialists.length + clients.length}`}
-        subtitle="Control de estados, vencimientos y acceso a la gestión de cobros."
+        count={`${allEntities.length}/${specialists.length}`}
+        subtitle="Control de estados, vencimientos y acceso a la gestión de cobros de especialistas."
       />
       <SearchBar value={search} onChange={setSearch} placeholder="🔍 Buscar..." fieldClassName="search-field" inputClassName="search-input"
         extra={
