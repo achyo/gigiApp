@@ -683,10 +683,10 @@ body {
   font-weight: 700;
 }
 
-.pstrip { display: flex; gap: 5px; flex-wrap: wrap; }
+.pstrip { display: flex; gap: 7px; flex-wrap: wrap; }
 .pbtn {
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
   border-radius: 50%;
   border: 3px solid transparent;
