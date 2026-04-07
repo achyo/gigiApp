@@ -42,21 +42,22 @@ export default function Layout() {
         <button className="menu-toggle lg:hidden" onClick={() => setSidebarOpen(o => !o)} aria-label="Abrir menu">
           ☰
         </button>
-        <button className="brand" onClick={() => navigate('/')}>
+        <button className="brand" onClick={() => navigate('/')} aria-label="Ir al inicio">
           <BrandLogo syncFavicon imageClassName="brand-logo__image--topbar" />
         </button>
 
         <div className="topact">
-          <button onClick={decFont} className="fsbtn" title={`Reducir texto (${FONT_SIZES.find(size => size.id === fontSizeId)?.label || 'A'})`}>
+          <button onClick={decFont} className="fsbtn" title={`Reducir texto (${FONT_SIZES.find(size => size.id === fontSizeId)?.label || 'A'})`} aria-label="Reducir tamaño de texto">
             A-
           </button>
-          <button onClick={incFont} className="fsbtn" title={`Aumentar texto (${FONT_SIZES.find(size => size.id === fontSizeId)?.label || 'A'})`}>
+          <button onClick={incFont} className="fsbtn" title={`Aumentar texto (${FONT_SIZES.find(size => size.id === fontSizeId)?.label || 'A'})`} aria-label="Aumentar tamaño de texto">
             A+
           </button>
           <button
             onClick={() => setTts(!ttsEnabled)}
             className={`ttsbtn ${ttsEnabled ? 'on' : ''}`}
             title={ttsEnabled ? 'Desactivar lectura' : 'Activar lectura'}
+            aria-label={ttsEnabled ? 'Desactivar lectura de texto' : 'Activar lectura de texto'}
           >
             <span>{ttsEnabled ? '🔊' : '🔇'}</span>
             <span className="hidden sm:inline">TTS</span>
@@ -67,6 +68,7 @@ export default function Layout() {
               <button
                 key={p.id}
                 title={p.label}
+                aria-label={`Usar paleta ${p.label}`}
                 onClick={() => setPalette(p.id)}
                 className={`pbtn ${paletteId === p.id ? 'on' : ''}`}
                 style={{ background: p.bg, borderColor: p.ac }}
@@ -77,7 +79,7 @@ export default function Layout() {
           <span className="role-chip hidden sm:inline-flex">
             {user?.role === 'admin' ? '🛡️ Admin' : user?.role === 'specialist' ? '🧑‍⚕️ Especialista' : '👶 Cliente'}
           </span>
-          <button onClick={() => navigate('/settings')} className="icon-btn" title="Configuracion">⚙️</button>
+          <button onClick={() => navigate('/settings')} className="icon-btn" title="Configuracion" aria-label="Abrir configuración">⚙️</button>
           <button onClick={handleLogout} className="ghost-link" title="Cerrar sesion">Salir</button>
         </div>
       </header>

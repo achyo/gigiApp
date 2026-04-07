@@ -20,7 +20,7 @@ function signAccess(user) {
 }
 
 function signRefresh(userId) {
-  return jwt.sign({ sub: userId, type: 'refresh' }, process.env.JWT_SECRET, { expiresIn: REFRESH_TTL });
+  return jwt.sign({ sub: userId, type: 'refresh', jti: crypto.randomUUID() }, process.env.JWT_SECRET, { expiresIn: REFRESH_TTL });
 }
 
 // POST /api/auth/login

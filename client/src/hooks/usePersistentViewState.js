@@ -5,6 +5,10 @@ function cloneDefaults(defaults) {
   return JSON.parse(JSON.stringify(defaults));
 }
 
+function areStatesEqual(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 export default function usePersistentViewState(viewKey, defaults) {
   const storageKey = `view:${viewKey}`;
   const rawValue = usePrefsStore((state) => state.listLayouts?.[storageKey]);
@@ -22,10 +26,20 @@ export default function usePersistentViewState(viewKey, defaults) {
       ? nextValue(state)
       : { ...state, ...nextValue };
 
+    if (areStatesEqual(resolved, rawValue || {})) {
+      return;
+    }
+
     setListLayout(storageKey, resolved);
   };
 
-  const resetState = () => setListLayout(storageKey, cloneDefaults(defaults));
+  const resetState = () => {
+    const nextState = cloneDefaults(defaults);
+    if (areStatesEqual(nextState, rawValue || {})) {
+      return;
+    }
+    setListLayout(storageKey, nextState);
+  };
 
   return [state, updateState, resetState];
 }

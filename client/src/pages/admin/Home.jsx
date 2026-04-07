@@ -6,7 +6,7 @@ import {
 } from '../../api';
 import {
   Button, Badge, Card, Input, Select, Textarea, ActionIconButton, ColorPickerField,
-  SearchBar, ColumnToggle, Confirm, Modal, Empty, Spinner, SubBadge, Divider, Notice,
+  SearchBar, ColumnToggle, Confirm, Modal, Empty, Spinner, SubBadge, Divider, Notice, OnboardingPanel,
 } from '../../components/ui';
 import { CategoryManagementView } from '../../components/modals/CategoryManagerModal';
 import SubscriptionModal from '../../components/modals/SubscriptionModal';
@@ -18,11 +18,45 @@ function getApiErrorMessage(error, fallback) {
   return error?.response?.data?.error?.message || error?.message || fallback;
 }
 
-function DashboardMetricCard({ value, label }) {
+function DashboardMetricCard({ value, label, helpText }) {
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+
+  if (!helpText) {
+    return (
+      <div className="sp-dash-metric min-h-[88px] rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-[15px] py-3">
+        <p className="text-[1.8rem] font-black leading-none text-[var(--ac)]">{value ?? '0'}</p>
+        <p className="mt-1 text-[.65rem] font-bold uppercase tracking-[0.05em] text-[var(--tx3)]">{label}</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="sp-dash-metric min-h-[88px] rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-[15px] py-3">
-      <p className="text-[1.8rem] font-black leading-none text-[var(--ac)]">{value ?? '0'}</p>
-      <p className="mt-1 text-[.65rem] font-bold uppercase tracking-[0.05em] text-[var(--tx3)]">{label}</p>
+    <div className="relative">
+      <button
+        type="button"
+        className="sp-dash-metric w-full min-h-[88px] rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-[15px] py-3 text-left focus-visible:outline-none"
+        onClick={() => setTooltipOpen((current) => !current)}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setTooltipOpen(false);
+          }
+        }}
+        aria-expanded={tooltipOpen}
+        aria-label={`${label}. Pulsa para ver la explicación de la métrica.`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[1.8rem] font-black leading-none text-[var(--ac)]">{value ?? '0'}</p>
+            <p className="mt-1 text-[.65rem] font-bold uppercase tracking-[0.05em] text-[var(--tx3)]">{label}</p>
+          </div>
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[var(--bd)] bg-[var(--bg2)] text-xs font-black text-[var(--tx3)]" aria-hidden="true">i</span>
+        </div>
+      </button>
+      {tooltipOpen && (
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-10 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-3 py-2 text-xs leading-relaxed text-[var(--tx2)] shadow-[var(--shadow-soft)]">
+          {helpText}
+        </div>
+      )}
     </div>
   );
 }
@@ -153,6 +187,10 @@ function ListRow({ avatar, title, subtitle, meta, badges, actions, accentColor, 
 /* ── Dashboard ─────────────────────────────────────────────────────────── */
 function Dashboard() {
   const navigate = useNavigate();
+  const [onboardingState, setOnboardingState] = usePersistentViewState('admin.dashboard.onboarding', {
+    dismissed: false,
+    snoozedUntil: null,
+  });
   const [stats, setStats] = useState(null);
   const [pending, setPending] = useState({ objects: [], categories: [] });
   const [specialists, setSpecialists] = useState([]);
@@ -244,6 +282,31 @@ function Dashboard() {
     return acc;
   }, { active: 0, trial: 0, grace: 0, expired: 0, expiring: 0, inactive: 0 });
 
+  const onboardingSteps = [
+    {
+      label: 'Crear el primer especialista',
+      description: 'Da de alta profesionales para empezar a delegar la operación de la plataforma.',
+      done: (stats?.specialists || 0) > 0,
+      onOpen: () => navigate('/admin/specialists'),
+    },
+    {
+      label: 'Publicar contenido base',
+      description: 'Revisa aprobaciones y valida que existan objetos y categorías disponibles para trabajar.',
+      done: (stats?.objects || 0) > 0 && (stats?.categories || 0) > 0 && allPending.length === 0,
+      onOpen: () => navigate('/admin/objects'),
+    },
+    {
+      label: 'Supervisar altas y suscripciones',
+      description: 'Comprueba clientes activos y el estado de las suscripciones para evitar fricción en el arranque.',
+      done: (stats?.clients || 0) > 0 && ((subCounts.active || 0) + (subCounts.trial || 0) > 0),
+      onOpen: () => navigate('/admin/subscriptions'),
+    },
+  ];
+
+  const shouldShowOnboarding = !onboardingState.dismissed
+    && (!onboardingState.snoozedUntil || Date.now() > onboardingState.snoozedUntil)
+    && onboardingSteps.some((step) => !step.done);
+
   const alertItems = [
     ...allPending.map((item) => ({
       key: `approval-${item._type}-${item.id}`,
@@ -284,15 +347,41 @@ function Dashboard() {
         <h1 className="text-2xl font-black">Panel global</h1>
       </div>
 
+      {shouldShowOnboarding && (
+        <OnboardingPanel
+          title="Primeros pasos para administración"
+          subtitle="Completa este recorrido mínimo para dejar la plataforma operativa sin soporte externo."
+          steps={onboardingSteps}
+          onSnooze={() => setOnboardingState({ snoozedUntil: Date.now() + (12 * 60 * 60 * 1000) })}
+          onDismiss={() => setOnboardingState({ dismissed: true, snoozedUntil: null })}
+        />
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8 gap-3 admin-dashboard-metrics">
         <DashboardMetricCard value={stats?.specialists} label="Especialistas" />
         <DashboardMetricCard value={stats?.clients} label="Clientes" />
         <DashboardMetricCard value={stats?.activities} label="Actividades" />
         <DashboardMetricCard value={stats?.objects} label="Objetos" />
-        <DashboardMetricCard value={stats?.learning?.summary?.averageCompletionPercent != null ? `${stats.learning.summary.averageCompletionPercent}%` : '0%'} label="Avance medio" />
-        <DashboardMetricCard value={stats?.learning?.summary?.averageAccuracyPercent != null ? `${stats.learning.summary.averageAccuracyPercent}%` : '—'} label="Precisión media" />
-        <DashboardMetricCard value={stats?.learning?.summary?.attentionCount ?? 0} label="Seguimiento" />
-        <DashboardMetricCard value={stats?.learning?.summary?.recentActivityCount ?? 0} label="Activos 7d" />
+        <DashboardMetricCard
+          value={stats?.learning?.summary?.averageCompletionPercent != null ? `${stats.learning.summary.averageCompletionPercent}%` : '0%'}
+          label="Avance medio"
+          helpText="Promedio del porcentaje de pasos completados por alumnos con actividades asignadas."
+        />
+        <DashboardMetricCard
+          value={stats?.learning?.summary?.averageAccuracyPercent != null ? `${stats.learning.summary.averageAccuracyPercent}%` : '—'}
+          label="Precisión media"
+          helpText="Promedio de respuestas correctas sobre el total de intentos registrados en juego."
+        />
+        <DashboardMetricCard
+          value={stats?.learning?.summary?.attentionCount ?? 0}
+          label="Seguimiento"
+          helpText="Número de alumnos detectados con señales de atención pedagógica por avance, acierto o inactividad."
+        />
+        <DashboardMetricCard
+          value={stats?.learning?.summary?.recentActivityCount ?? 0}
+          label="Activos 7d"
+          helpText="Alumnos con actividad reciente registrada en los últimos siete días."
+        />
       </div>
 
       <div className="grid gap-4 2xl:grid-cols-[1.2fr_.95fr_.95fr] admin-dashboard-sections">
@@ -834,7 +923,7 @@ function Clients() {
             Seleccionar visibles
           </label>
           <Badge className="search-visible-badge" variant="blue">{selectedIds.length} seleccionados</Badge>
-          <Select value={bulkSpecialistId} onChange={e => setBulkSpecialistId(e.target.value)} className="search-filter-select clients-filter-select !w-auto min-w-[220px] text-sm">
+          <Select aria-label="Reasignar clientes al especialista seleccionado" value={bulkSpecialistId} onChange={e => setBulkSpecialistId(e.target.value)} className="search-filter-select clients-filter-select !w-auto min-w-[220px] text-sm">
             <option value="">Reasignar a especialista...</option>
             {specs.map(spec => <option key={spec.id} value={spec.id}>{spec.user?.name || 'Sin nombre'}</option>)}
           </Select>

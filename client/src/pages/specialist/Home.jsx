@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router';
+import { Routes, Route, useNavigate } from 'react-router';
 import { clientsApi, activitiesApi, groupsApi, assignmentsApi, objectsApi, categoriesApi, specialistsApi } from '../../api';
 import useAuthStore from '../../stores/authStore';
-import { Button, Badge, Card, Input, Select, Textarea, SearchBar, ColumnToggle, TabBar, Confirm, Modal, Empty, Spinner, SubBadge, Notice, ActionIconButton, ColorPickerField, IconButton } from '../../components/ui';
+import { Button, Badge, Card, Input, Select, Textarea, SearchBar, ColumnToggle, TabBar, Confirm, Modal, Empty, Spinner, SubBadge, Notice, ActionIconButton, ColorPickerField, IconButton, OnboardingPanel } from '../../components/ui';
 import { CategoryManagementView } from '../../components/modals/CategoryManagerModal';
 import SubscriptionModal from '../../components/modals/SubscriptionModal';
 import ClientActivityModal from '../../components/modals/ClientActivityModal';
@@ -237,6 +237,11 @@ function ListRow({ avatar, title, subtitle, meta, badges, actions, accentColor, 
 }
 
 function Dashboard() {
+  const navigate = useNavigate();
+  const [onboardingState, setOnboardingState] = usePersistentViewState('specialist.dashboard.onboarding', {
+    dismissed: false,
+    snoozedUntil: null,
+  });
   const [clients, setClients] = useState([]);
   const [activities, setActivities] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -305,12 +310,45 @@ function Dashboard() {
   const latestClients = clients.slice(0, 3);
   const latestActivities = activities.slice(0, 3);
   const latestGroups = groups.slice(0, 3);
+  const onboardingSteps = [
+    {
+      label: 'Crear tu primer alumno',
+      description: 'Añade familia y alumno para empezar a asignar trabajo y seguir progreso.',
+      done: clients.length > 0,
+      onOpen: () => navigate('/specialist/clients'),
+    },
+    {
+      label: 'Preparar una actividad',
+      description: 'Crea una actividad con objetos y deja una asignación lista para usar.',
+      done: activities.length > 0,
+      onOpen: () => navigate('/specialist/activities'),
+    },
+    {
+      label: 'Organizar grupos',
+      description: 'Agrupa alumnos para simplificar asignaciones y seguimiento operativo.',
+      done: groups.length > 0,
+      onOpen: () => navigate('/specialist/groups'),
+    },
+  ];
+  const shouldShowOnboarding = !onboardingState.dismissed
+    && (!onboardingState.snoozedUntil || Date.now() > onboardingState.snoozedUntil)
+    && onboardingSteps.some((step) => !step.done);
 
   return (
     <div className="animate-in space-y-5 specialist-dashboard-stack">
       <div>
         <h1 className="text-2xl font-black">Panel del especialista</h1>
       </div>
+
+      {shouldShowOnboarding && (
+        <OnboardingPanel
+          title="Primeros pasos para especialista"
+          subtitle="Este recorrido cubre la configuración mínima para poder trabajar con alumnos sin ayuda externa."
+          steps={onboardingSteps}
+          onSnooze={() => setOnboardingState({ snoozedUntil: Date.now() + (12 * 60 * 60 * 1000) })}
+          onDismiss={() => setOnboardingState({ dismissed: true, snoozedUntil: null })}
+        />
+      )}
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 specialist-dashboard-metrics">
         <DashboardMetricCard value={clients.length} label="Alumnos" />
@@ -638,7 +676,7 @@ function Clients() {
             Seleccionar visibles
           </label>
           <Badge className="search-visible-badge clients-visible-badge" variant="blue">{selectedIds.length} seleccionados</Badge>
-          <Select value={bulkActivityId} onChange={e => setBulkActivityId(e.target.value)} className="search-filter-select clients-filter-select !w-auto min-w-[220px] text-sm">
+          <Select aria-label="Asignar actividad a clientes seleccionados" value={bulkActivityId} onChange={e => setBulkActivityId(e.target.value)} className="search-filter-select clients-filter-select !w-auto min-w-[220px] text-sm">
             <option value="">Asignar actividad...</option>
             {activities.map(activity => <option key={activity.id} value={activity.id}>{activity.title}</option>)}
           </Select>

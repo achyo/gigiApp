@@ -1,8 +1,15 @@
 import React from 'react';
 
+function getFocusableElements(container) {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll(
+    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )).filter((element) => !element.hasAttribute('aria-hidden'));
+}
+
 /* ── Button ──────────────────────────────────────────────────────────────── */
 export function Button({ variant = 'primary', size = 'md', className = '', children, ...props }) {
-  const base = 'inline-flex items-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap';
+  const base = 'inline-flex items-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--ac)]/25';
   const sizes = { sm: 'px-2.5 py-1 text-[0.8em]', md: 'px-[15px] py-2 text-[.88em]', lg: 'px-[15px] py-2 text-[.88em]' };
   const variants = {
     primary: 'bg-[var(--ac)] text-white border-[var(--ac)] hover:brightness-110',
@@ -87,10 +94,12 @@ export function Card({ children, className = '', ...props }) {
 /* ── Input ───────────────────────────────────────────────────────────────── */
 export function Input({ label, error, className = '', ...props }) {
   const isDateInput = props.type === 'date';
+  const fieldId = props.id || React.useId();
   return (
     <div className="flex flex-col gap-1">
-      {label && <label className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">{label}</label>}
+      {label && <label htmlFor={fieldId} className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">{label}</label>}
       <input
+        id={fieldId}
         className={`w-full px-3.5 py-2.5 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)] focus:bg-[var(--sf)] transition-colors ${className}`}
         {...(isDateInput ? { lang: 'es-ES' } : {})}
         {...props}
@@ -102,10 +111,12 @@ export function Input({ label, error, className = '', ...props }) {
 
 /* ── Select ──────────────────────────────────────────────────────────────── */
 export function Select({ label, className = '', children, ...props }) {
+  const fieldId = props.id || React.useId();
   return (
     <div className="flex flex-col gap-1">
-      {label && <label className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">{label}</label>}
+      {label && <label htmlFor={fieldId} className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">{label}</label>}
       <select
+        id={fieldId}
         className={`w-full px-3.5 py-2.5 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)] appearance-none cursor-pointer ${className}`}
         {...props}
       >
@@ -117,10 +128,12 @@ export function Select({ label, className = '', children, ...props }) {
 
 /* ── Textarea ────────────────────────────────────────────────────────────── */
 export function Textarea({ label, className = '', ...props }) {
+  const fieldId = props.id || React.useId();
   return (
     <div className="flex flex-col gap-1">
-      {label && <label className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">{label}</label>}
+      {label && <label htmlFor={fieldId} className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">{label}</label>}
       <textarea
+        id={fieldId}
         className={`w-full px-3.5 py-2.5 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-sm outline-none focus:border-[var(--ac)] focus:bg-[var(--sf)] transition-colors resize-y ${className}`}
         {...props}
       />
@@ -130,11 +143,62 @@ export function Textarea({ label, className = '', ...props }) {
 
 /* ── Modal ───────────────────────────────────────────────────────────────── */
 export function Modal({ open, onClose, title, children, maxWidth = 640, className = '', fullScreen = false }) {
+  const overlayRef = React.useRef(null);
+  const closeButtonRef = React.useRef(null);
+  const returnFocusRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!open) return undefined;
+
+    returnFocusRef.current = document.activeElement;
+
+    const frame = window.requestAnimationFrame(() => {
+      const focusable = getFocusableElements(overlayRef.current);
+      (focusable[0] || closeButtonRef.current)?.focus();
+    });
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const focusable = getFocusableElements(overlayRef.current);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener('keydown', onKeyDown);
+      if (returnFocusRef.current instanceof HTMLElement) {
+        returnFocusRef.current.focus();
+      }
+    };
+  }, [onClose, open]);
+
   if (!open) return null;
   return (
     <div
+      ref={overlayRef}
       className={`fixed inset-0 z-50 flex ${fullScreen ? 'app-modal-overlay--fullscreen items-stretch justify-stretch p-0 overflow-hidden' : 'bg-black/50 items-center justify-center p-4 overflow-y-auto'}`}
       onClick={e => e.target === e.currentTarget && onClose()}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title || 'Diálogo'}
     >
       <div
         className={`app-modal bg-[var(--sf)] rounded-[var(--rl)] px-[26px] py-[22px] w-full ${fullScreen ? 'app-modal--fullscreen' : 'scale-in'} ${className}`}
@@ -143,7 +207,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 640, classNam
         {title && (
           <div className="app-modal-header flex items-center justify-between mb-4">
             <h2 className="app-modal-title font-black text-base">{title}</h2>
-            <button onClick={onClose} className="app-modal-close text-[var(--tx3)] hover:text-[var(--tx)] text-xl leading-none">&times;</button>
+            <button ref={closeButtonRef} onClick={onClose} aria-label="Cerrar diálogo" className="app-modal-close text-[var(--tx3)] hover:text-[var(--tx)] text-xl leading-none">&times;</button>
           </div>
         )}
         {children}
@@ -154,10 +218,39 @@ export function Modal({ open, onClose, title, children, maxWidth = 640, classNam
 
 /* ── Confirm ─────────────────────────────────────────────────────────────── */
 export function Confirm({ open, message, onConfirm, onCancel }) {
+  const dialogRef = React.useRef(null);
+  const returnFocusRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!open) return undefined;
+
+    returnFocusRef.current = document.activeElement;
+    const frame = window.requestAnimationFrame(() => {
+      const focusable = getFocusableElements(dialogRef.current);
+      focusable[0]?.focus();
+    });
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCancel();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener('keydown', onKeyDown);
+      if (returnFocusRef.current instanceof HTMLElement) {
+        returnFocusRef.current.focus();
+      }
+    };
+  }, [onCancel, open]);
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="confirm-dialog bg-[var(--sf)] rounded-[var(--rl)] p-6 max-w-xs w-full text-center scale-in">
+      <div ref={dialogRef} role="alertdialog" aria-modal="true" aria-label="Confirmación" className="confirm-dialog bg-[var(--sf)] rounded-[var(--rl)] p-6 max-w-xs w-full text-center scale-in">
         <div className="confirm-dialog__icon">🗑</div>
         <p className="font-bold mb-1">¿Eliminar?</p>
         <p className="text-sm text-[var(--tx2)] mb-5">{message}</p>
@@ -178,6 +271,7 @@ export function SearchBar({ value, onChange, placeholder = '🔍 Buscar...', ext
         <input
           value={value} onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
+          aria-label={placeholder.replace('🔍', '').trim() || 'Buscar'}
           className={`w-full pl-7 pr-3 py-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] text-[var(--tx)] text-[.9em] outline-none focus:border-[var(--ac)] ${inputClassName}`}
         />
       </div>
@@ -276,11 +370,14 @@ export function ColorPickerField({ label, colors = [], value, onChange, classNam
 /* ── TabBar ──────────────────────────────────────────────────────────────── */
 export function TabBar({ tabs, active, onChange, actions }) {
   return (
-    <div className="tabrow">
+    <div className="tabrow" role="tablist" aria-label="Secciones">
       {tabs.map(t => (
         <button
           key={t.id}
+          type="button"
           onClick={() => onChange(t.id)}
+          role="tab"
+          aria-selected={active === t.id}
           className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--r)] text-[.82em] font-bold border transition-all
             ${active === t.id
               ? 'bg-[var(--ac)] text-white border-[var(--ac)]'
@@ -335,5 +432,60 @@ export function Empty({ icon = '📭', title, subtitle, hint, action, className 
       {hint && <p className="text-xs text-[var(--tx3)]">{hint}</p>}
       {action && <div className="empty-state__action mt-2">{action}</div>}
     </div>
+  );
+}
+
+export function MetricLegend({ items = [], className = '' }) {
+  if (!items.length) return null;
+
+  return (
+    <Card className={`p-3 ${className}`}>
+      <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Leyenda de métricas</p>
+      <div className="mt-2 grid gap-2 md:grid-cols-2">
+        {items.map((item) => (
+          <div key={item.label} className="rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] px-3 py-2">
+            <p className="text-sm font-bold text-[var(--tx)]">{item.label}</p>
+            <p className="mt-1 text-xs text-[var(--tx3)]">{item.description}</p>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+export function OnboardingPanel({ title, subtitle, steps = [], onDismiss, onSnooze, className = '' }) {
+  if (!steps.length) return null;
+
+  return (
+    <Card className={`border-[color:var(--ac)]/20 bg-[color:var(--acb)]/40 ${className}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Onboarding guiado</p>
+          <h2 className="mt-1 text-lg font-black text-[var(--tx)]">{title}</h2>
+          {subtitle && <p className="mt-1 text-sm text-[var(--tx3)]">{subtitle}</p>}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" size="sm" onClick={onSnooze}>Posponer</Button>
+          <Button type="button" variant="ghost" size="sm" onClick={onDismiss}>Cerrar</Button>
+        </div>
+      </div>
+      <div className="mt-3 grid gap-2 lg:grid-cols-2">
+        {steps.map((step, index) => (
+          <div key={step.label} className="rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-3 py-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--tx3)]">Paso {index + 1}</p>
+                <p className="mt-1 text-sm font-black text-[var(--tx)]">{step.label}</p>
+                {step.description && <p className="mt-1 text-xs text-[var(--tx3)]">{step.description}</p>}
+              </div>
+              {step.done && <Badge variant="green">Hecho</Badge>}
+            </div>
+            <div className="mt-3">
+              <Button type="button" size="sm" variant={step.done ? 'secondary' : 'primary'} onClick={step.onOpen}>{step.done ? 'Revisar' : 'Abrir paso'}</Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
