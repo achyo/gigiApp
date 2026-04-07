@@ -326,12 +326,14 @@ export function Divider() {
 }
 
 /* ── Empty state ─────────────────────────────────────────────────────────── */
-export function Empty({ icon = '📭', title, subtitle }) {
+export function Empty({ icon = '📭', title, subtitle, hint, action, className = '' }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center gap-2">
+    <div className={`empty-state flex flex-col items-center justify-center py-16 text-center gap-2 ${className}`}>
       <span className="text-4xl">{icon}</span>
       {title && <p className="font-bold text-[var(--tx2)]">{title}</p>}
       {subtitle && <p className="text-sm text-[var(--tx3)]">{subtitle}</p>}
+      {hint && <p className="text-xs text-[var(--tx3)]">{hint}</p>}
+      {action && <div className="empty-state__action mt-2">{action}</div>}
     </div>
   );
 }

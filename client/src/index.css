@@ -109,6 +109,184 @@ body {
   margin-top: 4px;
 }
 
+.specialist-progress-panel {
+  padding-top: 18px !important;
+  padding-bottom: 18px !important;
+}
+
+.specialist-progress-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  margin-bottom: 14px;
+}
+
+.specialist-progress-summary__item {
+  border: 1px solid color-mix(in srgb, var(--bd) 86%, white);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--sf) 92%, var(--acb));
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.specialist-progress-summary__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tx3);
+}
+
+.specialist-progress-summary__value {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--tx);
+}
+
+.specialist-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.specialist-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid color-mix(in srgb, var(--bd) 88%, white);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--sf) 94%, white);
+  padding: 14px;
+}
+
+.specialist-progress-row__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.specialist-progress-row__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.specialist-progress-row__title {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: var(--tx);
+}
+
+.specialist-progress-row__subtitle {
+  margin-top: 2px;
+  font-size: 0.76rem;
+  color: var(--tx3);
+}
+
+.specialist-progress-row__metrics,
+.specialist-progress-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--tx2);
+}
+
+.specialist-progress-row__meta {
+  color: var(--tx3);
+}
+
+.admin-alert-panel,
+.admin-learning-panel {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+
+.admin-alert-list,
+.admin-learning-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-alert-row,
+.admin-learning-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--bd) 88%, white);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--sf) 94%, white);
+  padding: 12px 14px;
+}
+
+.admin-alert-row__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-alert-row__title,
+.admin-learning-row__title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--tx);
+}
+
+.admin-alert-row__meta,
+.admin-learning-row__meta {
+  margin-top: 3px;
+  font-size: 0.76rem;
+  color: var(--tx3);
+}
+
+.admin-alert-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-learning-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.admin-learning-chip {
+  border: 1px solid color-mix(in srgb, var(--bd) 86%, white);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--sf) 92%, var(--acb));
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-learning-chip__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tx3);
+}
+
+.admin-learning-chip__value {
+  font-size: 1.12rem;
+  font-weight: 900;
+  color: var(--tx);
+}
+
+.empty-state__action {
+  display: flex;
+  justify-content: center;
+}
+
 .entity-list-shell,
 .clients-list-shell {
   padding: 11px !important;
@@ -1078,6 +1256,22 @@ body {
 }
 
 @media (max-width: 720px) {
+  .specialist-progress-row,
+  .specialist-progress-row__head,
+  .admin-alert-row,
+  .admin-learning-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-alert-row__actions {
+    justify-content: stretch;
+  }
+
+  .admin-learning-grid {
+    grid-template-columns: 1fr;
+  }
+
   .settings-palette-grid,
   .settings-font-grid {
     grid-template-columns: 1fr 1fr;

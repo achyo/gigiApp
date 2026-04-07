@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router';
+import { Routes, Route, useNavigate } from 'react-router';
 import {
   adminApi, specialistsApi, clientsApi, activitiesApi, assignmentsApi,
   objectsApi, categoriesApi, groupsApi, subscriptionsApi, usersApi,
@@ -35,6 +35,54 @@ function DashboardPanel({ icon, title, children, className = '' }) {
       </div>
       {children}
     </Card>
+  );
+}
+
+function getToneVariant(tone) {
+  if (tone === 'green') return 'green';
+  if (tone === 'red') return 'red';
+  if (tone === 'amber') return 'amber';
+  if (tone === 'blue') return 'blue';
+  return 'default';
+}
+
+function AlertCenterPanel({ items, onApprove, onReject, onOpenSubscriptions, onOpenClients }) {
+  return (
+    <DashboardPanel icon="🚨" title={`Centro de alertas (${items.length})`} className="min-h-[268px] admin-alert-panel">
+      {items.length === 0 ? (
+        <Empty
+          icon="✅"
+          title="Sin alertas críticas"
+          subtitle="Aprobaciones, suscripciones y seguimiento pedagógico están bajo control."
+        />
+      ) : (
+        <div className="admin-alert-list">
+          {items.map((item) => (
+            <div key={item.key} className="admin-alert-row">
+              <div className="admin-alert-row__main">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={getToneVariant(item.tone)}>{item.badge}</Badge>
+                  <p className="admin-alert-row__title">{item.title}</p>
+                </div>
+                <p className="admin-alert-row__meta">{item.message}</p>
+              </div>
+              <div className="admin-alert-row__actions">
+                {item.type === 'approval' ? (
+                  <>
+                    <Button size="sm" onClick={() => onApprove(item.resourceType, item.resourceId)}>Aprobar</Button>
+                    <Button size="sm" variant="danger" onClick={() => onReject(item.resourceType, item.resourceId)}>Rechazar</Button>
+                  </>
+                ) : item.type === 'subscription' ? (
+                  <Button size="sm" variant="secondary" onClick={onOpenSubscriptions}>Ver suscripciones</Button>
+                ) : (
+                  <Button size="sm" variant="secondary" onClick={onOpenClients}>Ver clientes</Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </DashboardPanel>
   );
 }
 
@@ -87,6 +135,7 @@ function ListRow({ avatar, title, subtitle, meta, badges, actions, accentColor, 
 
 /* ── Dashboard ─────────────────────────────────────────────────────────── */
 function Dashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [pending, setPending] = useState({ objects: [], categories: [] });
   const [specialists, setSpecialists] = useState([]);
@@ -114,15 +163,6 @@ function Dashboard() {
   };
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
-
-  const statItems = [
-    ['Especialistas', stats?.specialists, '🧑‍⚕️'],
-    ['Clientes', stats?.clients, '👶'],
-    ['Actividades', stats?.activities, '📋'],
-    ['Objetos', stats?.objects, '📦'],
-    ['Categorías', stats?.categories, '🗂'],
-    ['Asignaciones', stats?.assignments, '🔗'],
-  ];
 
   const allPending = [
     ...pending.objects.map(x => ({ ...x, _type: 'object' })),
@@ -185,43 +225,105 @@ function Dashboard() {
     return acc;
   }, { active: 0, trial: 0, grace: 0, expired: 0, expiring: 0, inactive: 0 });
 
+  const alertItems = [
+    ...allPending.map((item) => ({
+      key: `approval-${item._type}-${item.id}`,
+      type: 'approval',
+      tone: 'amber',
+      badge: item._type === 'object' ? 'Aprobación objeto' : 'Aprobación categoría',
+      title: item.name,
+      message: `Pendiente de revisión. Propuesta por ${item.owner?.name || 'usuario desconocido'}.`,
+      resourceType: item._type,
+      resourceId: item.id,
+    })),
+    ...expiringEntries.map((item) => ({
+      key: `subscription-${item.kind}-${item.id}`,
+      type: 'subscription',
+      tone: item.daysLeft <= 3 ? 'red' : 'amber',
+      badge: 'Suscripción',
+      title: `${item.name} (${item.kind})`,
+      message: `Caduca en ${item.daysLeft}d · ${item.expires}`,
+    })),
+    ...(stats?.learning?.attentionStudents || []).map((student) => ({
+      key: `student-${student.clientId}`,
+      type: 'student',
+      tone: student.status?.tone || 'amber',
+      badge: 'Seguimiento',
+      title: `${student.childName}${student.specialistName ? ` · ${student.specialistName}` : ''}`,
+      message: `${student.status?.label || 'Revisar'} · ${student.stepStats?.percent || 0}% avance · ${student.responseStats?.accuracyPercent ?? '—'}% acierto`,
+    })),
+  ]
+    .sort((left, right) => {
+      const weights = { red: 3, amber: 2, blue: 1, green: 0, default: 0 };
+      return (weights[right.tone] || 0) - (weights[left.tone] || 0);
+    })
+    .slice(0, 10);
+
   return (
     <div className="animate-in space-y-5 admin-dashboard-stack">
       <div>
         <h1 className="text-2xl font-black">Panel global</h1>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 admin-dashboard-metrics">
+      <div className="grid grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8 gap-3 admin-dashboard-metrics">
         <DashboardMetricCard value={stats?.specialists} label="Especialistas" />
         <DashboardMetricCard value={stats?.clients} label="Clientes" />
         <DashboardMetricCard value={stats?.activities} label="Actividades" />
         <DashboardMetricCard value={stats?.objects} label="Objetos" />
-        <DashboardMetricCard value={activeSpecialists} label="Esp. activos" />
-        <DashboardMetricCard value={activeClients} label="Cli. activos" />
+        <DashboardMetricCard value={stats?.learning?.summary?.averageCompletionPercent != null ? `${stats.learning.summary.averageCompletionPercent}%` : '0%'} label="Avance medio" />
+        <DashboardMetricCard value={stats?.learning?.summary?.averageAccuracyPercent != null ? `${stats.learning.summary.averageAccuracyPercent}%` : '—'} label="Precisión media" />
+        <DashboardMetricCard value={stats?.learning?.summary?.attentionCount ?? 0} label="Seguimiento" />
+        <DashboardMetricCard value={stats?.learning?.summary?.recentActivityCount ?? 0} label="Activos 7d" />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.05fr_.95fr] admin-dashboard-sections">
-        <DashboardPanel icon="⏳" title="Próximos a vencer (15d)" className="min-h-[236px]">
-          {expiringEntries.length === 0 ? (
-            <div className="flex min-h-[150px] items-center justify-center text-sm text-[var(--tx3)]">
-              Sin vencimientos próximos.
-            </div>
+      <div className="grid gap-4 2xl:grid-cols-[1.2fr_.95fr_.95fr] admin-dashboard-sections">
+        <AlertCenterPanel
+          items={alertItems}
+          onApprove={approve}
+          onReject={reject}
+          onOpenSubscriptions={() => navigate('/admin/subscriptions')}
+          onOpenClients={() => navigate('/admin/clients')}
+        />
+
+        <DashboardPanel icon="📚" title="Pulso pedagógico" className="min-h-[268px] admin-learning-panel">
+          <div className="admin-learning-grid">
+            {[
+              ['Alumnos con actividad', `${stats?.learning?.summary?.studentsWithAssignments || 0}/${stats?.clients || 0}`],
+              ['Requieren seguimiento', String(stats?.learning?.summary?.attentionCount || 0)],
+              ['Esp. activos', String(activeSpecialists)],
+              ['Cli. activos', String(activeClients)],
+            ].map(([label, value]) => (
+              <div key={label} className="admin-learning-chip">
+                <span className="admin-learning-chip__label">{label}</span>
+                <strong className="admin-learning-chip__value">{value}</strong>
+              </div>
+            ))}
+          </div>
+
+          {(stats?.learning?.leadingStudents || []).length === 0 ? (
+            <Empty icon="📘" title="Sin destacados todavía" subtitle="Cuando haya actividad suficiente, aquí aparecerán los alumnos con mejor evolución." />
           ) : (
-            <div className="space-y-2">
-              {expiringEntries.map(item => (
-                <div key={`${item.kind}-${item.id}`} className="sp-dash-list-card flex items-center justify-between gap-3 rounded-[var(--r)] border border-[var(--bd)] px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold">{item.name}</p>
-                    <p className="text-xs text-[var(--tx3)]">{item.kind} · vence {item.expires}</p>
+            <div className="admin-learning-list">
+              {stats.learning.leadingStudents.slice(0, 5).map((student) => (
+                <div key={student.clientId} className="admin-learning-row">
+                  <div>
+                    <p className="admin-learning-row__title">{student.childName}</p>
+                    <p className="admin-learning-row__meta">{student.specialistName || 'Sin especialista'} · {student.activity?.latestActivityTitle || 'Sin actividad reciente'}</p>
                   </div>
-                  <Badge variant="amber">{item.daysLeft}d</Badge>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Badge variant={getToneVariant(student.status?.tone)}>{student.status?.label || 'Estado'}</Badge>
+                    <Badge variant="blue">{student.stepStats?.percent || 0}%</Badge>
+                    <Badge variant={student.responseStats?.accuracyPercent >= 82 ? 'green' : 'default'}>
+                      {student.responseStats?.accuracyPercent != null ? `${student.responseStats.accuracyPercent}%` : '—'}
+                    </Badge>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </DashboardPanel>
 
-        <DashboardPanel icon="📊" title="Estado suscripciones" className="min-h-[236px] admin-subscription-panel">
+        <DashboardPanel icon="📊" title="Estado suscripciones" className="min-h-[268px] admin-subscription-panel">
           <div className="admin-subscription-list divide-y divide-[var(--bd)]/80">
             {[
               ['Activa', subCounts.active || 0, 'green'],
@@ -238,21 +340,6 @@ function Dashboard() {
           </div>
         </DashboardPanel>
       </div>
-
-      <DashboardPanel icon="🧾" title={`Aprobaciones pendientes (${allPending.length})`} className="admin-dashboard-approvals">
-        {allPending.length === 0
-          ? <p className="text-sm text-[var(--tx3)]">Sin pendientes ✓</p>
-          : allPending.map(x => (
-            <div key={x.id} className="sp-dash-list-card flex items-center gap-3 border-b border-[var(--bg3)] px-3 py-3 last:border-0">
-              <Badge className="entity-item-badge" variant="gold">{x._type === 'object' ? '📦 Objeto' : '🗂 Categoría'}</Badge>
-              <span className="flex-1 font-bold text-sm">{x.name}</span>
-              <span className="text-xs text-[var(--tx3)]">por {x.owner?.name}</span>
-              <Button size="sm" className="entity-action-btn" onClick={() => approve(x._type, x.id)}>✓ Aprobar</Button>
-              <Button size="sm" variant="danger" className="entity-action-btn" onClick={() => reject(x._type, x.id)}>✗ Rechazar</Button>
-            </div>
-          ))
-        }
-      </DashboardPanel>
     </div>
   );
 }
@@ -401,7 +488,7 @@ function Specialists() {
           </div>
         )}
       />
-      {filtered.length === 0 ? <Empty icon="🧑‍⚕️" title="Sin cuentas" /> :
+      {filtered.length === 0 ? <Empty icon="🧑‍⚕️" title="Sin cuentas" subtitle="Crea especialistas o administradores para empezar a operar el panel." action={<Button onClick={openNew}>Crear cuenta</Button>} /> :
         <ListCollection className="entity-list-shell">
           <ListGrid columns={columnCount}>
             {filtered.map(account => (
@@ -619,7 +706,7 @@ function Clients() {
           </div>
         )}
       />
-      {filtered.length === 0 ? <Empty icon="👶" title="Sin clientes" /> :
+      {filtered.length === 0 ? <Empty icon="👶" title="Sin clientes" subtitle="Añade el primer alumno y asígnalo a un especialista." action={<Button onClick={openNew}>Crear cliente</Button>} /> :
         <ListCollection className="clients-list-shell">
           <ListGrid columns={columnCount}>
             {filtered.map(c => {

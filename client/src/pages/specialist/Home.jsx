@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router';
-import { clientsApi, activitiesApi, groupsApi, assignmentsApi, objectsApi, categoriesApi } from '../../api';
+import { clientsApi, activitiesApi, groupsApi, assignmentsApi, objectsApi, categoriesApi, specialistsApi } from '../../api';
 import useAuthStore from '../../stores/authStore';
 import { Button, Badge, Card, Input, Select, Textarea, SearchBar, ColumnToggle, TabBar, Confirm, Modal, Empty, Spinner, SubBadge, Notice, ActionIconButton, ColorPickerField, IconButton } from '../../components/ui';
 import { CategoryManagementView } from '../../components/modals/CategoryManagerModal';
@@ -65,6 +65,129 @@ function DashboardPanel({ icon, title, children, className = '' }) {
   );
 }
 
+function formatRelativeDate(value) {
+  if (!value) return 'Sin actividad reciente';
+  const stamp = new Date(value).getTime();
+  if (!Number.isFinite(stamp)) return 'Sin actividad reciente';
+
+  const diffMs = stamp - Date.now();
+  const diffDays = Math.round(diffMs / 86400000);
+  if (Math.abs(diffDays) >= 1) {
+    return new Intl.RelativeTimeFormat('es', { numeric: 'auto' }).format(diffDays, 'day');
+  }
+
+  const diffHours = Math.round(diffMs / 3600000);
+  if (Math.abs(diffHours) >= 1) {
+    return new Intl.RelativeTimeFormat('es', { numeric: 'auto' }).format(diffHours, 'hour');
+  }
+
+  const diffMinutes = Math.round(diffMs / 60000);
+  return new Intl.RelativeTimeFormat('es', { numeric: 'auto' }).format(diffMinutes || 0, 'minute');
+}
+
+function formatDurationCompact(value) {
+  if (!value) return 'Sin tiempo';
+  const totalSeconds = Math.max(1, Math.round(value / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0 ? `${minutes} min ${seconds}s` : `${seconds}s`;
+}
+
+function getToneVariant(tone) {
+  if (tone === 'green') return 'green';
+  if (tone === 'red') return 'red';
+  if (tone === 'amber') return 'amber';
+  if (tone === 'blue') return 'blue';
+  return 'default';
+}
+
+function StudentProgressPanel({ overview, loading, error, onOpenClient }) {
+  const summary = overview?.summary;
+  const students = overview?.students || [];
+
+  return (
+    <DashboardPanel icon="📈" title="Progreso por alumno" className="specialist-progress-panel min-h-[312px]">
+      {error && <Notice variant="error" className="mb-3">{error}</Notice>}
+
+      {loading ? (
+        <div className="flex justify-center py-16"><Spinner size={28} /></div>
+      ) : students.length === 0 ? (
+        <Empty icon="🧭" title="Sin progreso todavía" subtitle="Asigna actividades a tus alumnos para empezar a ver su avance aquí." />
+      ) : (
+        <>
+          <div className="specialist-progress-summary">
+            {[
+              ['Con actividad', `${summary?.studentsWithAssignments || 0}/${summary?.totalStudents || students.length}`],
+              ['Avance medio', `${summary?.averageCompletionPercent || 0}%`],
+              ['Precisión media', summary?.averageAccuracyPercent !== null && summary?.averageAccuracyPercent !== undefined ? `${summary.averageAccuracyPercent}%` : 'Sin datos'],
+              ['Requieren seguimiento', String(summary?.attentionCount || 0)],
+            ].map(([label, value]) => (
+              <div key={label} className="specialist-progress-summary__item">
+                <span className="specialist-progress-summary__label">{label}</span>
+                <strong className="specialist-progress-summary__value">{value}</strong>
+              </div>
+            ))}
+          </div>
+
+          <div className="specialist-progress-list">
+            {students.slice(0, 5).map((student) => (
+              <div key={student.clientId} className="specialist-progress-row">
+                <div className="specialist-progress-row__main">
+                  <div className="specialist-progress-row__head">
+                    <div>
+                      <p className="specialist-progress-row__title">{student.childName}</p>
+                      <p className="specialist-progress-row__subtitle">
+                        {student.tutorName || 'Sin tutor'}
+                        {student.groupNames?.length ? ` · ${student.groupNames.join(', ')}` : ' · Sin grupo'}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={getToneVariant(student.status?.tone)}>{student.status?.label || 'Sin estado'}</Badge>
+                      <Badge variant="blue">{student.stepStats?.percent || 0}% avance</Badge>
+                      <Badge
+                        variant={
+                          student.responseStats?.accuracyPercent === null || student.responseStats?.accuracyPercent === undefined
+                            ? 'default'
+                            : student.responseStats.accuracyPercent >= 70
+                              ? 'green'
+                              : student.responseStats.accuracyPercent >= 50
+                                ? 'amber'
+                                : 'red'
+                        }
+                      >
+                        {student.responseStats?.accuracyPercent === null || student.responseStats?.accuracyPercent === undefined
+                          ? 'Sin precisión'
+                          : `${student.responseStats.accuracyPercent}% acierto`}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="specialist-progress-row__metrics">
+                    <span>{student.assignmentStats?.completed || 0}/{student.assignmentStats?.total || 0} actividades completadas</span>
+                    <span>{student.stepStats?.completed || 0}/{student.stepStats?.total || 0} pasos</span>
+                    <span>{student.responseStats?.correct || 0} aciertos · {student.responseStats?.incorrect || 0} errores</span>
+                    <span>Tiempo medio {formatDurationCompact(student.responseStats?.averageTimeMs)}</span>
+                  </div>
+
+                  <div className="specialist-progress-row__meta">
+                    <span>{student.activity?.latestActivityTitle ? `Última actividad: ${student.activity.latestActivityTitle}` : 'Sin actividad iniciada'}</span>
+                    <span>{student.activity?.currentPhaseLabel ? `Fase: ${student.activity.currentPhaseLabel}` : 'Sin fase activa'}</span>
+                    <span>{formatRelativeDate(student.activity?.lastActivityAt)}</span>
+                  </div>
+                </div>
+
+                <Button type="button" variant="secondary" onClick={() => onOpenClient({ id: student.clientId, childName: student.childName })}>
+                  Ver detalle
+                </Button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </DashboardPanel>
+  );
+}
+
 function ListPageHeader({ title, count, subtitle, action }) {
   return (
     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -116,16 +239,62 @@ function Dashboard() {
   const [clients, setClients] = useState([]);
   const [activities, setActivities] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [progressOverview, setProgressOverview] = useState({ summary: null, students: [] });
+  const [progressLoading, setProgressLoading] = useState(true);
+  const [progressError, setProgressError] = useState('');
+  const [progressClient, setProgressClient] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([clientsApi.list(), activitiesApi.list(), groupsApi.list()])
-      .then(([clientsResponse, activitiesResponse, groupsResponse]) => {
-        setClients(clientsResponse.data.data || []);
-        setActivities(activitiesResponse.data.data || []);
-        setGroups(groupsResponse.data.data || []);
-      })
-      .finally(() => setLoading(false));
+    let cancelled = false;
+
+    const loadDashboard = async () => {
+      setLoading(true);
+      setProgressLoading(true);
+      setProgressError('');
+
+      const [clientsResult, activitiesResult, groupsResult, progressResult] = await Promise.allSettled([
+        clientsApi.list(),
+        activitiesApi.list(),
+        groupsApi.list(),
+        specialistsApi.studentProgress(),
+      ]);
+
+      if (cancelled) return;
+
+      if (clientsResult.status === 'fulfilled') {
+        setClients(clientsResult.value.data.data || []);
+      } else {
+        setClients([]);
+      }
+
+      if (activitiesResult.status === 'fulfilled') {
+        setActivities(activitiesResult.value.data.data || []);
+      } else {
+        setActivities([]);
+      }
+
+      if (groupsResult.status === 'fulfilled') {
+        setGroups(groupsResult.value.data.data || []);
+      } else {
+        setGroups([]);
+      }
+
+      if (progressResult.status === 'fulfilled') {
+        setProgressOverview(progressResult.value.data.data || { summary: null, students: [] });
+      } else {
+        setProgressOverview({ summary: null, students: [] });
+        setProgressError(getApiErrorMessage(progressResult.reason, 'No se pudo cargar el progreso por alumno.'));
+      }
+
+      setLoading(false);
+      setProgressLoading(false);
+    };
+
+    loadDashboard();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
@@ -149,9 +318,16 @@ function Dashboard() {
         <DashboardMetricCard value={activeUsers} label="Usuarios activos" />
       </div>
 
+      <StudentProgressPanel
+        overview={progressOverview}
+        loading={progressLoading}
+        error={progressError}
+        onOpenClient={setProgressClient}
+      />
+
       <div className="grid gap-4 xl:grid-cols-2 specialist-dashboard-sections">
         <DashboardPanel icon="👶" title="Alumnos" className="min-h-[248px]">
-          {latestClients.length === 0 ? <Empty icon="👶" title="Sin alumnos" subtitle="Crea tu primer cliente para empezar." /> : (
+          {latestClients.length === 0 ? <Empty icon="👶" title="Sin alumnos" subtitle="Crea tu primer cliente para empezar." action={<Button onClick={() => window.location.assign('/specialist/clients')}>Ir a clientes</Button>} /> : (
             <div className="space-y-3">
               {latestClients.map(client => (
                 <div key={client.id} className="sp-dash-list-card rounded-[var(--r)] border border-[var(--bd)]">
@@ -170,7 +346,7 @@ function Dashboard() {
         </DashboardPanel>
 
         <DashboardPanel icon="📋" title="Actividades creadas" className="min-h-[248px]">
-          {latestActivities.length === 0 ? <Empty icon="📋" title="Sin actividades" subtitle="Las actividades que crees aparecerán aquí." /> : (
+          {latestActivities.length === 0 ? <Empty icon="📋" title="Sin actividades" subtitle="Las actividades que crees aparecerán aquí." action={<Button onClick={() => window.location.assign('/specialist/activities')}>Crear actividad</Button>} /> : (
             <div className="space-y-3">
               {latestActivities.map(activity => (
                 <div key={activity.id} className="sp-dash-list-card rounded-[var(--r)] border border-[var(--bd)]">
@@ -184,7 +360,7 @@ function Dashboard() {
         </DashboardPanel>
 
         <DashboardPanel icon="👥" title="Grupos" className="min-h-[248px]">
-          {latestGroups.length === 0 ? <Empty icon="👥" title="Sin grupos" subtitle="Usa grupos para asignar actividades a varios alumnos." /> : (
+          {latestGroups.length === 0 ? <Empty icon="👥" title="Sin grupos" subtitle="Usa grupos para asignar actividades a varios alumnos." action={<Button onClick={() => window.location.assign('/specialist/groups')}>Crear grupo</Button>} /> : (
             <div className="space-y-3">
               {latestGroups.map(group => (
                 <div key={group.id} className="sp-dash-list-card rounded-[var(--r)] border border-[var(--bd)]" style={{ borderLeftWidth: 4, borderLeftColor: group.color }}>
@@ -212,6 +388,8 @@ function Dashboard() {
           </div>
         </DashboardPanel>
       </div>
+
+      <ClientActivityModal client={progressClient} open={!!progressClient} onClose={() => setProgressClient(null)} />
     </div>
   );
 }
@@ -371,7 +549,7 @@ function Clients() {
           </div>
         )}
       />
-      {filtered.length === 0 ? <Empty icon="👶" title="Sin clientes" subtitle="Añade tu primer alumno" /> :
+      {filtered.length === 0 ? <Empty icon="👶" title="Sin clientes" subtitle="Añade tu primer alumno" action={<Button onClick={openNew}>Crear alumno</Button>} /> :
         <ListCollection className="clients-list-shell">
           <ListGrid columns={columnCount}>
           {visibleClients.map(c => (
@@ -669,7 +847,7 @@ function Activities() {
           </div>
         )}
       />
-      {filtered.length === 0 ? <Empty icon="📋" title="Sin actividades" /> :
+      {filtered.length === 0 ? <Empty icon="📋" title="Sin actividades" subtitle="Crea tu primera actividad para poder asignarla a tus alumnos." action={<Button onClick={openNew}>Crear actividad</Button>} /> :
         <ListCollection className="entity-list-shell">
           <ListGrid columns={columnCount}>
           {filtered.map(a => (
@@ -1021,7 +1199,7 @@ function Objects() {
           </div>
         }
       />
-      {filtered.length === 0 ? <Empty icon="📦" title="Sin objetos" subtitle="Añade tu primer objeto" /> : <ListCollection className="entity-list-shell"><ListGrid columns={columnCount}>
+      {filtered.length === 0 ? <Empty icon="📦" title="Sin objetos" subtitle="Añade tu primer objeto" action={<Button onClick={openNew}>Crear objeto</Button>} /> : <ListCollection className="entity-list-shell"><ListGrid columns={columnCount}>
         {filtered.map(o => {
           const reps = o.representations || [];
           const has3d = reps.some(r=>r.level==='model_3d');
@@ -1229,7 +1407,7 @@ function Groups() {
           </div>
         )}
       />
-      {filtered.length === 0 ? <Empty icon="👥" title="Sin grupos" subtitle="Los grupos permiten asignar actividades a varios clientes a la vez" /> :
+      {filtered.length === 0 ? <Empty icon="👥" title="Sin grupos" subtitle="Los grupos permiten asignar actividades a varios clientes a la vez" action={<Button onClick={openNew}>Crear grupo</Button>} /> :
         <ListCollection className="entity-list-shell">
           <ListGrid columns={columnCount}>
           {filtered.map(g=>(

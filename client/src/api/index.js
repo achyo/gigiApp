@@ -80,9 +80,12 @@ export const usersApi = {
 };
 
 export const specialistsApi = {
-  list:    ()        => api.get('/specialists'),
-  update:  (id, d)   => api.patch(`/specialists/${id}`, d),
-  clients: (id)      => api.get(`/specialists/${id}/clients`),
+  list:            ()              => api.get('/specialists'),
+  update:          (id, d)         => api.patch(`/specialists/${id}`, d),
+  clients:         (id)            => api.get(`/specialists/${id}/clients`),
+  studentProgress: (specialistId)  => api.get('/specialists/me/student-progress', {
+    params: specialistId ? { specialist_id: specialistId } : undefined,
+  }),
 };
 
 export const clientsApi = {
