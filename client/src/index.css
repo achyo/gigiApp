@@ -314,6 +314,47 @@ body {
   padding: 5px !important;
 }
 
+.settings-role-badge {
+  min-height: 34px;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+}
+
+.settings-control-card {
+  min-height: 132px;
+  justify-content: space-between;
+}
+
+.settings-select {
+  min-height: 48px;
+  padding: 11px 40px 11px 14px !important;
+  font-size: 0.96rem !important;
+}
+
+.settings-slider-card .settings-select {
+  margin-top: auto;
+}
+
+.settings-tts-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.settings-tts-preview,
+.settings-tts-stop,
+.settings-password-submit {
+  min-height: 48px;
+  padding: 0 18px !important;
+  font-size: 0.96rem !important;
+}
+
+.settings-password-submit {
+  min-width: 260px;
+  justify-content: center;
+}
+
 .activity-object-toolbar {
   display: flex;
   align-items: center;
@@ -563,6 +604,13 @@ body {
   padding: 14px !important;
 }
 
+.settings-panel input:not([type='checkbox']):not([type='range']),
+.settings-panel select {
+  min-height: 44px;
+  padding: 11px !important;
+  font-size: 0.96rem !important;
+}
+
 .settings-summary-card {
   position: sticky;
   top: 18px;
@@ -777,15 +825,52 @@ body {
   left: 29px;
 }
 
+.settings-tts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.settings-slider-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1.5px solid var(--bd);
+  border-radius: var(--r);
+  background: var(--bg2);
+}
+
+.settings-slider-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-slider-card__label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tx3);
+}
+
+.settings-control-badge {
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+}
+
+.settings-slider {
+  width: 100%;
+  accent-color: var(--ac);
+}
+
 .settings-password-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.settings-password-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -799,6 +884,94 @@ body {
   justify-content: flex-end;
 }
 
+.settings-admin-palette-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.settings-admin-palette-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1.5px solid var(--bd);
+  border-radius: var(--r);
+  background: var(--bg2);
+}
+
+.settings-admin-palette-row__info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.settings-admin-palette-row__title {
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.settings-admin-palette-row__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-admin-action {
+  min-width: 40px;
+  width: 40px;
+  min-height: 40px;
+  height: 40px;
+}
+
+.settings-admin-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--bd) 75%, transparent);
+}
+
+.settings-admin-editor__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-admin-editor__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.settings-admin-editor__colors {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.settings-checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 2px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--tx2);
+}
+
+.settings-admin-submit {
+  min-height: 48px;
+  min-width: 220px;
+  justify-content: center;
+}
+
 @media (max-width: 900px) {
   .settings-layout {
     grid-template-columns: 1fr;
@@ -808,7 +981,9 @@ body {
     position: static;
   }
 
-  .settings-password-grid {
+  .settings-tts-grid,
+  .settings-admin-editor__colors,
+  .settings-admin-editor__grid {
     grid-template-columns: 1fr;
   }
 }

@@ -32,11 +32,22 @@ export default function App() {
   // 🔧 CORREGIDO: se aplican preferencias globales al montar la app.
   const applyAll = usePrefsStore(s => s.applyAll);
   const hydrateUserPreferences = usePrefsStore(s => s.hydrateUserPreferences);
+  const loadPalettes = usePrefsStore(s => s.loadPalettes);
+  const userId = useAuthStore(s => s.user?.id);
   const preferences = useAuthStore(s => s.preferences);
+  const refreshPreferences = useAuthStore(s => s.refreshPreferences);
   useEffect(() => { applyAll(); }, [applyAll]);
   useEffect(() => {
     hydrateUserPreferences(preferences);
   }, [hydrateUserPreferences, preferences]);
+  useEffect(() => {
+    if (!userId) return;
+    loadPalettes().catch(() => {});
+  }, [loadPalettes, userId]);
+  useEffect(() => {
+    if (!userId) return;
+    refreshPreferences().catch(() => {});
+  }, [refreshPreferences, userId]);
 
   return (
     <Routes>

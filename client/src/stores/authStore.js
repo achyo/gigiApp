@@ -34,6 +34,14 @@ const useAuthStore = create(
         return data.data;
       },
 
+      refreshPreferences: async () => {
+        const userId = get().user?.id;
+        if (!userId) return null;
+        const { data } = await usersApi.preferences(userId);
+        set({ preferences: data.data });
+        return data.data;
+      },
+
       isLoggedIn: () => !!get().user,
       role:        () => get().user?.role,
     }),

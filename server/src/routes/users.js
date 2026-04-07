@@ -81,13 +81,16 @@ router.patch('/:id/preferences', authenticateJWT, async (req, res, next) => {
     if (req.user.role !== 'admin' && req.user.sub !== req.params.id) {
       return res.status(403).json({ success: false, error: { code: 'FORBIDDEN' } });
     }
-    const { color_profile_id, tts_enabled, text_size, sequential_mode, list_layouts } = req.body;
+    const { color_profile_id, tts_enabled, tts_language, tts_rate, tts_volume, text_size, sequential_mode, list_layouts } = req.body;
     const prefs = await prisma.userPreference.upsert({
       where: { userId: req.params.id },
       create: {
         userId: req.params.id,
         colorProfileId: color_profile_id,
         ttsEnabled: tts_enabled ?? true,
+        ttsLanguage: tts_language || 'es-ES',
+        ttsRate: tts_rate ?? 0.9,
+        ttsVolume: tts_volume ?? 1,
         textSize: text_size ?? 1,
         sequentialMode: sequential_mode ?? true,
         ...(list_layouts !== undefined && { listLayouts: list_layouts }),
@@ -95,6 +98,9 @@ router.patch('/:id/preferences', authenticateJWT, async (req, res, next) => {
       update: {
         ...(color_profile_id !== undefined && { colorProfileId: color_profile_id }),
         ...(tts_enabled !== undefined && { ttsEnabled: tts_enabled }),
+        ...(tts_language !== undefined && { ttsLanguage: tts_language }),
+        ...(tts_rate !== undefined && { ttsRate: tts_rate }),
+        ...(tts_volume !== undefined && { ttsVolume: tts_volume }),
         ...(text_size !== undefined && { textSize: text_size }),
         ...(sequential_mode !== undefined && { sequentialMode: sequential_mode }),
         ...(list_layouts !== undefined && { listLayouts: list_layouts }),
