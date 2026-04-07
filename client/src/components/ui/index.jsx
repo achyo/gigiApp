@@ -17,23 +17,29 @@ export function Button({ variant = 'primary', size = 'md', className = '', child
   );
 }
 
+export function IconButton({ icon, label, variant = 'secondary', className = '', ...props }) {
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant={variant}
+      className={`action-icon-btn ${className}`}
+      aria-label={label}
+      title={label}
+      {...props}
+    >
+      <span aria-hidden="true">{icon}</span>
+    </Button>
+  );
+}
+
 export function ActionIconButton({ action = 'edit', className = '', ...props }) {
   const config = action === 'delete'
     ? { icon: '🗑', label: 'Eliminar', variant: 'danger' }
     : { icon: '✏️', label: 'Editar', variant: 'secondary' };
 
   return (
-    <Button
-      type="button"
-      size="sm"
-      variant={config.variant}
-      className={`action-icon-btn ${className}`}
-      aria-label={config.label}
-      title={config.label}
-      {...props}
-    >
-      <span aria-hidden="true">{config.icon}</span>
-    </Button>
+    <IconButton icon={config.icon} label={config.label} variant={config.variant} className={className} {...props} />
   );
 }
 
@@ -149,13 +155,13 @@ export function Confirm({ open, message, onConfirm, onCancel }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-[var(--sf)] rounded-[var(--rl)] p-6 max-w-xs w-full text-center scale-in">
-        <div className="text-4xl mb-3">🗑</div>
+      <div className="confirm-dialog bg-[var(--sf)] rounded-[var(--rl)] p-6 max-w-xs w-full text-center scale-in">
+        <div className="confirm-dialog__icon">🗑</div>
         <p className="font-bold mb-1">¿Eliminar?</p>
         <p className="text-sm text-[var(--tx2)] mb-5">{message}</p>
-        <div className="flex gap-2 justify-center">
-          <Button variant="secondary" onClick={onCancel}>Cancelar</Button>
-          <Button variant="danger" onClick={onConfirm}>Eliminar</Button>
+        <div className="flex gap-3 justify-center">
+          <IconButton icon="↩" label="Cancelar" variant="secondary" onClick={onCancel} className="confirm-dialog__action" />
+          <ActionIconButton action="delete" onClick={onConfirm} className="confirm-dialog__action" />
         </div>
       </div>
     </div>
@@ -192,6 +198,75 @@ export function ColumnToggle({ value = 1, onChange, className = '' }) {
           {count} col
         </Button>
       ))}
+    </div>
+  );
+}
+
+export function ColorPickerField({ label, colors = [], value, onChange, className = '', pickerLabel = '+ Colores' }) {
+  const [pickerOpen, setPickerOpen] = React.useState(false);
+  const colorInputRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!pickerOpen) return undefined;
+
+    const handleWindowFocus = () => {
+      window.setTimeout(() => setPickerOpen(false), 0);
+    };
+
+    window.addEventListener('focus', handleWindowFocus, true);
+    return () => window.removeEventListener('focus', handleWindowFocus, true);
+  }, [pickerOpen]);
+
+  const togglePicker = () => {
+    const input = colorInputRef.current;
+    if (!input) return;
+
+    if (pickerOpen) {
+      setPickerOpen(false);
+      input.blur();
+      return;
+    }
+
+    setPickerOpen(true);
+    if (typeof input.showPicker === 'function') {
+      input.showPicker();
+      return;
+    }
+    input.click();
+  };
+
+  return (
+    <div className={`flex flex-col gap-2 ${className}`}>
+      {label && <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">{label}</p>}
+      <div className="flex flex-wrap items-center gap-2">
+        {colors.map((color) => (
+          <button
+            key={color}
+            type="button"
+            onClick={() => onChange(color)}
+            className="color-swatch"
+            style={{ backgroundColor: color, outline: value === color ? `3px solid ${color}` : undefined, outlineOffset: 2 }}
+            aria-label={`Usar color ${color}`}
+            title={color}
+          />
+        ))}
+        <Button type="button" variant="secondary" size="sm" className="color-picker-btn" onClick={togglePicker}>
+          {pickerLabel}
+        </Button>
+        <input
+          ref={colorInputRef}
+          type="color"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onBlur={() => setPickerOpen(false)}
+          className="color-picker-input"
+          aria-label="Selector de color personalizado"
+        />
+        <span className="color-picker-value">
+          <span className="color-picker-value__dot" style={{ backgroundColor: value }} />
+          {value.toUpperCase()}
+        </span>
+      </div>
     </div>
   );
 }

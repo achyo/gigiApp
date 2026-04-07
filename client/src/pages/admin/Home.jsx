@@ -5,10 +5,10 @@ import {
   objectsApi, categoriesApi, groupsApi, subscriptionsApi, usersApi,
 } from '../../api';
 import {
-  Button, Badge, Card, Input, Select, Textarea, ActionIconButton,
+  Button, Badge, Card, Input, Select, Textarea, ActionIconButton, ColorPickerField,
   SearchBar, ColumnToggle, Confirm, Modal, Empty, Spinner, SubBadge, Divider, Notice,
 } from '../../components/ui';
-import CategoryManagerModal from '../../components/modals/CategoryManagerModal';
+import { CategoryManagementView } from '../../components/modals/CategoryManagerModal';
 import SubscriptionModal from '../../components/modals/SubscriptionModal';
 import useListColumns from '../../hooks/useListColumns';
 import { getPasswordStrengthError, PASSWORD_RULE_HINT } from '../../lib/password';
@@ -608,6 +608,7 @@ function Activities() {
   const [clients, setClients] = useState([]);
   const [groups, setGroups] = useState([]);
   const [objects, setObjects] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [specs, setSpecs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -618,7 +619,8 @@ function Activities() {
   const [modal, setModal] = useState(false);
   const [editAct, setEditAct] = useState(null);
   const [delId, setDelId] = useState(null);
-  const [cat, setCat] = useState('Todos');
+  const [cat, setCat] = useState('all');
+  const [objectSearch, setObjectSearch] = useState('');
   const [form, setForm] = useState({ title: '', specialist_id: '', selObjs: [], assignMode: 'all', selClients: [], selGroups: [] });
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
@@ -680,12 +682,13 @@ function Activities() {
   };
 
   useEffect(() => {
-    Promise.all([activitiesApi.list(), clientsApi.list(), groupsApi.list(), objectsApi.list(), specialistsApi.list()])
-      .then(([ar, cr, gr, or, sr]) => {
+    Promise.all([activitiesApi.list(), clientsApi.list(), groupsApi.list(), objectsApi.list(), categoriesApi.list(), specialistsApi.list()])
+      .then(([ar, cr, gr, or, catr, sr]) => {
         setActs(ar.data.data);
         setClients(cr.data.data);
         setGroups(gr.data.data);
         setObjects(or.data.data);
+        setCategories(catr.data.data);
         setSpecs(sr.data.data);
       })
       .finally(() => setLoading(false));
@@ -717,7 +720,8 @@ function Activities() {
   const openNew = () => {
     setEditAct(null);
     setForm({ title: '', specialist_id: '', selObjs: [], assignMode: 'all', selClients: [], selGroups: [] });
-    setCat('Todos');
+    setCat('all');
+    setObjectSearch('');
     setFeedback(null);
     setModal(true);
   };
@@ -738,7 +742,8 @@ function Activities() {
       selClients: audience?.mode === 'clients' ? (audience.clientIds || []) : assignedClientIds,
       selGroups: audience?.mode === 'groups' ? (audience.groupIds || []) : [],
     });
-    setCat('Todos');
+    setCat('all');
+    setObjectSearch('');
     setFeedback(null);
     setModal(true);
   };
@@ -804,9 +809,16 @@ function Activities() {
       || (statusFilter === 'completed' && relevantAssignments.some((assignment) => Boolean(assignment.completedAt)));
     return matchesSearch && matchesSpecialist && matchesClient && matchesStatus;
   });
-  const cats = [...new Set(objects.map(object => object.category?.name || 'Sin categoría'))];
-  const visibleObjects = objects.filter(object => cat === 'Todos' || object.category?.name === cat);
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
+
+  const normalizedObjectSearch = objectSearch.trim().toLowerCase();
+  const hasUncategorizedObjects = objects.some((object) => !object.categoryId);
+  const visibleObjects = objects.filter((object) => {
+    const matchesCategory = cat === 'all'
+      || (cat === 'uncategorized' ? !object.categoryId : object.categoryId === cat);
+    const matchesSearch = !normalizedObjectSearch || object.name.toLowerCase().includes(normalizedObjectSearch);
+    return matchesCategory && matchesSearch;
+  });
 
   return (
     <div className="animate-in">
@@ -864,51 +876,84 @@ function Activities() {
           </ListGrid>
         </ListCollection>
       }
-      <Modal open={modal} onClose={() => setModal(false)} title={editAct ? 'Editar actividad' : 'Nueva actividad'} maxWidth={860}>
+      <Modal open={modal} onClose={() => setModal(false)} title={editAct ? 'Editar actividad' : 'Nueva actividad'} maxWidth={980}>
         {feedback && <Notice variant={feedback.type} className="mb-3">{feedback.message}</Notice>}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 gap-3 mb-4 sm:grid-cols-2">
           <Input label="Título" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
           <Select label="Especialista" value={form.specialist_id} onChange={e => setForm({ ...form, specialist_id: e.target.value })}>
             <option value="">Selecciona…</option>
             {specs.map(spec => <option key={spec.id} value={spec.id}>{spec.user?.name || 'Sin nombre'}</option>)}
           </Select>
         </div>
-        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tx3)]">Objetos</div>
-        <div className="flex gap-1.5 flex-wrap mb-2">
-          {['Todos', ...cats].map(category => (
-            <button key={category} onClick={() => setCat(category)} className={`modal-choice rounded text-xs font-bold border ${cat === category ? 'bg-[var(--ac)] text-white border-[var(--ac)]' : 'border-[var(--bd)] text-[var(--tx2)] hover:bg-[var(--bg2)]'}`}>
-              {category}
-            </button>
-          ))}
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 max-h-56 overflow-y-auto p-1">
-          {visibleObjects.map(object => (
-            <div
-              key={object.id}
-              onClick={() => setForm(current => ({
-                ...current,
-                selObjs: current.selObjs.includes(object.id)
-                  ? current.selObjs.filter(id => id !== object.id)
-                  : [...current.selObjs, object.id],
-              }))}
-              className={`modal-choice flex flex-col items-center gap-1.5 border-2 rounded-lg cursor-pointer transition-all text-center ${form.selObjs.includes(object.id) ? 'border-[var(--ac)] bg-[var(--acb)]' : 'border-[var(--bd)] hover:border-[var(--ac)]'}`}
-            >
-              <span className="text-xl">{object.em}</span>
-              <span className="text-[.65rem] font-bold text-[var(--tx2)] leading-tight">{object.name}</span>
+        <div className="activity-section mb-4">
+          <div className="activity-object-toolbar">
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-[var(--tx3)]">Objetos</p>
+              <Badge className="entity-item-badge" variant="blue">{form.selObjs.length} seleccionados</Badge>
             </div>
-          ))}
+            <Badge className="entity-item-badge" variant="default">{visibleObjects.length} visibles</Badge>
+          </div>
+          <div className="activity-object-filters">
+            <Select label="Categoría" value={cat} onChange={e => setCat(e.target.value)}>
+              <option value="all">Todas las categorías</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>{category.name}</option>
+              ))}
+              {hasUncategorizedObjects && <option value="uncategorized">Sin categoría</option>}
+            </Select>
+            <Input
+              label="Buscar objeto"
+              value={objectSearch}
+              onChange={e => setObjectSearch(e.target.value)}
+              placeholder="Escribe el nombre del objeto"
+            />
+          </div>
+          <div className="activity-object-panel">
+            {visibleObjects.length === 0 ? (
+              <p className="modal-note text-sm text-[var(--tx3)]">No hay objetos que coincidan con la búsqueda o la categoría seleccionada.</p>
+            ) : (
+              <div className="activity-object-grid">
+                {visibleObjects.map(object => {
+                  const selected = form.selObjs.includes(object.id);
+                  return (
+                    <button
+                      key={object.id}
+                      type="button"
+                      onClick={() => setForm(current => ({
+                        ...current,
+                        selObjs: selected
+                          ? current.selObjs.filter(id => id !== object.id)
+                          : [...current.selObjs, object.id],
+                      }))}
+                      className={`modal-choice activity-object-card ${selected ? 'is-selected' : ''}`}
+                    >
+                      <span className="activity-object-card__emoji">{object.em}</span>
+                      <span className="activity-object-card__name">{object.name}</span>
+                      <span className="activity-object-card__category">{object.category?.name || 'Sin categoría'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
-        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--tx3)]">Asignar a</div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
-          {[['all', '🌐', 'Todos los usuarios'], ['clients', '👤', 'Clientes'], ['groups', '👥', 'Grupos']].map(([mode, icon, label]) => (
-            <div
-              key={mode}
-              onClick={() => setForm({ ...form, assignMode: mode })}
-              className={`modal-choice border-2 rounded-[var(--r)] cursor-pointer text-center text-xs font-bold ${form.assignMode === mode ? 'border-[var(--ac)] bg-[var(--acb)] text-[var(--act)]' : 'border-[var(--bd)] hover:bg-[var(--bg2)]'}`}
-            >
-              <div className="text-lg">{icon}</div>{label}
-            </div>
-          ))}
+        <div className="activity-section mb-3">
+          <div className="activity-section__header">
+            <p className="text-xs font-bold uppercase tracking-wider text-[var(--tx3)]">Asignar a</p>
+          </div>
+          <div className="activity-assignment-grid">
+            {[['all', '🌐', 'Todos los usuarios'], ['clients', '👤', 'Clientes'], ['groups', '👥', 'Grupos']].map(([mode, icon, label]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setForm({ ...form, assignMode: mode })}
+                className={`modal-choice activity-assignment-card ${form.assignMode === mode ? 'is-selected' : ''}`}
+              >
+                <div className="activity-assignment-card__icon">{icon}</div>
+                <div className="activity-assignment-card__label">{label}</div>
+              </button>
+            ))}
+          </div>
         </div>
         {editAct && <p className="mb-3 text-xs text-[var(--tx3)]">Guardar actualizará también los destinatarios activos de esta actividad.</p>}
         {form.assignMode === 'clients' && (
@@ -957,7 +1002,6 @@ function Objects() {
   const [columnCount, setColumnCount] = useListColumns('admin.objects', 1);
   const [expanded, setExpanded] = useState(null);
   const [modal, setModal] = useState(false);
-  const [categoriesModal, setCategoriesModal] = useState(false);
   const [editObj, setEditObj] = useState(null);
   const [delId, setDelId] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -1156,7 +1200,6 @@ function Objects() {
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="text-xl font-black">Objetos públicos</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" className="entity-action-btn" onClick={() => setCategoriesModal(true)}>Categorías</Button>
           <Button className="entity-action-btn" onClick={openNew}>+ Nuevo objeto</Button>
         </div>
       </div>
@@ -1201,12 +1244,11 @@ function Objects() {
                     </div>
 
                     <div className="object-card__row object-card__row--meta">
-                      {renderCategoryChip(o.category)}
-                      <Badge className="entity-item-badge" variant={o.ownerId ? 'default' : 'green'}>{o.ownerId ? 'Privado' : 'Público'}</Badge>
-                      <Badge className="entity-item-badge" variant={o.status === 'approved' ? 'green' : o.status === 'pending' ? 'amber' : 'default'}>{o.status}</Badge>
-                    </div>
-
-                    <div className="object-card__row object-card__row--actions">
+                      <div className="object-card__meta-main">
+                        {renderCategoryChip(o.category)}
+                        <Badge className="entity-item-badge" variant={o.ownerId ? 'default' : 'green'}>{o.ownerId ? 'Privado' : 'Público'}</Badge>
+                        <Badge className="entity-item-badge" variant={o.status === 'approved' ? 'green' : o.status === 'pending' ? 'amber' : 'default'}>{o.status}</Badge>
+                      </div>
                       <div className="object-card__actions">
                         <ActionIconButton className="entity-action-btn" onClick={(event) => { event.stopPropagation(); openEdit(o); }} />
                         <ActionIconButton action="delete" className="entity-action-btn" onClick={(event) => { event.stopPropagation(); setDelId(o.id); }} />
@@ -1337,7 +1379,6 @@ function Objects() {
         </div>
       </Modal>
       <Confirm open={!!delId} message="Se eliminará el objeto y todas sus representaciones." onConfirm={del} onCancel={() => setDelId(null)} />
-      <CategoryManagerModal open={categoriesModal} onClose={() => setCategoriesModal(false)} categories={cats} onRefresh={loadData} role="admin" />
     </div>
   );
 }
@@ -1474,10 +1515,7 @@ function Groups() {
             <option value="">Selecciona…</option>
             {specs.map(spec => <option key={spec.id} value={spec.id}>{spec.user?.name || 'Sin nombre'}</option>)}
           </Select>
-          <div className="modal-section">
-            <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)] mb-2">Color</p>
-            <div className="flex gap-2">{COLORS.map(c => <button key={c} onClick={() => setForm({ ...form, color: c })} className="w-8 h-8 rounded-full hover:scale-110 transition-transform" style={{ background: c, outline: form.color === c ? `3px solid ${c}` : undefined, outlineOffset: 2 }} />)}</div>
-          </div>
+          <ColorPickerField label="Color" colors={COLORS} value={form.color} onChange={(color) => setForm({ ...form, color })} />
           <div className="modal-section">
             <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)] mb-2">Miembros</p>
             <div className="modal-inline-search">
@@ -1506,6 +1544,36 @@ function Groups() {
       </Modal>
       <Confirm open={!!delId} message="Se eliminará el grupo. Los clientes no se verán afectados." onConfirm={del} onCancel={() => setDelId(null)} />
     </div>
+  );
+}
+
+function Categories() {
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = async () => {
+    try {
+      const response = await categoriesApi.list();
+      setCategories(response.data.data);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
+
+  return (
+    <CategoryManagementView
+      title="Categorías"
+      subtitle="Gestiona colores, visibilidad y publicación de categorías de objetos."
+      categories={categories}
+      onRefresh={loadData}
+      role="admin"
+    />
   );
 }
 
@@ -1612,6 +1680,7 @@ export default function AdminHome() {
       <Route path="clients" element={<Clients />} />
       <Route path="activities" element={<Activities />} />
       <Route path="objects" element={<Objects />} />
+      <Route path="categories" element={<Categories />} />
       <Route path="groups" element={<Groups />} />
       <Route path="subscriptions" element={<Subscriptions />} />
     </Routes>

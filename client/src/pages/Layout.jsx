@@ -10,6 +10,7 @@ const NAV = {
     { to: '/specialist/clients',    icon: '👶', label: 'Clientes'     },
     { to: '/specialist/activities', icon: '📋', label: 'Actividades'  },
     { to: '/specialist/objects',    icon: '📦', label: 'Objetos'      },
+    { to: '/specialist/categories', icon: '🗂', label: 'Categorías'   },
     { to: '/specialist/groups',     icon: '👥', label: 'Grupos'       },
   ],
   admin: [
@@ -18,6 +19,7 @@ const NAV = {
     { to: '/admin/clients',         icon: '👶', label: 'Clientes'     },
     { to: '/admin/activities',      icon: '📋', label: 'Actividades'  },
     { to: '/admin/objects',         icon: '📦', label: 'Objetos'      },
+    { to: '/admin/categories',      icon: '🗂', label: 'Categorías'   },
     { to: '/admin/groups',          icon: '👥', label: 'Grupos'       },
     { to: '/admin/subscriptions',   icon: '💳', label: 'Suscripciones'},
   ],
