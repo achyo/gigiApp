@@ -201,6 +201,36 @@ npm run build
 
 El resultado queda en `client/dist`.
 
+## Tests E2E
+
+La suite E2E usa Playwright y cubre los flujos críticos base:
+
+*   login por rol
+*   gestión administrativa con alta y baja básica
+*   suscripciones
+*   asignación masiva del especialista
+*   arranque del juego del cliente
+
+Preparación inicial:
+
+```
+npm run test:e2e:install
+```
+
+Ejecución contra un entorno ya levantado en local:
+
+```
+npm run test:e2e
+```
+
+Ejecución levantando el stack Docker antes de probar:
+
+```
+npm run test:e2e:docker
+```
+
+La configuración vive en `playwright.config.js` y los tests en `e2e/`.
+
 ## Troubleshooting
 
 ### Docker en Windows

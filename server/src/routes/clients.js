@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const { prisma } = require('../lib/prisma');
 const { assertStrongPassword } = require('../lib/password');
 const { authenticateJWT, authorizeRole, scopeFilter, paginateQuery, paginatedResponse } = require('../middleware/auth');
+const { recordAdminAudit } = require('../lib/adminAudit');
 
 const clientInclude = {
   user: { select: { id: 1, name: 1, email: 1, active: 1 } },
@@ -45,6 +46,14 @@ router.post('/', authenticateJWT, authorizeRole('admin','specialist'), async (re
       },
       include: clientInclude,
     });
+    await recordAdminAudit({
+      user: req.user,
+      action: 'client.create',
+      entityType: 'client',
+      entityId: client.id,
+      message: `Cliente ${client.childName} creado.`,
+      diff: { specialistId: specId, groupIds: group_ids },
+    });
     res.status(201).json({ success: true, data: client });
   } catch (e) { next(e); }
 });
@@ -83,6 +92,14 @@ router.patch('/:id', authenticateJWT, authorizeRole('admin','specialist'), async
       },
       include: clientInclude,
     });
+    await recordAdminAudit({
+      user: req.user,
+      action: 'client.update',
+      entityType: 'client',
+      entityId: updated.id,
+      message: `Cliente ${updated.childName} actualizado.`,
+      diff: { child_name, diagnosis_notes, specialist_id, group_ids, passwordChanged: Boolean(passwordHash) },
+    });
     res.json({ success: true, data: updated });
   } catch (e) { next(e); }
 });
@@ -99,6 +116,13 @@ router.delete('/:id', authenticateJWT, authorizeRole('admin', 'specialist'), asy
     }
 
     await prisma.user.update({ where: { id: client.userId }, data: { active: false } });
+    await recordAdminAudit({
+      user: req.user,
+      action: 'client.deactivate',
+      entityType: 'client',
+      entityId: client.id,
+      message: `Cliente ${client.id} desactivado.`,
+    });
     res.json({ success: true, data: { id: client.id, active: false } });
   } catch (e) { next(e); }
 });

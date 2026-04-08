@@ -3,6 +3,7 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const { startSubscriptionReminderWorker } = require('./lib/subscriptionReminderJobs');
 
 const app = express();
 
@@ -50,4 +51,7 @@ app.use((err, req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀  API en http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀  API en http://localhost:${PORT}`);
+  startSubscriptionReminderWorker();
+});

@@ -71,16 +71,21 @@ export const authApi = {
 };
 
 export const usersApi = {
+  list:              (params) => api.get('/users', { params }),
   create:            (data)  => api.post('/users', data),
   delete:            (id)    => api.delete(`/users/${id}`),
+  update:            (id, d) => api.patch(`/users/${id}`, d),
   preferences:       (id)    => api.get(`/users/${id}/preferences`),
   updatePreferences: (id, d) => api.patch(`/users/${id}/preferences`, d),
 };
 
 export const specialistsApi = {
-  list:    ()        => api.get('/specialists'),
-  update:  (id, d)   => api.patch(`/specialists/${id}`, d),
-  clients: (id)      => api.get(`/specialists/${id}/clients`),
+  list:            ()              => api.get('/specialists'),
+  update:          (id, d)         => api.patch(`/specialists/${id}`, d),
+  clients:         (id)            => api.get(`/specialists/${id}/clients`),
+  studentProgress: (specialistId)  => api.get('/specialists/me/student-progress', {
+    params: specialistId ? { specialist_id: specialistId } : undefined,
+  }),
 };
 
 export const clientsApi = {
@@ -160,6 +165,7 @@ export const subscriptionsApi = {
 export const adminApi = {
   stats:           ()           => api.get('/admin/stats'),
   pendingApprovals: ()          => api.get('/admin/pending-approvals'),
+  auditLogs:       (params)     => api.get('/admin/audit-logs', { params }),
   approve:         (type, id)   => api.patch(`/admin/approve/${type}/${id}`),
   reject:          (type, id, note) => api.patch(`/admin/reject/${type}/${id}`, { note }),
 };

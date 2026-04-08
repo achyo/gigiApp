@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import useAuthStore from '../../stores/authStore';
 import { categoriesApi } from '../../api';
-import { Badge, Button, Card, Empty, Input, Modal, Notice, SearchBar, Textarea, ActionIconButton, ColorPickerField, Confirm } from '../ui';
+import { Badge, Button, Card, Empty, Input, Modal, Notice, SearchBar, Textarea, ActionIconButton, ColorPickerField, Confirm, ColumnToggle } from '../ui';
+import useListColumns from '../../hooks/useListColumns';
 
 const CATEGORY_COLORS = ['#1A5FD4', '#2E8B57', '#D96C06', '#C0392B', '#6B5B95', '#008B8B', '#D4A017', '#334155'];
 
@@ -29,6 +30,10 @@ function getCategoryState(category) {
   return { label: 'Privada', variant: 'default', note: 'Solo visible para su creador' };
 }
 
+function canManageCategory(role, userId, category) {
+  return role === 'admin' || category.ownerId === userId;
+}
+
 export function CategoryManagerPanel({ categories, onRefresh, role, onClose, showCloseButton = true }) {
   const user = useAuthStore(state => state.user);
   const [form, setForm] = useState(getInitialForm(role));
@@ -54,6 +59,11 @@ export function CategoryManagerPanel({ categories, onRefresh, role, onClose, sho
   };
 
   const openEdit = (category) => {
+    if (!canManageCategory(role, user?.id, category)) {
+      setFeedback({ type: 'info', message: 'Las categorías públicas son de solo lectura para especialistas.' });
+      return;
+    }
+
     setFeedback(null);
     setEditing(category);
     setForm({
@@ -96,6 +106,12 @@ export function CategoryManagerPanel({ categories, onRefresh, role, onClose, sho
 
   const removeCategory = async () => {
     if (!deleteTarget) return;
+    if (!canManageCategory(role, user?.id, deleteTarget)) {
+      setDeleteTarget(null);
+      setFeedback({ type: 'info', message: 'Las categorías públicas son de solo lectura para especialistas.' });
+      return;
+    }
+
     setSaving(true);
     setFeedback(null);
     try {
@@ -132,7 +148,7 @@ export function CategoryManagerPanel({ categories, onRefresh, role, onClose, sho
 
           <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
             {sortedCategories.map((category) => {
-              const canManage = role === 'admin' || category.ownerId === user?.id;
+              const canManage = canManageCategory(role, user?.id, category);
               const state = getCategoryState(category);
               return (
                 <div key={category.id} className="rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] p-3">
@@ -142,7 +158,7 @@ export function CategoryManagerPanel({ categories, onRefresh, role, onClose, sho
                         <span className="h-3 w-3 rounded-full border border-black/10" style={{ backgroundColor: category.color || '#1A5FD4' }} />
                         <p className="text-sm font-black">{category.name}</p>
                         <Badge variant={state.variant}>{state.label}</Badge>
-                        <Badge variant="blue">{category._count?.objects || 0} objetos</Badge>
+                        <Badge variant="blue" className="category-object-count-badge">{category._count?.objects || 0} objetos</Badge>
                       </div>
                       {category.description && <p className="mt-1 text-xs text-[var(--tx2)]">{category.description}</p>}
                       <p className="mt-1 text-[11px] text-[var(--tx3)]">{state.note}</p>
@@ -153,7 +169,7 @@ export function CategoryManagerPanel({ categories, onRefresh, role, onClose, sho
                         <ActionIconButton action="delete" onClick={() => setDeleteTarget(category)} disabled={saving} />
                       </div>
                     ) : (
-                      <Badge variant="default">Compartida</Badge>
+                      <Badge variant="blue">Solo lectura</Badge>
                     )}
                   </div>
                 </div>
@@ -205,6 +221,7 @@ export function CategoryManagerPanel({ categories, onRefresh, role, onClose, sho
 export function CategoryManagementView({ title, subtitle, categories, onRefresh, role }) {
   const user = useAuthStore(state => state.user);
   const [search, setSearch] = useState('');
+  const [columnCount, setColumnCount] = useListColumns(`categories.${role}`, 1);
   const [form, setForm] = useState(getInitialForm(role));
   const [editing, setEditing] = useState(null);
   const [open, setOpen] = useState(false);
@@ -239,6 +256,11 @@ export function CategoryManagementView({ title, subtitle, categories, onRefresh,
   };
 
   const openEdit = (category) => {
+    if (!canManageCategory(role, user?.id, category)) {
+      setFeedback({ type: 'info', message: 'Las categorías públicas son de solo lectura para especialistas.' });
+      return;
+    }
+
     setFeedback(null);
     setEditing(category);
     setForm({
@@ -282,6 +304,11 @@ export function CategoryManagementView({ title, subtitle, categories, onRefresh,
 
   const removeCategory = async () => {
     if (!deleteTarget) return;
+    if (!canManageCategory(role, user?.id, deleteTarget)) {
+      setDeleteTarget(null);
+      setFeedback({ type: 'info', message: 'Las categorías públicas son de solo lectura para especialistas.' });
+      return;
+    }
 
     setSaving(true);
     setFeedback(null);
@@ -310,7 +337,7 @@ export function CategoryManagementView({ title, subtitle, categories, onRefresh,
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black">{title}</h1>
-            <Badge variant="blue">{categories.length}</Badge>
+            <Badge variant="blue" className="management-count-badge">{categories.length}</Badge>
           </div>
           {subtitle && <p className="text-sm text-[var(--tx3)]">{subtitle}</p>}
         </div>
@@ -325,16 +352,21 @@ export function CategoryManagementView({ title, subtitle, categories, onRefresh,
         placeholder="🔍 Buscar categoría..."
         fieldClassName="entity-search-field"
         inputClassName="entity-search-input"
-        extra={<Badge className="search-visible-badge entity-item-badge" variant="default">{filteredCategories.length} visibles</Badge>}
+        extra={(
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="search-visible-badge entity-item-badge" variant="default">{filteredCategories.length} visibles</Badge>
+            <ColumnToggle value={columnCount} onChange={setColumnCount} />
+          </div>
+        )}
       />
 
       <Card className="entity-list-shell">
         {filteredCategories.length === 0 ? (
           <Empty icon="🗂" title="Sin categorías" subtitle="Crea tu primera categoría para organizar los objetos" />
         ) : (
-          <div className="grid items-start gap-2">
+          <div className="grid items-start gap-2" style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}>
             {filteredCategories.map((category) => {
-              const canManage = role === 'admin' || category.ownerId === user?.id;
+              const canManage = canManageCategory(role, user?.id, category);
               const state = getCategoryState(category);
 
               return (
@@ -348,7 +380,7 @@ export function CategoryManagementView({ title, subtitle, categories, onRefresh,
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-black text-[var(--tx)]">{category.name}</p>
                       <Badge variant={state.variant}>{state.label}</Badge>
-                      <Badge variant="blue">{category._count?.objects || 0} objetos</Badge>
+                      <Badge variant="blue" className="category-object-count-badge">{category._count?.objects || 0} objetos</Badge>
                     </div>
                     {category.description && <p className="mt-0.5 text-xs text-[var(--tx2)]">{category.description}</p>}
                     <p className="mt-1 text-[11px] text-[var(--tx3)]">{state.note}</p>
@@ -360,7 +392,7 @@ export function CategoryManagementView({ title, subtitle, categories, onRefresh,
                         <ActionIconButton action="delete" className="entity-action-btn" onClick={() => setDeleteTarget(category)} disabled={saving} />
                       </>
                     ) : (
-                      <Badge variant="default">Compartida</Badge>
+                      <Badge variant="blue">Solo lectura</Badge>
                     )}
                   </div>
                 </div>

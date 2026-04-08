@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ilumina App · Dossier Marca</title>
+  <link rel="stylesheet" href="ilumina-common.css">
+  <style>
+    body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; color: var(--deep); background: linear-gradient(180deg, #f7f9fc, #edf4fb); }
+    .page { width: min(1080px, calc(100vw - 32px)); margin: 24px auto; background: rgba(255,255,255,.8); border: 1px solid rgba(18,61,106,.08); border-radius: 32px; overflow: hidden; box-shadow: 0 30px 70px rgba(18,61,106,.12); }
+    .hero { padding: 42px; background: linear-gradient(180deg, #fff, #f3f8fd); }
+    .hero-copy { display: grid; grid-template-columns: 1.1fr .9fr; gap: 22px; margin-top: 28px; }
+    .box { padding: 24px; border-radius: 24px; }
+    .box.dark { background: linear-gradient(180deg, var(--deep), #0d3157); color: var(--white); border: 0; }
+    h2 { margin: 0 0 14px; font-size: 34px; line-height: 1.04; letter-spacing: -.04em; }
+    h3 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: .16em; }
+    .box.dark p, .box.dark li { color: rgba(255,255,255,.92); }
+    .section { padding: 34px 42px; border-top: 1px solid rgba(18,61,106,.08); }
+    .section-head h2 { margin-bottom: 0; font-size: 30px; }
+    .section-head p { max-width: 62ch; }
+    .variant { border-radius: 26px; padding: 24px; min-height: 190px; display: grid; align-items: center; border: 1px solid rgba(18,61,106,.08); }
+    .variant.light { background: #fff; }
+    .variant.blue {background: #185fa5;color: #fff;}
+    .variant.deep {background: #042c53;color: #fff;}
+    .variant .mini-brand { display: grid; align-items: center; }
+    .variant-logo { width: min(100%, 430px); display: block; }
+    .asset-board { grid-template-columns: 1.15fr .85fr; align-items: start; }
+    .asset-card { padding: 18px; border-radius: 24px; }
+    .asset-list { margin: 0; padding-left: 18px; line-height: 1.7; color: var(--ink); }
+    .footer { padding: 18px 42px 28px; color: rgba(18,61,106,.54); text-transform: uppercase; letter-spacing: .1em; font-size: 12px; }
+    @media (max-width: 900px) { .brand, .hero-copy, .grid.two, .grid.three, .palette, .asset-board { grid-template-columns: 1fr; } .hero, .section, .footer { padding-left: 22px; padding-right: 22px; } .name { font-size: 48px; } }
+    @media print { .page { width: 100%; margin: 0; box-shadow: none; border: 0; border-radius: 0; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <p class="kicker">Versión marca · inspirada en la identidad corporativa adjunta</p>
+      <div class="brand">
+        <img class="brand-logo" src="logo-app.svg" alt="Logo de Ilumina App">
+      </div>
+      <div class="hero-copy">
+        <article class="box">
+          <h2>Una marca clínica con lenguaje visual claro, cálido y profesional.</h2>
+          <p>Ilumina App nace con una identidad pensada para profesionales que trabajan percepción, lenguaje y acceso visual. Su sistema de marca transmite claridad, estructura terapéutica y confianza clínica sin perder cercanía con familias y centros.</p>
+        </article>
+        <aside class="box dark">
+          <h3>Uso comercial de marca</h3>
+          <ul>
+            <li>Presentaciones a clínicas y gabinetes.</li>
+            <li>Dossiers para asociaciones y centros de atención temprana.</li>
+            <li>Material de captación y demostración comercial.</li>
+            <li>Piezas digitales coherentes con accesibilidad y salud.</li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Aplicaciones de identidad</h2>
+        <p>Esta versión se centra en cómo se presenta Ilumina App en materiales comerciales, manteniendo la línea cromática y formal del PNG corporativo aportado.</p>
+      </div>
+      <div class="grid three">
+        <article class="variant light">
+          <div class="mini-brand"><img class="variant-logo" src="logo-app.svg" alt="Logo Ilumina App sobre fondo claro"></div>
+        </article>
+        <article class="variant blue">
+          <div class="mini-brand"><img class="variant-logo is-inverse" src="logo-fondo-azul-claro.svg" alt="Logo Ilumina App en versión invertida"></div>
+        </article>
+        <article class="variant deep">
+          <div class="mini-brand"><img class="variant-logo is-blue" src="logo-fondo-azul-oscuro.svg" alt="Logo Ilumina App reinterpretado en azul sobre fondo profundo"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Sistema visual corporativo</h2>
+        <p>El dossier incorpora la lámina real de identidad para mostrar cómo se articula la marca en sus variantes principales, paleta, badges y eje terapéutico.</p>
+      </div>
+      <div class="asset-board">
+        <article class="asset-card">
+          <figure class="asset-figure">
+            <img src="ilumina_identidad_corporativa_v2.svg" alt="Lámina corporativa de Ilumina App con versiones de logo, paleta y eje terapéutico">
+            <figcaption class="asset-caption">Activo maestro de identidad. Resume la versión principal, variantes sobre fondo azul y profundo, iconos, badges, paleta cromática y el eje terapéutico por niveles de abstracción.</figcaption>
+          </figure>
+        </article>
+        <aside class="asset-card">
+          <h3>Qué aporta al discurso de marca</h3>
+          <ul class="asset-list">
+            <li>Hace visible que Ilumina App no es una marca improvisada, sino un sistema coherente y aplicable.</li>
+            <li>Conecta identidad visual y propuesta terapéutica mediante el eje de niveles de abstracción.</li>
+            <li>Permite defender versiones positivas, negativas y compactas para dossier, web, badge y presentación.</li>
+            <li>Refuerza la lectura clínica del proyecto con una estética clara, accesible y profesional.</li>
+          </ul>
+          <div style="height:16px"></div>
+          <figure class="asset-figure">
+            <img src="ilumina_identidad_corporativa_v2.png" alt="Previsualización PNG de la identidad corporativa de Ilumina App">
+            <figcaption class="asset-caption">Versión raster de apoyo para compartir rápidamente en presentaciones, documentos o canales donde no se consuma SVG.</figcaption>
+          </figure>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Paleta cromática</h2>
+        <p>La paleta azul de Ilumina App trabaja confianza, accesibilidad y atmósfera clínica. Está pensada para convivir bien en entornos de salud, educación y documentación institucional.</p>
+      </div>
+      <div class="palette">
+        <div class="swatch"><div class="tone" style="background:#1f5fa6"></div><div class="swatch-copy"><strong>Azul primario</strong><span>#1F5FA6</span></div></div>
+        <div class="swatch"><div class="tone" style="background:#123d6a"></div><div class="swatch-copy"><strong>Azul profundo</strong><span>#123D6A</span></div></div>
+        <div class="swatch"><div class="tone" style="background:#3789da"></div><div class="swatch-copy"><strong>Azul medio</strong><span>#3789DA</span></div></div>
+        <div class="swatch"><div class="tone" style="background:#b8d5f4"></div><div class="swatch-copy"><strong>Azul suave</strong><span>#B8D5F4</span></div></div>
+        <div class="swatch"><div class="tone" style="background:#888780"></div><div class="swatch-copy"><strong>Gris neutro</strong><span>#888780</span></div></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Mensaje comercial sugerido</h2>
+        <p>La marca funciona mejor cuando se presenta como una herramienta especializada para convertir percepción visual en comprensión y lenguaje, con una interfaz accesible y clínica.</p>
+      </div>
+      <div class="grid two">
+        <article class="box">
+          <h3>Propuesta de valor</h3>
+          <p>Ilumina App ayuda a profesionales de la logopedia y de la baja visión a trabajar con material visual graduado, accesible y medible dentro de un entorno terapéutico coherente.</p>
+        </article>
+        <article class="box">
+          <h3>Tono de comunicación</h3>
+          <p>Claro, profesional, esperanzador y clínicamente solvente. La marca no compite por ser tecnológica, sino por ser útil, comprensible y alineada con la práctica terapéutica real.</p>
+        </article>
+      </div>
+    </section>
+
+    <footer class="footer">Ilumina App · Versión marca comercial</footer>
+  </main>
+</body>
+</html>

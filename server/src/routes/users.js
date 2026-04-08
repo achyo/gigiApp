@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const { prisma } = require('../lib/prisma');
 const { assertStrongPassword } = require('../lib/password');
 const { authenticateJWT, authorizeRole, paginateQuery, paginatedResponse } = require('../middleware/auth');
+const { recordAdminAudit } = require('../lib/adminAudit');
 
 router.get('/', authenticateJWT, authorizeRole('admin'), async (req, res, next) => {
   try {
@@ -32,23 +33,39 @@ router.post('/', authenticateJWT, authorizeRole('admin'), async (req, res, next)
       },
       select: { id:1,name:1,email:1,role:1 },
     });
+    await recordAdminAudit({
+      user: req.user,
+      action: 'user.create',
+      entityType: 'user',
+      entityId: user.id,
+      message: `Cuenta ${role} creada: ${email}.`,
+      diff: { name, email, role },
+    });
     res.status(201).json({ success: true, data: user });
   } catch (e) { next(e); }
 });
 
 router.patch('/:id', authenticateJWT, authorizeRole('admin'), async (req, res, next) => {
   try {
-    const { name, bio } = req.body;
+    const { name, email, bio, password } = req.body;
     const user = await prisma.user.findUnique({
       where: { id: req.params.id },
       include: { specialistProfile: true },
     });
     if (!user) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
 
+    let passwordHash;
+    if (password) {
+      assertStrongPassword(password, { required: false });
+      passwordHash = await bcrypt.hash(password, 12);
+    }
+
     const updated = await prisma.user.update({
       where: { id: req.params.id },
       data: {
         ...(name !== undefined && { name }),
+        ...(email !== undefined && { email }),
+        ...(passwordHash && { passwordHash }),
         ...(bio !== undefined && user.specialistProfile && {
           specialistProfile: { update: { bio } },
         }),
@@ -59,8 +76,17 @@ router.patch('/:id', authenticateJWT, authorizeRole('admin'), async (req, res, n
         email: true,
         role: true,
         active: true,
+        createdAt: true,
         specialistProfile: { select: { id: true, bio: true } },
       },
+    });
+    await recordAdminAudit({
+      user: req.user,
+      action: 'user.update',
+      entityType: 'user',
+      entityId: updated.id,
+      message: `Cuenta ${updated.email} actualizada.`,
+      diff: { name, email, bio: user.specialistProfile ? bio : undefined, passwordChanged: Boolean(passwordHash) },
     });
     res.json({ success: true, data: updated });
   } catch (e) { next(e); }
@@ -115,6 +141,13 @@ router.delete('/:id', authenticateJWT, authorizeRole('admin'), async (req, res, 
     const user = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!user) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND' } });
     await prisma.user.update({ where: { id: req.params.id }, data: { active: false } });
+    await recordAdminAudit({
+      user: req.user,
+      action: 'user.deactivate',
+      entityType: 'user',
+      entityId: req.params.id,
+      message: `Cuenta ${user.email} desactivada.`,
+    });
     res.json({ success: true, data: { id: req.params.id, active: false } });
   } catch (e) { next(e); }
 });

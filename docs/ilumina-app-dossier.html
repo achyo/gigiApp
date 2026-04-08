@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ilumina App · Dossier Comercial</title>
+  <link rel="stylesheet" href="ilumina-common.css">
+  <style>
+    html {
+      background: linear-gradient(180deg, #f8fbfe 0%, #eef4fb 100%);
+    }
+
+    body {
+      color: var(--ink-deep);
+      background:
+        radial-gradient(circle at top left, rgba(55, 137, 218, 0.08), transparent 28%),
+        radial-gradient(circle at 90% 20%, rgba(31, 95, 166, 0.09), transparent 24%),
+        linear-gradient(180deg, #f8fbfe 0%, #eef4fb 100%);
+    }
+
+    .page {
+      width: min(1180px, calc(100vw - 40px));
+      margin: 28px auto 48px;
+    }
+
+    .sheet {
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 36px;
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      position: relative;
+      padding: 44px 44px 34px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(236, 244, 252, 0.98) 100%),
+        linear-gradient(180deg, #ffffff 0%, #f4f8fd 100%);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -80px -120px auto;
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, rgba(55, 137, 218, 0.18) 0%, rgba(55, 137, 218, 0.02) 60%, transparent 72%);
+      pointer-events: none;
+    }
+
+    .brand-row {
+      display: block;
+      margin-bottom: 28px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 0.95fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .hero-copy h2 {
+      margin: 0 0 14px;
+      font-size: clamp(28px, 3vw, 46px);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+
+    .hero-copy p {
+      margin: 0 0 16px;
+      font-size: 17px;
+      line-height: 1.65;
+      color: var(--slate);
+      max-width: 65ch;
+    }
+
+    .pill-row { margin-top: 22px; }
+
+    .pill {
+      background: var(--white);
+      border: 1px solid rgba(31, 95, 166, 0.14);
+      color: var(--ink);
+      box-shadow: 0 10px 25px rgba(18, 61, 106, 0.06);
+    }
+
+    .hero-card {
+      background: linear-gradient(180deg, var(--ink) 0%, var(--ink-deep) 100%);
+      color: var(--white);
+      padding: 26px;
+      border-radius: var(--radius-xl);
+      box-shadow: 0 22px 42px rgba(15, 57, 99, 0.22);
+    }
+
+    .hero-card h3,
+    .section h3 {
+      margin: 0 0 14px;
+      font-size: 14px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .hero-card ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 14px;
+    }
+
+    .hero-card li {
+      padding-left: 18px;
+      position: relative;
+      font-size: 15px;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.92);
+    }
+
+    .hero-card li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--blue-mid);
+      box-shadow: 0 0 0 5px rgba(55, 137, 218, 0.14);
+    }
+
+    .section {
+      padding: 34px 44px;
+      border-top: 1px solid var(--line);
+    }
+
+    .section-heading { gap: 14px; margin-bottom: 24px; }
+
+    .section-heading h2 {
+      margin: 0;
+      font-size: clamp(24px, 2.6vw, 38px);
+      line-height: 1.05;
+      letter-spacing: -0.035em;
+    }
+
+    .section-heading p {
+      margin: 0;
+      max-width: 70ch;
+      color: var(--slate);
+      line-height: 1.6;
+    }
+
+    .card,
+    .step,
+    .metric,
+    .offer {
+      border-radius: var(--radius-lg);
+      padding: 22px;
+    }
+
+    .card h4,
+    .step h4,
+    .offer h4 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+
+    .card p,
+    .step p,
+    .offer p,
+    .metric p {
+      margin: 0;
+      line-height: 1.62;
+      color: var(--slate);
+    }
+
+    .card .mini,
+    .metric .mini,
+    .offer .mini {
+      margin-bottom: 10px;
+      color: var(--blue-strong);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .clinical-band {
+      background: linear-gradient(180deg, #edf5fd 0%, #f7fbff 100%);
+      border-radius: 30px;
+      border: 1px solid rgba(31, 95, 166, 0.1);
+      padding: 24px;
+    }
+
+    .clinical-steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .step {
+      position: relative;
+      overflow: hidden;
+      min-height: 180px;
+    }
+
+    .step::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 10px;
+      background: linear-gradient(180deg, rgba(55, 137, 218, 0.45), rgba(31, 95, 166, 0.9));
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--blue-strong);
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .metric {
+      padding: 20px;
+      background: linear-gradient(180deg, rgba(31, 95, 166, 0.05), rgba(31, 95, 166, 0.01));
+    }
+
+    .metric strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 34px;
+      line-height: 1;
+      color: var(--ink);
+      letter-spacing: -0.04em;
+    }
+
+    .identity-apps {
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    .identity-card {
+      padding: 24px;
+      min-height: 192px;
+      display: grid;
+      align-items: center;
+    }
+
+    .identity-logo {
+      width: min(100%, 430px);
+    }
+
+    .identity-meta {
+      margin-top: 14px;
+      font-size: 12px;
+      color: rgba(18, 61, 106, 0.55);
+    }
+
+    .identity-board {
+      grid-template-columns: 1.15fr 0.85fr;
+      align-items: start;
+      margin-bottom: 24px;
+    }
+
+    .identity-figure,
+    .identity-note {
+      border-radius: 24px;
+      padding: 18px;
+    }
+
+    .identity-frame {
+      background: #f7f9fc;
+    }
+
+    .offer.featured {
+      background: linear-gradient(180deg, var(--ink) 0%, var(--ink-deep) 100%);
+      color: var(--white);
+      border-color: transparent;
+      box-shadow: 0 24px 44px rgba(15, 57, 99, 0.22);
+    }
+
+    .offer.featured p,
+    .offer.featured .mini,
+    .offer.featured li,
+    .offer.featured h4 {
+      color: var(--white);
+    }
+
+    .offer ul {
+      margin: 14px 0 0;
+      padding-left: 18px;
+      color: var(--slate);
+      line-height: 1.7;
+    }
+
+    .cta {
+      padding: 34px 44px 44px;
+      background: linear-gradient(135deg, rgba(18, 61, 106, 0.04) 0%, rgba(31, 95, 166, 0.1) 100%);
+    }
+
+    .cta-box {
+      border-radius: 30px;
+      background: linear-gradient(135deg, #ffffff 0%, #edf5fd 100%);
+      border: 1px solid rgba(31, 95, 166, 0.12);
+      padding: 28px;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 22px;
+      align-items: center;
+      box-shadow: 0 18px 42px rgba(18, 61, 106, 0.08);
+    }
+
+    .cta-box h2 {
+      margin: 0 0 10px;
+      font-size: clamp(24px, 2.5vw, 38px);
+      letter-spacing: -0.035em;
+    }
+
+    .cta-box p {
+      margin: 0;
+      color: var(--slate);
+      line-height: 1.7;
+    }
+
+    .cta-panel {
+      border-radius: 22px;
+      padding: 20px;
+      background: var(--ink);
+      color: var(--white);
+    }
+
+    .cta-panel strong,
+    .cta-panel span {
+      display: block;
+    }
+
+    .cta-panel strong {
+      font-size: 13px;
+      margin-bottom: 8px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .cta-panel span {
+      font-size: 16px;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.92);
+    }
+
+    .footer {
+      padding: 18px 44px 26px;
+      font-size: 12px;
+      color: rgba(18, 61, 106, 0.6);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid,
+      .cta-box,
+      .grid-3,
+      .grid-4,
+      .grid-2,
+      .clinical-steps,
+      .palette,
+      .identity-apps,
+      .identity-board {
+        grid-template-columns: 1fr;
+      }
+
+      .section,
+      .hero,
+      .cta,
+      .footer {
+        padding-left: 22px;
+        padding-right: 22px;
+      }
+    }
+
+    @media print {
+      html,
+      body {
+        background: #fff;
+      }
+
+      .page {
+        width: 100%;
+        margin: 0;
+      }
+
+      .sheet {
+        box-shadow: none;
+        border: 0;
+        border-radius: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <article class="sheet">
+      <header class="hero">
+        <div class="brand-row">
+          <p class="eyebrow">Dossier Comercial · Ilumina App</p>
+          <img class="brand-logo" src="logo-app.svg" alt="Logo de Ilumina App">
+        </div>
+
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <h2>Una plataforma terapéutica diseñada para convertir estímulos visuales en lenguaje, comprensión y autonomía.</h2>
+            <p>Ilumina App es una solución digital para profesionales de la logopedia y de la baja visión que necesitan trabajar vocabulario, categorización, reconocimiento, comprensión y acceso visual a través de secuencias terapéuticas con distintos niveles de abstracción.</p>
+            <p>La aplicación actual ya combina trabajo clínico, gestión de alumnos, creación de actividades, accesibilidad visual y seguimiento pedagógico en una herramienta preparada para consulta privada, gabinete, centro de atención temprana o servicio interdisciplinar.</p>
+            <div class="pill-row">
+              <span class="pill">Enfoque clínico y funcional</span>
+              <span class="pill">Pensado para baja visión</span>
+              <span class="pill">Seguimiento por alumno</span>
+              <span class="pill">Trabajo con objetos y lenguaje</span>
+            </div>
+          </div>
+
+          <aside class="hero-card">
+            <h3>Por qué interesa al profesional</h3>
+            <ul>
+              <li>Reduce tiempo de preparación gracias a un catálogo de objetos, categorías y actividades reutilizable.</li>
+              <li>Permite ajustar el nivel de representación de un mismo concepto: concreto, simplificado, esquemático y abstracto.</li>
+              <li>Centraliza evidencias de progreso, precisión, actividad reciente y alumnos que requieren seguimiento.</li>
+              <li>Favorece intervención accesible con paletas visuales, ajustes de texto, TTS y una interfaz clara para profesional y familia.</li>
+            </ul>
+          </aside>
+        </div>
+      </header>
+
+      <section class="section">
+        <div class="section-heading">
+          <div>
+            <h2>Qué hace hoy Ilumina App</h2>
+          </div>
+          <p>La propuesta comercial se apoya en funcionalidades reales ya disponibles. No es una idea conceptual: es una plataforma funcional con circuitos diferenciados para especialista, administración y cliente.</p>
+        </div>
+
+        <div class="grid-3">
+          <article class="card">
+            <p class="mini">Panel del especialista</p>
+            <h4>Visión rápida del estado clínico</h4>
+            <p>El profesional entra a un panel con métricas operativas, alumnos recientes, actividades creadas, grupos y un bloque de progreso por alumno con avance medio, precisión media y casos prioritarios.</p>
+          </article>
+          <article class="card">
+            <p class="mini">Trabajo terapéutico</p>
+            <h4>Gestión completa de alumnos y actividades</h4>
+            <p>La app permite crear alumnos, agruparlos, construir actividades con objetos, asignarlas de forma individual o masiva y revisar el estado de acceso y seguimiento de cada caso.</p>
+          </article>
+          <article class="card">
+            <p class="mini">Gobernanza de centro</p>
+            <h4>Control administrativo y trazabilidad</h4>
+            <p>La capa de administración supervisa especialistas, suscripciones, contenidos, alertas y auditoría reciente, lo que abre una propuesta comercial sólida para centros y equipos con varios profesionales.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <div>
+            <h2>Qué resuelve Ilumina App</h2>
+          </div>
+          <p>La app responde a una necesidad habitual en logopedia y baja visión: disponer de material visual estructurado, graduado y registrable para trabajar conceptos, comprensión y acceso al lenguaje sin depender de soportes dispersos.</p>
+        </div>
+
+        <div class="grid-3">
+          <article class="card">
+            <p class="mini">Problema clínico</p>
+            <h4>Demasiado tiempo en preparar material</h4>
+            <p>Muchos profesionales construyen cada sesión desde cero, mezclando imágenes, fichas, apps generales y recursos no adaptados a baja visión ni a objetivos logopédicos concretos.</p>
+          </article>
+          <article class="card">
+            <p class="mini">Necesidad terapéutica</p>
+            <h4>Progresión visual con intención lingüística</h4>
+            <p>No basta con mostrar imágenes. Hay que graduar el tipo de representación, medir reconocimiento, respuesta y generalización, y conectar cada ensayo con objetivos de lenguaje comprensivo y expresivo.</p>
+          </article>
+          <article class="card">
+            <p class="mini">Respuesta de producto</p>
+            <h4>Intervención ordenada, medible y accesible</h4>
+            <p>Ilumina App organiza objetos, actividades y niveles de abstracción para que el profesional trabaje con una estructura clara, reutilizable y basada en datos de uso.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <div>
+            <h2>Modelo terapéutico de abstracción visual</h2>
+          </div>
+          <p>El núcleo diferencial de Ilumina App es su eje terapéutico: un mismo concepto puede presentarse en varios grados de complejidad visual para acompañar reconocimiento, denominación, discriminación y comprensión.</p>
+        </div>
+
+        <div class="clinical-band">
+          <div class="clinical-steps">
+            <article class="step">
+              <strong>Nivel 1</strong>
+              <h4>Concreto</h4>
+              <p>Objeto real o representación muy fiel para anclar reconocimiento y significado. Ideal para acceso inicial, vocabulario funcional y trabajo con apoyos fuertes.</p>
+            </article>
+            <article class="step">
+              <strong>Nivel 2</strong>
+              <h4>Simplificado</h4>
+              <p>Forma básica con reducción de ruido visual. Útil para favorecer identificación, rasgos esenciales y anticipación sin perder referencia perceptiva.</p>
+            </article>
+            <article class="step">
+              <strong>Nivel 3</strong>
+              <h4>Esquemático</h4>
+              <p>Contorno, dibujo o línea con menor apoyo contextual. Potencia categorización, evocación semántica y discriminación visual con mayor demanda cognitiva.</p>
+            </article>
+            <article class="step">
+              <strong>Nivel 4</strong>
+              <h4>Abstracto</h4>
+              <p>Símbolo o representación altamente sintética para trabajar generalización, simbolización y transición a sistemas de acceso más conceptuales.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <div>
+            <h2>Beneficios directos para logopedia y baja visión</h2>
+          </div>
+          <p>La propuesta comercial no se apoya solo en tecnología. Se apoya en eficiencia clínica, continuidad terapéutica y mejor comunicación del valor del tratamiento a familias y centros.</p>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <p class="mini">Para logopedas</p>
+            <h4>Más control sobre comprensión y evocación</h4>
+            <p>Trabaja vocabulario receptivo, denominación, campos semánticos, funciones, categorías y rasgos distintivos con una progresión visual coherente y fácil de documentar.</p>
+          </article>
+          <article class="card">
+            <p class="mini">Para especialistas en baja visión</p>
+            <h4>Mejor acceso al estímulo sin perder objetivo lingüístico</h4>
+            <p>Ajustes de contraste, claridad y estructura visual ayudan a que la intervención responda a la funcionalidad visual real del niño y no solo al contenido de la tarea.</p>
+          </article>
+          <article class="card">
+            <p class="mini">Para equipos interdisciplinares</p>
+            <h4>Lenguaje común entre perfiles</h4>
+            <p>La app facilita coordinar logopedia, visión funcional, estimulación cognitiva y seguimiento familiar con datos compartibles y un repertorio de objetos y actividades consistente.</p>
+          </article>
+          <article class="card">
+            <p class="mini">Para consulta y centro</p>
+            <h4>Escalable sin perder personalización</h4>
+            <p>Un profesional puede crear material propio, reutilizar biblioteca aprobada, asignar actividades y revisar evolución sin multiplicar tareas administrativas.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <div>
+            <h2>Qué ofrece la plataforma</h2>
+          </div>
+          <p>Ilumina App combina contenidos terapéuticos, gestión de pacientes, accesibilidad operativa y seguimiento de uso en un entorno pensado para trabajo diario y toma de decisiones clínicas.</p>
+        </div>
+
+        <div class="grid-4">
+          <article class="metric">
+            <p class="mini">Biblioteca clínica</p>
+            <strong>Objetos</strong>
+            <p>Catálogo organizado por categorías con representaciones visuales por nivel, contenidos propios y biblioteca compartida en solo lectura para mantener consistencia clínica.</p>
+          </article>
+          <article class="metric">
+            <p class="mini">Intervención</p>
+            <strong>Actividades</strong>
+            <p>Secuencias asignables a cada alumno, grupo o conjunto de alumnos, con objetos incluidos, destino activo y acciones masivas para ahorrar tiempo operativo.</p>
+          </article>
+          <article class="metric">
+            <p class="mini">Seguimiento</p>
+            <strong>Métricas</strong>
+            <p>Avance, precisión, actividad reciente y alumnos que requieren seguimiento para una lectura rápida del estado clínico y de la carga terapéutica.</p>
+          </article>
+          <article class="metric">
+            <p class="mini">Accesibilidad</p>
+            <strong>Ajustes</strong>
+            <p>Paletas visuales, control de tamaño de texto, lectura apoyada por TTS y componentes pensados para uso claro por profesionales, familias y perfiles con necesidades de acceso.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <div>
+            <h2>Módulos clave para la práctica real</h2>
+          </div>
+          <p>El valor comercial de Ilumina App aumenta porque el profesional no compra solo un catálogo visual: incorpora un flujo de trabajo completo, desde la preparación terapéutica hasta el seguimiento y la coordinación.</p>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <p class="mini">Clientes</p>
+            <h4>Ficha terapéutica y estado de acceso</h4>
+            <p>Registro de alumno, tutor, grupos, suscripción y acceso a actividades. El especialista puede filtrar, ordenar, seleccionar y asignar de forma masiva según criterio clínico u operativo.</p>
+          </article>
+          <article class="card">
+            <p class="mini">Actividades</p>
+            <h4>Diseño reutilizable con objetos y destinatarios</h4>
+            <p>Cada actividad se compone con objetos del catálogo y puede orientarse a todos los alumnos, grupos concretos o clientes individuales, manteniendo control sobre destino y reasignación.</p>
+          </article>
+          <article class="card">
+            <p class="mini">Progreso por alumno</p>
+            <h4>Datos comprensibles para intervención y revisión</h4>
+            <p>La app resume actividades completadas, pasos recorridos, precisión de respuesta, tiempo medio y última actividad, facilitando ajustes terapéuticos basados en evidencia.</p>
+          </article>
+          <article class="card">
+            <p class="mini">Onboarding y uso guiado</p>
+            <h4>Menor fricción en adopción</h4>
+            <p>Los paneles iniciales ayudan a arrancar por rol, lo que favorece implantación en consulta o centro sin depender de formación larga para empezar a trabajar.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <div>
+            <h2>Cómo se integra en la práctica profesional</h2>
+          </div>
+          <p>El discurso comercial de Ilumina App es claro: mejora la experiencia terapéutica sin obligar a cambiar la metodología del profesional, sino ordenándola, haciéndola más visible y más escalable.</p>
+        </div>
+
+        <div class="grid-3">
+          <article class="card">
+            <p class="mini">Captación y valoración</p>
+            <h4>Definición de perfil y objetivos</h4>
+            <p>El profesional establece necesidades visuales, nivel de acceso y objetivos de lenguaje para diseñar una ruta terapéutica ajustada al caso.</p>
+          </article>
+          <article class="card">
+            <p class="mini">Intervención semanal</p>
+            <h4>Sesiones estructuradas con menos fricción</h4>
+            <p>Las actividades se crean, se asignan y quedan registradas. El terapeuta invierte menos tiempo en preparar material y más en interpretar la respuesta del alumno y ajustar la dificultad.</p>
+          </article>
+          <article class="card">
+            <p class="mini">Revisión y comunicación</p>
+            <h4>Datos útiles para decisiones clínicas</h4>
+            <p>La plataforma ayuda a justificar evolución, adaptar dificultad y explicar progreso de forma comprensible a familias y equipos.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <div>
+            <h2>Valor para centros y equipos</h2>
+          </div>
+          <p>Más allá del uso individual, Ilumina App tiene una lectura clara como producto de centro: estandariza material, organiza el trabajo diario y aporta visibilidad administrativa sin invadir la práctica clínica.</p>
+        </div>
+
+        <div class="grid-3">
+          <article class="card">
+            <p class="mini">Supervisión</p>
+            <h4>Centro de alertas y pulso pedagógico</h4>
+            <p>Administración dispone de vistas agregadas sobre especialistas, clientes activos, seguimiento pedagógico y estado de suscripciones para detectar bloqueos o necesidades de apoyo.</p>
+          </article>
+          <article class="card">
+            <p class="mini">Trazabilidad</p>
+            <h4>Auditoría reciente</h4>
+            <p>La plataforma registra acciones administrativas relevantes, lo que añade confianza operativa en contextos con varios perfiles, supervisión o rendición de cuentas.</p>
+          </article>
+          <article class="card">
+            <p class="mini">Escalabilidad</p>
+            <h4>Catálogo compartido con control</h4>
+            <p>Los contenidos públicos sirven como base común, mientras que cada profesional puede mantener material propio. Esto equilibra homogeneidad, autonomía y calidad del repertorio terapéutico.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <div>
+            <h2>Posicionamiento comercial</h2>
+          </div>
+          <p>Ilumina App no compite como una app genérica de estimulación. Se posiciona como herramienta especializada para profesionales que necesitan unir acceso visual, lenguaje y seguimiento clínico.</p>
+        </div>
+
+        <div class="grid-3">
+          <article class="offer">
+            <p class="mini">Licencia individual</p>
+            <h4>Consulta o gabinete</h4>
+            <p>Para logopedas, terapeutas visuales o profesionales que quieren introducir una metodología más estructurada sin depender de material disperso.</p>
+            <ul>
+              <li>Gestión de alumnos y actividades</li>
+              <li>Biblioteca clínica reutilizable</li>
+              <li>Seguimiento por caso</li>
+            </ul>
+          </article>
+          <article class="offer featured">
+            <p class="mini">Propuesta principal</p>
+            <h4>Centro interdisciplinar</h4>
+            <p>La mejor oportunidad comercial para Ilumina App está en centros donde logopedia, visión funcional y atención temprana necesitan una base compartida de trabajo.</p>
+            <ul>
+              <li>Coordinación entre profesionales</li>
+              <li>Catálogo compartido y gobernado</li>
+              <li>Escalabilidad por sedes o equipos</li>
+            </ul>
+          </article>
+          <article class="offer">
+            <p class="mini">Piloto institucional</p>
+            <h4>Unidad, asociación o servicio</h4>
+            <p>Formato idóneo para validar impacto terapéutico, adherencia profesional y valor percibido antes de una implantación completa.</p>
+            <ul>
+              <li>Arranque controlado</li>
+              <li>Casos de uso definidos</li>
+              <li>Medición de adopción</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <div>
+            <h2>Territorio visual de marca</h2>
+          </div>
+            <p>La identidad de Ilumina App comunica claridad, apoyo terapéutico y accesibilidad. Las variantes SVG permiten presentar la marca con consistencia en dossier, propuesta comercial y contextos institucionales.</p>
+        </div>
+
+        <div class="identity-apps">
+          <article class="identity-card">
+            <img class="identity-logo" src="logo-app.svg" alt="Logo principal de Ilumina App sobre fondo claro">
+            <span class="identity-meta">Aplicación principal</span>
+          </article>
+          <article class="identity-card blue">
+            <img class="identity-logo" src="logo-fondo-azul-claro.svg" alt="Logo de Ilumina App integrado sobre fondo azul primario">
+            <span class="identity-meta">Versión sobre azul primario</span>
+          </article>
+          <article class="identity-card deep">
+            <img class="identity-logo" src="logo-fondo-azul-oscuro.svg" alt="Logo de Ilumina App integrado sobre fondo azul profundo">
+            <span class="identity-meta">Versión sobre azul profundo</span>
+          </article>
+        </div>
+
+        <div class="identity-board">
+          <article class="identity-figure">
+            <figure class="identity-frame">
+              <img src="ilumina_identidad_corporativa_v2.svg" alt="Sistema visual corporativo de Ilumina App con variantes, paleta e iconografía terapéutica">
+              <figcaption class="identity-caption">La lámina corporativa resume las versiones principales del logotipo, badges, iconografía y el eje terapéutico que conecta identidad visual y progresión clínica.</figcaption>
+            </figure>
+          </article>
+          <aside class="identity-note">
+            <p class="mini">Refuerzo visual</p>
+            <h4>Aplicación coherente en materiales comerciales</h4>
+            <p>Este sistema permite sostener una presentación reconocible y profesional en propuestas a consulta, centro o asociación sin perder legibilidad ni tono clínico.</p>
+            <ul>
+              <li>Versiones SVG listas para fondos claros, azules y profundos.</li>
+              <li>Consistencia entre dossier general, ficha comercial y versión institucional.</li>
+              <li>Lectura visual alineada con salud, accesibilidad y trabajo terapéutico.</li>
+            </ul>
+          </aside>
+        </div>
+
+        <div class="palette">
+          <div class="swatch">
+            <div class="swatch-color" style="background:#1f5fa6"></div>
+            <div class="swatch-copy">
+              <strong>Azul primario</strong>
+              <span>#1F5FA6</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#123d6a"></div>
+            <div class="swatch-copy">
+              <strong>Azul profundo</strong>
+              <span>#123D6A</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#3789da"></div>
+            <div class="swatch-copy">
+              <strong>Azul medio</strong>
+              <span>#3789DA</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#b8d5f5"></div>
+            <div class="swatch-copy">
+              <strong>Azul suave</strong>
+              <span>#B8D5F5</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#8f9498"></div>
+            <div class="swatch-copy">
+              <strong>Gris neutro</strong>
+              <span>#8F9498</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta">
+        <div class="cta-box">
+          <div>
+            <h2>Ilumina App convierte la intervención visual en una propuesta clínica, medible y comercialmente diferenciada.</h2>
+            <p>Para un profesional de la logopedia o de la baja visión, la promesa es concreta: menos tiempo preparando, más coherencia terapéutica, mejor comunicación del progreso y una experiencia visual alineada con las necesidades reales del paciente.</p>
+          </div>
+          <aside class="cta-panel">
+            <strong>Siguiente paso comercial</strong>
+            <span>Presentar Ilumina App como piloto clínico en consulta o centro, con demostración guiada sobre un caso de uso real y foco en progresión de abstracción, seguimiento y accesibilidad.</span>
+          </aside>
+        </div>
+      </section>
+
+      <footer class="footer">
+        Ilumina App · Dossier comercial orientado a logopedia y baja visión · versión de trabajo
+      </footer>
+    </article>
+  </main>
+</body>
+</html>

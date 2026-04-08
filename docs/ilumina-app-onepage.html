@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ilumina App · One Page Comercial</title>
+  <link rel="stylesheet" href="ilumina-common.css">
+  <style>
+    body { background:#f3f7fb; }
+    .sheet { width:min(980px, calc(100vw - 28px)); margin:22px auto; background:#fff; border-radius:28px; box-shadow:0 28px 70px rgba(18,61,106,.12); overflow:hidden; }
+    .hero { padding:34px 34px 26px; background:linear-gradient(180deg,#fff,#f4f8fd); }
+    .headline { margin:24px 0 0; font-size:34px; line-height:1.03; letter-spacing:-.04em; max-width:12ch; }
+    .intro { margin:14px 0 0; max-width:70ch; color:var(--ink); line-height:1.68; }
+    .section { padding:24px 34px; border-top:1px solid rgba(18,61,106,.08); }
+    .grid { gap:16px; }
+    .card { padding:20px; }
+    .card strong, .metric strong { display:block; margin-bottom:10px; font-size:18px; }
+    .card p, .metric p, li { color:var(--ink); line-height:1.6; }
+    .metric { background:linear-gradient(180deg, rgba(31,95,166,.06), rgba(31,95,166,.01)); border:1px solid rgba(18,61,106,.08); border-radius:20px; padding:18px; }
+    .metric .num { font-size:30px; color:var(--deep); letter-spacing:-.04em; margin-bottom:6px; }
+    .identity-grid { gap:14px; }
+    .identity-card { padding:16px; min-height:138px; display:grid; align-items:center; border-radius:20px; }
+    .identity-logo { width:min(100%, 280px); display:block; }
+    .identity-label { display:block; margin-top:10px; font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; color:rgba(18,61,106,.56); }
+    .identity-note { margin-top:14px; border-radius:20px; padding:16px; background:linear-gradient(180deg, rgba(31,95,166,.05), rgba(31,95,166,.01)); }
+    .identity-note strong { display:block; margin-bottom:8px; font-size:18px; }
+    ul { margin:0; padding-left:18px; }
+    .cta { background:linear-gradient(180deg,#123d6a,#0f3358); color:#fff; }
+    .cta p, .cta li { color:rgba(255,255,255,.92); }
+    .footer { padding:16px 34px 24px; text-transform:uppercase; letter-spacing:.1em; font-size:12px; color:rgba(18,61,106,.55); }
+    @media (max-width: 860px) { .brand, .grid.two, .grid.four, .identity-grid { grid-template-columns:1fr; } .hero, .section, .footer { padding-left:20px; padding-right:20px; } }
+    @media print { .sheet { width:100%; margin:0; border-radius:0; box-shadow:none; } }
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <section class="hero">
+      <div class="brand">
+        <img class="brand-logo" src="logo-app.svg" alt="Logo de Ilumina App">
+      </div>
+      <h2 class="headline">La herramienta clínica para trabajar lenguaje y acceso visual con menos fricción.</h2>
+      <p class="intro">Ilumina App ayuda a especialistas a crear alumnos, organizar grupos, preparar actividades con objetos visuales, asignarlas y seguir el progreso con métricas comprensibles de avance, precisión y necesidad de seguimiento.</p>
+    </section>
+
+    <section class="section">
+      <div class="grid four">
+        <article class="metric"><div class="num">1</div><strong>Panel clínico</strong><p>Visión rápida del estado terapéutico y de los casos prioritarios.</p></article>
+        <article class="metric"><div class="num">2</div><strong>Actividades</strong><p>Construcción y asignación por cliente, grupo o selección.</p></article>
+        <article class="metric"><div class="num">3</div><strong>Accesibilidad</strong><p>Paletas, texto ampliado y TTS para acompañar el acceso.</p></article>
+        <article class="metric"><div class="num">4</div><strong>Seguimiento</strong><p>Avance, precisión, actividad reciente y datos útiles para revisión.</p></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="grid two">
+        <article class="card">
+          <strong>Por qué interesa a logopedia</strong>
+          <p>Permite trabajar vocabulario, denominación, comprensión y categorización con una progresión visual coherente y fácil de documentar.</p>
+        </article>
+        <article class="card">
+          <strong>Por qué interesa a baja visión</strong>
+          <p>La interfaz y el contenido favorecen acceso visual funcional, contraste y reducción de carga perceptiva sin perder intención clínica.</p>
+        </article>
+        <article class="card">
+          <strong>Qué aporta al día a día</strong>
+          <p>Menos tiempo preparando material, más orden terapéutico, mejor control del estado de alumnos y mejor comunicación del progreso.</p>
+        </article>
+        <article class="card">
+          <strong>Dónde encaja</strong>
+          <p>Consulta privada, gabinete, atención temprana, centro multidisciplinar o servicio especializado con varios perfiles profesionales.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="identity-grid">
+        <article class="identity-card">
+          <img class="identity-logo" src="logo-app.svg" alt="Logo principal de Ilumina App sobre fondo claro">
+          <span class="identity-label">Aplicación principal</span>
+        </article>
+        <article class="identity-card blue">
+          <img class="identity-logo" src="logo-fondo-azul-claro.svg" alt="Logo de Ilumina App sobre fondo azul primario">
+          <span class="identity-label">Versión azul</span>
+        </article>
+        <article class="identity-card deep">
+          <img class="identity-logo" src="logo-fondo-azul-oscuro.svg" alt="Logo de Ilumina App sobre fondo azul profundo">
+          <span class="identity-label">Versión profunda</span>
+        </article>
+      </div>
+      <article class="identity-note">
+        <strong>Aplicaciones de identidad</strong>
+        <p>El one-page incorpora las tres variantes SVG del logotipo para mantener la marca consistente en piezas comerciales breves, presentaciones y fondos de distinta densidad visual.</p>
+      </article>
+    </section>
+
+    <section class="section cta">
+      <div class="grid two">
+        <article>
+          <strong style="display:block;margin-bottom:10px;font-size:24px;">Propuesta comercial</strong>
+          <p>Ilumina App se presenta como solución especializada para profesionales que necesitan unir material visual, intervención lingüística, accesibilidad y seguimiento clínico.</p>
+        </article>
+        <article>
+          <strong style="display:block;margin-bottom:10px;font-size:24px;">Siguiente paso</strong>
+          <ul>
+            <li>Demo guiada con caso real.</li>
+            <li>Piloto clínico breve.</li>
+            <li>Implantación por consulta o centro.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <footer class="footer">Ilumina App · One page comercial</footer>
+  </main>
+</body>
+</html>

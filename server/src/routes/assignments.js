@@ -1,68 +1,17 @@
 const router = require('express').Router();
 const { prisma } = require('../lib/prisma');
 const { authenticateJWT, authorizeRole, scopeFilter, paginateQuery, paginatedResponse, canModify } = require('../middleware/auth');
-
-const LEVEL_ORDER = ['l1', 'l2', 'l3'];
-const EXERCISES_BY_LEVEL = {
-  l1: ['show'],
-  l2: ['show', 'recognize', 'relate', 'memorize'],
-  l3: ['show', 'recognize', 'relate', 'memorize'],
-};
-const LEVEL_LABELS = {
-  l1: 'Nivel 1',
-  l2: 'Nivel 2',
-  l3: 'Nivel 3',
-};
-const EXERCISE_LABELS = {
-  show: 'Mostrar',
-  recognize: 'Reconocer',
-  relate: 'Relacionar',
-  memorize: 'Memorizar',
-};
+const {
+  LEVEL_LABELS,
+  EXERCISE_LABELS,
+  buildAssignmentProgressSummary,
+} = require('../lib/progressMetrics');
 
 function ensureAssignmentAccess(user, assignment) {
   if (user.role === 'admin') return true;
   if (user.role === 'client') return assignment.clientId === user.client_id;
   if (user.role === 'specialist') return assignment.client?.specialistId === user.specialist_id;
   return false;
-}
-
-function getTotalAssignmentSteps(activity) {
-  const objectCount = activity?.activityObjects?.length || 0;
-  const exercisesPerObject = LEVEL_ORDER.reduce((total, level) => total + EXERCISES_BY_LEVEL[level].length, 0);
-  return objectCount * exercisesPerObject;
-}
-
-function buildProgressSummary(assignment) {
-  const totalSteps = getTotalAssignmentSteps(assignment.activity);
-  const completedSteps = assignment.completedAt ? totalSteps : (assignment.stepProgress?.length || 0);
-  const currentObject = assignment.activity?.activityObjects?.find((item) => item.objectId === assignment.currentObjectId)?.object || null;
-  const currentLevelLabel = assignment.currentLevel ? LEVEL_LABELS[assignment.currentLevel] || assignment.currentLevel : null;
-  const currentExerciseLabel = assignment.currentExercise ? EXERCISE_LABELS[assignment.currentExercise] || assignment.currentExercise : null;
-  const phaseLabel = assignment.completedAt
-    ? 'Completada'
-    : currentObject && currentLevelLabel && currentExerciseLabel
-      ? `${currentObject.name} · ${currentLevelLabel} · ${currentExerciseLabel}`
-      : assignment.startedAt
-        ? 'En curso'
-        : 'Pendiente';
-
-  return {
-    currentObjectId: assignment.currentObjectId,
-    currentObjectName: currentObject?.name || null,
-    currentObjectEmoji: currentObject?.em || null,
-    currentLevel: assignment.currentLevel,
-    currentLevelLabel,
-    currentExercise: assignment.currentExercise,
-    currentExerciseLabel,
-    startedAt: assignment.startedAt,
-    progressUpdatedAt: assignment.progressUpdatedAt,
-    completedAt: assignment.completedAt,
-    completedSteps,
-    totalSteps,
-    percent: totalSteps ? Math.round((completedSteps / totalSteps) * 100) : 0,
-    phaseLabel,
-  };
 }
 
 function serializeProgressRow(row) {
@@ -122,7 +71,7 @@ router.get('/client/:clientId', authenticateJWT, async (req, res, next) => {
       success: true,
       data: assignments.map((assignment) => ({
         ...assignment,
-        progressSummary: buildProgressSummary(assignment),
+        progressSummary: buildAssignmentProgressSummary(assignment),
       })),
     });
   } catch (e) { next(e); }
@@ -161,7 +110,7 @@ router.get('/', authenticateJWT, scopeFilter('assignments'), async (req, res, ne
     ]);
     res.json(paginatedResponse(data.map((assignment) => ({
       ...assignment,
-      progressSummary: buildProgressSummary(assignment),
+      progressSummary: buildAssignmentProgressSummary(assignment),
     })), total, page, limit));
   } catch (e) { next(e); }
 });
@@ -213,7 +162,7 @@ router.get('/:id/progress', authenticateJWT, async (req, res, next) => {
       data: {
         assignment: {
           ...assignment,
-          progressSummary: buildProgressSummary(assignment),
+          progressSummary: buildAssignmentProgressSummary(assignment),
         },
         history: assignment.stepProgress.map(serializeProgressRow),
       },

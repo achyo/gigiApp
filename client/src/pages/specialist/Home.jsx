@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router';
-import { clientsApi, activitiesApi, groupsApi, assignmentsApi, objectsApi, categoriesApi } from '../../api';
+import { Routes, Route, useNavigate } from 'react-router';
+import { clientsApi, activitiesApi, groupsApi, assignmentsApi, objectsApi, categoriesApi, specialistsApi } from '../../api';
 import useAuthStore from '../../stores/authStore';
-import { Button, Badge, Card, Input, Select, Textarea, SearchBar, ColumnToggle, TabBar, Confirm, Modal, Empty, Spinner, SubBadge, Notice, ActionIconButton, ColorPickerField, IconButton } from '../../components/ui';
+import { Button, Badge, Card, Input, Select, Textarea, SearchBar, ColumnToggle, TabBar, Confirm, Modal, Empty, Spinner, SubBadge, Notice, ActionIconButton, ColorPickerField, IconButton, OnboardingPanel, MetricCard } from '../../components/ui';
 import { CategoryManagementView } from '../../components/modals/CategoryManagerModal';
 import SubscriptionModal from '../../components/modals/SubscriptionModal';
 import ClientActivityModal from '../../components/modals/ClientActivityModal';
 import useListColumns from '../../hooks/useListColumns';
+import usePersistentViewState from '../../hooks/usePersistentViewState';
 import { getPasswordStrengthError, PASSWORD_RULE_HINT } from '../../lib/password';
 
 function getApiErrorMessage(error, fallback) {
@@ -44,12 +45,16 @@ const SUBSCRIPTION_STATE_ORDER = {
   expired: 5,
 };
 
-function DashboardMetricCard({ value, label }) {
+function DashboardMetricCard({ value, label, helpText }) {
   return (
-    <div className="sp-dash-metric min-h-[88px] rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)]">
-      <p className="text-[1.8rem] font-black leading-none text-[var(--ac)]">{value ?? '0'}</p>
-      <p className="mt-1 text-[.65rem] font-bold uppercase tracking-[0.05em] text-[var(--tx3)]">{label}</p>
-    </div>
+    <MetricCard
+      value={value}
+      label={label}
+      helpText={helpText}
+      className="sp-dash-metric min-h-[88px] rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)]"
+      valueClassName="text-[1.8rem] font-black leading-none text-[var(--ac)]"
+      labelClassName="mt-1 text-[.65rem] font-bold uppercase tracking-[0.05em] text-[var(--tx3)]"
+    />
   );
 }
 
@@ -65,13 +70,147 @@ function DashboardPanel({ icon, title, children, className = '' }) {
   );
 }
 
+function formatRelativeDate(value) {
+  if (!value) return 'Sin actividad reciente';
+  const stamp = new Date(value).getTime();
+  if (!Number.isFinite(stamp)) return 'Sin actividad reciente';
+
+  const diffMs = stamp - Date.now();
+  const diffDays = Math.round(diffMs / 86400000);
+  if (Math.abs(diffDays) >= 1) {
+    return new Intl.RelativeTimeFormat('es', { numeric: 'auto' }).format(diffDays, 'day');
+  }
+
+  const diffHours = Math.round(diffMs / 3600000);
+  if (Math.abs(diffHours) >= 1) {
+    return new Intl.RelativeTimeFormat('es', { numeric: 'auto' }).format(diffHours, 'hour');
+  }
+
+  const diffMinutes = Math.round(diffMs / 60000);
+  return new Intl.RelativeTimeFormat('es', { numeric: 'auto' }).format(diffMinutes || 0, 'minute');
+}
+
+function formatDurationCompact(value) {
+  if (!value) return 'Sin tiempo';
+  const totalSeconds = Math.max(1, Math.round(value / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0 ? `${minutes} min ${seconds}s` : `${seconds}s`;
+}
+
+function getToneVariant(tone) {
+  if (tone === 'green') return 'green';
+  if (tone === 'red') return 'red';
+  if (tone === 'amber') return 'amber';
+  if (tone === 'blue') return 'blue';
+  return 'default';
+}
+
+function StudentProgressPanel({ overview, loading, error, onOpenClient }) {
+  const summary = overview?.summary;
+  const students = overview?.students || [];
+  const summaryHelpText = {
+    'Con actividad': 'Muestra cuántos alumnos tienen al menos una actividad asignada frente al total de alumnos bajo seguimiento.',
+    'Avance medio': 'Resume el porcentaje medio de pasos completados entre todos los alumnos con trabajo asignado.',
+    'Precisión media': 'Indica el porcentaje medio de respuestas correctas registradas en las actividades ya realizadas.',
+    'Requieren seguimiento': 'Cuenta los alumnos con baja finalización, baja precisión o actividad pendiente reciente para priorizar intervención.',
+  };
+
+  return (
+    <DashboardPanel icon="📈" title="Progreso por alumno" className="specialist-progress-panel min-h-[312px]">
+      {error && <Notice variant="error" className="mb-3">{error}</Notice>}
+
+      {loading ? (
+        <div className="flex justify-center py-16"><Spinner size={28} /></div>
+      ) : students.length === 0 ? (
+        <Empty icon="🧭" title="Sin progreso todavía" subtitle="Asigna actividades a tus alumnos para empezar a ver su avance aquí." />
+      ) : (
+        <>
+          <div className="specialist-progress-summary">
+            {[
+              ['Con actividad', `${summary?.studentsWithAssignments || 0}/${summary?.totalStudents || students.length}`],
+              ['Avance medio', `${summary?.averageCompletionPercent || 0}%`],
+              ['Precisión media', summary?.averageAccuracyPercent !== null && summary?.averageAccuracyPercent !== undefined ? `${summary.averageAccuracyPercent}%` : 'Sin datos'],
+              ['Requieren seguimiento', String(summary?.attentionCount || 0)],
+            ].map(([label, value]) => (
+              <MetricCard
+                key={label}
+                value={value}
+                label={label}
+                helpText={summaryHelpText[label]}
+                className="specialist-progress-summary__item"
+                valueClassName="specialist-progress-summary__value"
+                labelClassName="specialist-progress-summary__label"
+              />
+            ))}
+          </div>
+
+          <div className="specialist-progress-list">
+            {students.slice(0, 5).map((student) => (
+              <div key={student.clientId} className="specialist-progress-row">
+                <div className="specialist-progress-row__main">
+                  <div className="specialist-progress-row__head">
+                    <div>
+                      <p className="specialist-progress-row__title">{student.childName}</p>
+                      <p className="specialist-progress-row__subtitle">
+                        {student.tutorName || 'Sin tutor'}
+                        {student.groupNames?.length ? ` · ${student.groupNames.join(', ')}` : ' · Sin grupo'}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={getToneVariant(student.status?.tone)}>{student.status?.label || 'Sin estado'}</Badge>
+                      <Badge variant="blue">{student.stepStats?.percent || 0}% avance</Badge>
+                      <Badge
+                        variant={
+                          student.responseStats?.accuracyPercent === null || student.responseStats?.accuracyPercent === undefined
+                            ? 'default'
+                            : student.responseStats.accuracyPercent >= 70
+                              ? 'green'
+                              : student.responseStats.accuracyPercent >= 50
+                                ? 'amber'
+                                : 'red'
+                        }
+                      >
+                        {student.responseStats?.accuracyPercent === null || student.responseStats?.accuracyPercent === undefined
+                          ? 'Sin precisión'
+                          : `${student.responseStats.accuracyPercent}% acierto`}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="specialist-progress-row__metrics">
+                    <span>{student.assignmentStats?.completed || 0}/{student.assignmentStats?.total || 0} actividades completadas</span>
+                    <span>{student.stepStats?.completed || 0}/{student.stepStats?.total || 0} pasos</span>
+                    <span>{student.responseStats?.correct || 0} aciertos · {student.responseStats?.incorrect || 0} errores</span>
+                    <span>Tiempo medio {formatDurationCompact(student.responseStats?.averageTimeMs)}</span>
+                  </div>
+
+                  <div className="specialist-progress-row__meta">
+                    <span>{student.activity?.latestActivityTitle ? `Última actividad: ${student.activity.latestActivityTitle}` : 'Sin actividad iniciada'}</span>
+                    <span>{student.activity?.currentPhaseLabel ? `Fase: ${student.activity.currentPhaseLabel}` : 'Sin fase activa'}</span>
+                    <span>{formatRelativeDate(student.activity?.lastActivityAt)}</span>
+                  </div>
+                </div>
+
+                <Button type="button" variant="secondary" onClick={() => onOpenClient({ id: student.clientId, childName: student.childName })}>
+                  Ver detalle
+                </Button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </DashboardPanel>
+  );
+}
+
 function ListPageHeader({ title, count, subtitle, action }) {
   return (
     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-black">{title}</h1>
-          <Badge variant="blue">{count}</Badge>
+          <Badge variant="blue" className="management-count-badge">{count}</Badge>
         </div>
         {subtitle && <p className="text-sm text-[var(--tx3)]">{subtitle}</p>}
       </div>
@@ -113,19 +252,70 @@ function ListRow({ avatar, title, subtitle, meta, badges, actions, accentColor, 
 }
 
 function Dashboard() {
+  const navigate = useNavigate();
+  const [onboardingState, setOnboardingState] = usePersistentViewState('specialist.dashboard.onboarding', {
+    dismissed: false,
+    snoozedUntil: null,
+  });
   const [clients, setClients] = useState([]);
   const [activities, setActivities] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [progressOverview, setProgressOverview] = useState({ summary: null, students: [] });
+  const [progressLoading, setProgressLoading] = useState(true);
+  const [progressError, setProgressError] = useState('');
+  const [progressClient, setProgressClient] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([clientsApi.list(), activitiesApi.list(), groupsApi.list()])
-      .then(([clientsResponse, activitiesResponse, groupsResponse]) => {
-        setClients(clientsResponse.data.data || []);
-        setActivities(activitiesResponse.data.data || []);
-        setGroups(groupsResponse.data.data || []);
-      })
-      .finally(() => setLoading(false));
+    let cancelled = false;
+
+    const loadDashboard = async () => {
+      setLoading(true);
+      setProgressLoading(true);
+      setProgressError('');
+
+      const [clientsResult, activitiesResult, groupsResult, progressResult] = await Promise.allSettled([
+        clientsApi.list(),
+        activitiesApi.list(),
+        groupsApi.list(),
+        specialistsApi.studentProgress(),
+      ]);
+
+      if (cancelled) return;
+
+      if (clientsResult.status === 'fulfilled') {
+        setClients(clientsResult.value.data.data || []);
+      } else {
+        setClients([]);
+      }
+
+      if (activitiesResult.status === 'fulfilled') {
+        setActivities(activitiesResult.value.data.data || []);
+      } else {
+        setActivities([]);
+      }
+
+      if (groupsResult.status === 'fulfilled') {
+        setGroups(groupsResult.value.data.data || []);
+      } else {
+        setGroups([]);
+      }
+
+      if (progressResult.status === 'fulfilled') {
+        setProgressOverview(progressResult.value.data.data || { summary: null, students: [] });
+      } else {
+        setProgressOverview({ summary: null, students: [] });
+        setProgressError(getApiErrorMessage(progressResult.reason, 'No se pudo cargar el progreso por alumno.'));
+      }
+
+      setLoading(false);
+      setProgressLoading(false);
+    };
+
+    loadDashboard();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32} /></div>;
@@ -135,23 +325,63 @@ function Dashboard() {
   const latestClients = clients.slice(0, 3);
   const latestActivities = activities.slice(0, 3);
   const latestGroups = groups.slice(0, 3);
+  const onboardingSteps = [
+    {
+      label: 'Crear tu primer alumno',
+      description: 'Añade familia y alumno para empezar a asignar trabajo y seguir progreso.',
+      done: clients.length > 0,
+      onOpen: () => navigate('/specialist/clients'),
+    },
+    {
+      label: 'Preparar una actividad',
+      description: 'Crea una actividad con objetos y deja una asignación lista para usar.',
+      done: activities.length > 0,
+      onOpen: () => navigate('/specialist/activities'),
+    },
+    {
+      label: 'Organizar grupos',
+      description: 'Agrupa alumnos para simplificar asignaciones y seguimiento operativo.',
+      done: groups.length > 0,
+      onOpen: () => navigate('/specialist/groups'),
+    },
+  ];
+  const shouldShowOnboarding = !onboardingState.dismissed
+    && (!onboardingState.snoozedUntil || Date.now() > onboardingState.snoozedUntil)
+    && onboardingSteps.some((step) => !step.done);
 
   return (
-    <div className="animate-in space-y-5">
+    <div className="animate-in space-y-5 specialist-dashboard-stack">
       <div>
         <h1 className="text-2xl font-black">Panel del especialista</h1>
       </div>
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+      {shouldShowOnboarding && (
+        <OnboardingPanel
+          title="Primeros pasos para especialista"
+          subtitle="Este recorrido cubre la configuración mínima para poder trabajar con alumnos sin ayuda externa."
+          steps={onboardingSteps}
+          onSnooze={() => setOnboardingState({ snoozedUntil: Date.now() + (12 * 60 * 60 * 1000) })}
+          onDismiss={() => setOnboardingState({ dismissed: true, snoozedUntil: null })}
+        />
+      )}
+
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 specialist-dashboard-metrics">
         <DashboardMetricCard value={clients.length} label="Alumnos" />
         <DashboardMetricCard value={activities.length} label="Actividades" />
         <DashboardMetricCard value={groups.length} label="Grupos" />
         <DashboardMetricCard value={activeUsers} label="Usuarios activos" />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <StudentProgressPanel
+        overview={progressOverview}
+        loading={progressLoading}
+        error={progressError}
+        onOpenClient={setProgressClient}
+      />
+
+      <div className="grid gap-4 xl:grid-cols-2 specialist-dashboard-sections">
         <DashboardPanel icon="👶" title="Alumnos" className="min-h-[248px]">
-          {latestClients.length === 0 ? <Empty icon="👶" title="Sin alumnos" subtitle="Crea tu primer cliente para empezar." /> : (
+          {latestClients.length === 0 ? <Empty icon="👶" title="Sin alumnos" subtitle="Crea tu primer cliente para empezar." action={<Button onClick={() => window.location.assign('/specialist/clients')}>Ir a clientes</Button>} /> : (
             <div className="space-y-3">
               {latestClients.map(client => (
                 <div key={client.id} className="sp-dash-list-card rounded-[var(--r)] border border-[var(--bd)]">
@@ -170,7 +400,7 @@ function Dashboard() {
         </DashboardPanel>
 
         <DashboardPanel icon="📋" title="Actividades creadas" className="min-h-[248px]">
-          {latestActivities.length === 0 ? <Empty icon="📋" title="Sin actividades" subtitle="Las actividades que crees aparecerán aquí." /> : (
+          {latestActivities.length === 0 ? <Empty icon="📋" title="Sin actividades" subtitle="Las actividades que crees aparecerán aquí." action={<Button onClick={() => window.location.assign('/specialist/activities')}>Crear actividad</Button>} /> : (
             <div className="space-y-3">
               {latestActivities.map(activity => (
                 <div key={activity.id} className="sp-dash-list-card rounded-[var(--r)] border border-[var(--bd)]">
@@ -184,7 +414,7 @@ function Dashboard() {
         </DashboardPanel>
 
         <DashboardPanel icon="👥" title="Grupos" className="min-h-[248px]">
-          {latestGroups.length === 0 ? <Empty icon="👥" title="Sin grupos" subtitle="Usa grupos para asignar actividades a varios alumnos." /> : (
+          {latestGroups.length === 0 ? <Empty icon="👥" title="Sin grupos" subtitle="Usa grupos para asignar actividades a varios alumnos." action={<Button onClick={() => window.location.assign('/specialist/groups')}>Crear grupo</Button>} /> : (
             <div className="space-y-3">
               {latestGroups.map(group => (
                 <div key={group.id} className="sp-dash-list-card rounded-[var(--r)] border border-[var(--bd)]" style={{ borderLeftWidth: 4, borderLeftColor: group.color }}>
@@ -212,6 +442,8 @@ function Dashboard() {
           </div>
         </DashboardPanel>
       </div>
+
+      <ClientActivityModal client={progressClient} open={!!progressClient} onClose={() => setProgressClient(null)} />
     </div>
   );
 }
@@ -220,13 +452,21 @@ function Dashboard() {
 function Clients() {
   const [clients,  setClients]  = useState([]);
   const [groups,   setGroups]   = useState([]);
+  const [activities, setActivities] = useState([]);
   const [loading,  setLoading]  = useState(true);
-  const [search,   setSearch]   = useState('');
+  const [viewState, setViewState] = usePersistentViewState('specialist.clients.filters', {
+    search: '',
+    groupFilter: 'all',
+    subscriptionFilter: 'all',
+    sortBy: 'name',
+    page: 1,
+  });
+  const [search,   setSearch]   = useState(viewState.search);
   const [columnCount, setColumnCount] = useListColumns('specialist.clients', 1);
-  const [groupFilter, setGroupFilter] = useState('all');
-  const [subscriptionFilter, setSubscriptionFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('name');
-  const [page, setPage] = useState(1);
+  const [groupFilter, setGroupFilter] = useState(viewState.groupFilter);
+  const [subscriptionFilter, setSubscriptionFilter] = useState(viewState.subscriptionFilter);
+  const [sortBy, setSortBy] = useState(viewState.sortBy);
+  const [page, setPage] = useState(viewState.page);
   const [modal,    setModal]    = useState(null); // null | 'new' | client obj
   const [activityClient, setActivityClient] = useState(null);
   const [delId,    setDelId]    = useState(null);
@@ -234,16 +474,28 @@ function Clients() {
   const [saving,   setSaving]   = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [subTarget, setSubTarget] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkActivityId, setBulkActivityId] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [pageFeedback, setPageFeedback] = useState(null);
   const passwordError = getPasswordStrengthError(form.password || '', { required: modal === 'new' });
   const passwordConfirmError = (form.password || '') && form.password !== form.confirm_password
     ? 'Las contrasenas no coinciden.'
     : '';
 
   useEffect(() => {
-    Promise.all([clientsApi.list(), groupsApi.list()])
-      .then(([cr, gr]) => { setClients(cr.data.data); setGroups(gr.data.data); })
+    Promise.all([clientsApi.list(), groupsApi.list(), activitiesApi.list()])
+      .then(([cr, gr, ar]) => {
+        setClients(cr.data.data);
+        setGroups(gr.data.data);
+        setActivities(ar.data.data);
+      })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    setViewState({ search, groupFilter, subscriptionFilter, sortBy, page });
+  }, [groupFilter, page, search, setViewState, sortBy, subscriptionFilter]);
 
   const openNew  = ()  => { setForm({ name:'', email:'', child_name:'', age:'', group_ids:[], password:'', confirm_password:'' }); setFeedback(null); setModal('new'); };
   const openEdit = (c) => { setForm({ name: c.user?.name, email: c.user?.email, child_name: c.childName, diagnosis_notes: c.diagnosisNotes, group_ids: c.groups?.map(group => group.id) || [], password:'', confirm_password:'' }); setFeedback(null); setModal(c); };
@@ -275,7 +527,62 @@ function Clients() {
   const del = async () => {
     await clientsApi.delete(delId);
     setClients(p => p.filter(c => c.id !== delId));
+    setSelectedIds(p => p.filter(id => id !== delId));
     setDelId(null);
+  };
+
+  const handleToggleClient = (clientId) => {
+    setSelectedIds((current) => current.includes(clientId)
+      ? current.filter((id) => id !== clientId)
+      : [...current, clientId]);
+  };
+
+  const handleToggleVisibleClients = () => {
+    const visibleIds = visibleClients.map((client) => client.id);
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+    setSelectedIds((current) => allVisibleSelected
+      ? current.filter((id) => !visibleIds.includes(id))
+      : [...new Set([...current, ...visibleIds])]);
+  };
+
+  const handleBulkAssign = async () => {
+    if (!bulkActivityId || selectedIds.length === 0) return;
+
+    setBulkBusy(true);
+    setPageFeedback(null);
+    try {
+      await assignmentsApi.bulk({
+        activity_id: bulkActivityId,
+        client_ids: selectedIds,
+        assign_all: false,
+      });
+      const refreshed = await activitiesApi.list();
+      setActivities(refreshed.data.data);
+      setSelectedIds([]);
+      setBulkActivityId('');
+      setPageFeedback({ type: 'success', message: 'Actividad asignada a los clientes seleccionados.' });
+    } catch (error) {
+      setPageFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudo asignar la actividad seleccionada.') });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleBulkDeactivate = async () => {
+    if (selectedIds.length === 0) return;
+
+    setBulkBusy(true);
+    setPageFeedback(null);
+    try {
+      await Promise.all(selectedIds.map((id) => clientsApi.delete(id)));
+      setClients((current) => current.filter((client) => !selectedIds.includes(client.id)));
+      setSelectedIds([]);
+      setPageFeedback({ type: 'success', message: 'Clientes desactivados correctamente.' });
+    } catch (error) {
+      setPageFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudieron desactivar los clientes seleccionados.') });
+    } finally {
+      setBulkBusy(false);
+    }
   };
 
   const getClientGroupLabel = (client) => {
@@ -306,10 +613,15 @@ function Clients() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const visibleClients = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const allVisibleSelected = visibleClients.length > 0 && visibleClients.every((client) => selectedIds.includes(client.id));
 
   useEffect(() => {
     setPage(1);
   }, [search, groupFilter, subscriptionFilter, sortBy]);
+
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => clients.some((client) => client.id === id)));
+  }, [clients]);
 
   useEffect(() => {
     if (page > totalPages) {
@@ -371,20 +683,37 @@ function Clients() {
           </div>
         )}
       />
-      {filtered.length === 0 ? <Empty icon="👶" title="Sin clientes" subtitle="Añade tu primer alumno" /> :
+      {pageFeedback && <Notice variant={pageFeedback.type} className="mb-3">{pageFeedback.message}</Notice>}
+      {filtered.length > 0 && (
+        <Card className="mb-3 flex flex-wrap items-center gap-2 p-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-[var(--tx2)]">
+            <input type="checkbox" checked={allVisibleSelected} onChange={handleToggleVisibleClients} />
+            Seleccionar visibles
+          </label>
+          <Badge className="search-visible-badge clients-visible-badge" variant="blue">{selectedIds.length} seleccionados</Badge>
+          <Select aria-label="Asignar actividad a clientes seleccionados" value={bulkActivityId} onChange={e => setBulkActivityId(e.target.value)} className="search-filter-select clients-filter-select !w-auto min-w-[220px] text-sm">
+            <option value="">Asignar actividad...</option>
+            {activities.map(activity => <option key={activity.id} value={activity.id}>{activity.title}</option>)}
+          </Select>
+          <Button size="sm" onClick={handleBulkAssign} disabled={bulkBusy || !bulkActivityId || selectedIds.length === 0}>Asignar a selección</Button>
+          <Button size="sm" variant="danger" onClick={handleBulkDeactivate} disabled={bulkBusy || selectedIds.length === 0}>Desactivar selección</Button>
+        </Card>
+      )}
+      {filtered.length === 0 ? <Empty icon="👶" title="Sin clientes" subtitle="Añade tu primer alumno" action={<Button onClick={openNew}>Crear alumno</Button>} /> :
         <ListCollection className="clients-list-shell">
           <ListGrid columns={columnCount}>
           {visibleClients.map(c => (
             <ListRow
               key={c.id}
               className="clients-list-row"
-              avatar={<div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">{(c.childName || '?').slice(0, 2).toUpperCase()}</div>}
+              avatar={<div className="flex items-center gap-2"><input type="checkbox" checked={selectedIds.includes(c.id)} onChange={() => handleToggleClient(c.id)} aria-label={`Seleccionar ${c.childName || 'cliente'}`} /><div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ac)] text-xs font-black text-white">{(c.childName || '?').slice(0, 2).toUpperCase()}</div></div>}
               title={c.childName}
               subtitle={c.user?.name}
               meta={renderClientGroups(c)}
               badges={<span className="cursor-pointer" onClick={() => setSubTarget({ entity: c, type: 'client' })}><SubBadge sub={c.subscription} className="clients-item-badge" /></span>}
               actions={(
                 <>
+                  <IconButton icon="💳" label="Gestionar suscripción" variant="secondary" className="clients-action-btn" onClick={() => setSubTarget({ entity: c, type: 'client' })} />
                   <IconButton icon="🎯" label="Actividades y progreso" variant="primary" className="clients-action-btn client-activity-launch-btn" onClick={() => setActivityClient(c)} />
                   <ActionIconButton className="clients-action-btn" onClick={() => openEdit(c)} />
                   <ActionIconButton action="delete" className="clients-action-btn" onClick={() => setDelId(c.id)} />
@@ -475,10 +804,15 @@ function Activities() {
   const [objects,  setObjects] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading,  setLoading] = useState(true);
-  const [search,   setSearch]  = useState('');
+  const [viewState, setViewState] = usePersistentViewState('specialist.activities.filters', {
+    search: '',
+    statusFilter: 'all',
+    clientFilter: 'all',
+  });
+  const [search,   setSearch]  = useState(viewState.search);
   const [columnCount, setColumnCount] = useListColumns('specialist.activities', 1);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [clientFilter, setClientFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(viewState.statusFilter);
+  const [clientFilter, setClientFilter] = useState(viewState.clientFilter);
   const [modal,    setModal]   = useState(false);
   const [editAct,  setEditAct] = useState(null);
   const [delId,    setDelId]   = useState(null);
@@ -487,6 +821,9 @@ function Activities() {
   const [form,     setForm]    = useState({ title:'', instructions:'', selObjs:[], assignMode:'all', selClients:[], selGroups:[] });
   const [saving,   setSaving]  = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [pageFeedback, setPageFeedback] = useState(null);
 
   const getAudience = (activity) => activity?.audience || null;
   const getAssignedClientIds = (activity) => [...new Set((activity.assignments || []).map(assignment => assignment.clientId))];
@@ -549,6 +886,10 @@ function Activities() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    setViewState({ search, statusFilter, clientFilter });
+  }, [clientFilter, search, setViewState, statusFilter]);
 
   const openNew  = () => {
     setEditAct(null);
@@ -636,6 +977,55 @@ function Activities() {
     return matchesSearch && matchesClient && matchesStatus;
   });
 
+  const handleToggleActivity = (activityId) => {
+    setSelectedIds((current) => current.includes(activityId)
+      ? current.filter((id) => id !== activityId)
+      : [...current, activityId]);
+  };
+
+  const handleAssignSelectionToAll = async () => {
+    if (selectedIds.length === 0) return;
+
+    setBulkBusy(true);
+    setPageFeedback(null);
+    try {
+      await Promise.all(selectedIds.map((activityId) => assignmentsApi.bulk({
+        activity_id: activityId,
+        assign_all: true,
+        replace_existing: true,
+      })));
+      const refreshed = await activitiesApi.list();
+      setActs(refreshed.data.data);
+      setSelectedIds([]);
+      setPageFeedback({ type: 'success', message: 'Actividades reasignadas a todos tus clientes.' });
+    } catch (error) {
+      setPageFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudieron reasignar las actividades seleccionadas.') });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+
+    setBulkBusy(true);
+    setPageFeedback(null);
+    try {
+      await Promise.all(selectedIds.map((activityId) => activitiesApi.delete(activityId)));
+      setActs((current) => current.filter((activity) => !selectedIds.includes(activity.id)));
+      setSelectedIds([]);
+      setPageFeedback({ type: 'success', message: 'Actividades eliminadas correctamente.' });
+    } catch (error) {
+      setPageFeedback({ type: 'error', message: getApiErrorMessage(error, 'No se pudieron eliminar las actividades seleccionadas.') });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => acts.some((activity) => activity.id === id)));
+  }, [acts]);
+
   if (loading) return <div className="flex justify-center py-20"><Spinner size={32}/></div>;
 
   return (
@@ -668,14 +1058,22 @@ function Activities() {
           </div>
         )}
       />
-      {filtered.length === 0 ? <Empty icon="📋" title="Sin actividades" /> :
+      {pageFeedback && <Notice variant={pageFeedback.type} className="mb-3">{pageFeedback.message}</Notice>}
+      {filtered.length > 0 && (
+        <Card className="mb-3 flex flex-wrap items-center gap-2 p-3">
+          <Badge className="search-visible-badge" variant="blue">{selectedIds.length} seleccionadas</Badge>
+          <Button size="sm" onClick={handleAssignSelectionToAll} disabled={bulkBusy || selectedIds.length === 0}>Asignar selección a todos</Button>
+          <Button size="sm" variant="danger" onClick={handleBulkDelete} disabled={bulkBusy || selectedIds.length === 0}>Eliminar selección</Button>
+        </Card>
+      )}
+      {filtered.length === 0 ? <Empty icon="📋" title="Sin actividades" subtitle="Crea tu primera actividad para poder asignarla a tus alumnos." action={<Button onClick={openNew}>Crear actividad</Button>} /> :
         <ListCollection className="entity-list-shell">
           <ListGrid columns={columnCount}>
           {filtered.map(a => (
             <ListRow
               key={a.id}
               className="entity-list-row"
-              avatar={<div className="flex min-h-11 min-w-11 items-center justify-center rounded-[16px] bg-[var(--bg2)] px-2 text-lg">{a.activityObjects?.slice(0, 4).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div>}
+              avatar={<div className="flex items-center gap-2"><input type="checkbox" checked={selectedIds.includes(a.id)} onChange={() => handleToggleActivity(a.id)} aria-label={`Seleccionar ${a.title || 'actividad'}`} /><div className="flex min-h-11 min-w-11 items-center justify-center rounded-[16px] bg-[var(--bg2)] px-2 text-lg">{a.activityObjects?.slice(0, 4).map(ao => <span key={ao.id}>{ao.object?.em}</span>)}</div></div>}
               title={a.title}
               subtitle={`${a.activityObjects?.length || 0} objetos · ${getAssignmentSummary(a)}`}
               meta={<p className="text-[11px] text-[var(--tx3)]">{getAssignmentDetail(a)}</p>}
@@ -802,6 +1200,7 @@ function Activities() {
 
 /* ── Objects page ──────────────────────────────────────────────────────── */
 function Objects() {
+  const currentUser = useAuthStore(state => state.user);
   const [objects,  setObjects]  = useState([]);
   const [cats,     setCats]     = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -855,6 +1254,8 @@ function Objects() {
   const getRepresentation = (object, level) => object.representations?.find(rep => rep.level === level);
   const repDraftKey = (objectId, level) => `${objectId}:${level}`;
   const apiLevelFor = (level) => ({ model_3d: '1', photo: '2', drawing: '3' }[level]);
+  const canManageObject = (object) => Boolean(object?.ownerId && object.ownerId === currentUser?.id);
+  const isReadOnlyObject = Boolean(editObj && !canManageObject(editObj));
 
   const refreshObject = async (objectId) => {
     const refreshed = await objectsApi.get(objectId);
@@ -879,6 +1280,10 @@ function Objects() {
   };
 
   const openEdit = (object) => {
+    if (!canManageObject(object)) {
+      return;
+    }
+
     const model3d = getRepresentation(object, 'model_3d');
     const photo = getRepresentation(object, 'photo');
     const drawing = getRepresentation(object, 'drawing');
@@ -910,6 +1315,11 @@ function Objects() {
   };
 
   const save = async () => {
+    if (editObj && !canManageObject(editObj)) {
+      setFeedback({ type: 'error', message: 'Los objetos públicos del catálogo son de solo lectura para especialistas.' });
+      return;
+    }
+
     setSaving(true);
     setFeedback(null);
 
@@ -957,6 +1367,12 @@ function Objects() {
   const del = async () => { await objectsApi.delete(delId); setObjects(p=>p.filter(o=>o.id!==delId)); setDelId(null); };
 
   const uploadRep = async (objId, level, file) => {
+    const object = objects.find((item) => item.id === objId);
+    if (!canManageObject(object)) {
+      setFeedback({ type: 'error', message: 'Solo puedes subir archivos en objetos privados creados por ti.' });
+      return;
+    }
+
     const fd = new FormData();
     fd.append('file', file);
     fd.append('level', level);
@@ -965,6 +1381,12 @@ function Objects() {
   };
 
   const saveRepUrl = async (objectId) => {
+    const object = objects.find((item) => item.id === objectId);
+    if (!canManageObject(object)) {
+      setFeedback({ type: 'error', message: 'Solo puedes editar representaciones de objetos privados creados por ti.' });
+      return;
+    }
+
     const key = repDraftKey(objectId, 'model_3d');
     const value = (repDrafts[key] || '').trim();
     if (!value) return;
@@ -980,6 +1402,12 @@ function Objects() {
   };
 
   const deleteRep = async (objectId, level) => {
+    const object = objects.find((item) => item.id === objectId);
+    if (!canManageObject(object)) {
+      setFeedback({ type: 'error', message: 'Solo puedes eliminar representaciones de objetos privados creados por ti.' });
+      return;
+    }
+
     const key = repDraftKey(objectId, level);
     setRepActionKey(key);
     try {
@@ -1020,12 +1448,13 @@ function Objects() {
           </div>
         }
       />
-      {filtered.length === 0 ? <Empty icon="📦" title="Sin objetos" subtitle="Añade tu primer objeto" /> : <ListCollection className="entity-list-shell"><ListGrid columns={columnCount}>
+      {filtered.length === 0 ? <Empty icon="📦" title="Sin objetos" subtitle="Añade tu primer objeto" action={<Button onClick={openNew}>Crear objeto</Button>} /> : <ListCollection className="entity-list-shell"><ListGrid columns={columnCount}>
         {filtered.map(o => {
           const reps = o.representations || [];
           const has3d = reps.some(r=>r.level==='model_3d');
           const hasPhoto = reps.some(r=>r.level==='photo');
           const hasDraw  = reps.some(r=>r.level==='drawing');
+          const canManage = canManageObject(o);
           return (
             <div key={o.id} className={`bg-[var(--sf)] border-2 rounded-[var(--rl)] overflow-hidden transition-colors ${expanded===o.id?'border-[var(--ac)]':'border-[var(--bd)]'}`}>
               <div className="object-card entity-list-row cursor-pointer" onClick={()=>setExpanded(expanded===o.id?null:o.id)}>
@@ -1049,8 +1478,14 @@ function Objects() {
                     <Badge className="entity-item-badge" variant={o.ownerId ? 'default' : 'green'}>{o.ownerId ? 'Privado' : 'Público'}</Badge>
                   </div>
                   <div className="object-card__actions">
-                    <ActionIconButton className="entity-action-btn" onClick={e=>{e.stopPropagation();openEdit(o);}} />
-                    <ActionIconButton action="delete" className="entity-action-btn" onClick={e=>{e.stopPropagation();setDelId(o.id);}} />
+                    {canManage ? (
+                      <>
+                        <ActionIconButton className="entity-action-btn" onClick={e=>{e.stopPropagation();openEdit(o);}} />
+                        <ActionIconButton action="delete" className="entity-action-btn" onClick={e=>{e.stopPropagation();setDelId(o.id);}} />
+                      </>
+                    ) : (
+                      <Badge className="entity-item-badge" variant="blue">Solo lectura</Badge>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1070,43 +1505,59 @@ function Objects() {
                               ? (
                                 <>
                                   <div className="relative aspect-video overflow-hidden rounded-[var(--r)] border border-[var(--bd)] bg-black/5"><iframe src={rep.model3dUrl} className="absolute inset-0 w-full h-full" allowFullScreen title={`${o.name} 3D`} /></div>
-                                  <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
-                                  <div className="flex gap-2">
-                                    <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
-                                    <ActionIconButton action="delete" onClick={() => deleteRep(o.id, lvl)} disabled={isBusy} />
-                                  </div>
+                                  {canManage ? (
+                                    <>
+                                      <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
+                                      <div className="flex gap-2">
+                                        <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
+                                        <ActionIconButton action="delete" onClick={() => deleteRep(o.id, lvl)} disabled={isBusy} />
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <p className="text-xs text-[var(--tx3)]">Representación pública del catálogo. Crea un objeto privado si necesitas modificarla.</p>
+                                  )}
                                 </>
                               )
                               : (
                                 <>
                                   <img src={rep.fileUrl} alt="" className="w-full h-32 rounded-[var(--r)] border border-[var(--bd)] object-cover bg-white" />
-                                  <div className="flex gap-2">
-                                    <label className="inline-flex items-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer whitespace-nowrap px-2.5 py-1 text-xs bg-[var(--sf)] text-[var(--tx)] border-[var(--bd)] hover:bg-[var(--bg2)]">
-                                      Reemplazar
-                                      <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadRep(o.id, n, e.target.files[0])} />
-                                    </label>
-                                    <ActionIconButton action="delete" onClick={() => deleteRep(o.id, lvl)} disabled={isBusy} />
-                                  </div>
+                                  {canManage ? (
+                                    <div className="flex gap-2">
+                                      <label className="inline-flex items-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer whitespace-nowrap px-2.5 py-1 text-xs bg-[var(--sf)] text-[var(--tx)] border-[var(--bd)] hover:bg-[var(--bg2)]">
+                                        Reemplazar
+                                        <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadRep(o.id, n, e.target.files[0])} />
+                                      </label>
+                                      <ActionIconButton action="delete" onClick={() => deleteRep(o.id, lvl)} disabled={isBusy} />
+                                    </div>
+                                  ) : (
+                                    <p className="text-xs text-[var(--tx3)]">Representación pública del catálogo. Crea un objeto privado si necesitas modificarla.</p>
+                                  )}
                                 </>
                               )
                             }
                           </>
                         ) : (
                           <div className="border-2 border-dashed border-[var(--bd)] rounded-lg p-4 text-center bg-white">
-                            {lvl==='model_3d' ? (
-                              <>
-                                <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
-                                <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
-                              </>
-                            ) : (
-                              <>
-                                <p className="text-[var(--tx3)] text-xs mb-1">Sin archivo</p>
-                                <label className="text-xs text-[var(--ac)] font-bold cursor-pointer">
-                                  📁 Subir
-                                  <input type="file" accept="image/*" className="hidden" onChange={e=>e.target.files[0]&&uploadRep(o.id,n,e.target.files[0])} />
-                                </label>
-                              </>
-                            )}
+                            {lvl === 'model_3d'
+                              ? (canManage
+                                ? (
+                                  <>
+                                    <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
+                                    <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
+                                  </>
+                                )
+                                : <p className="text-[var(--tx3)] text-xs">Sin representación disponible en este objeto público.</p>)
+                              : (canManage
+                                ? (
+                                  <>
+                                    <p className="text-[var(--tx3)] text-xs mb-1">Sin archivo</p>
+                                    <label className="text-xs text-[var(--ac)] font-bold cursor-pointer">
+                                      📁 Subir
+                                      <input type="file" accept="image/*" className="hidden" onChange={e=>e.target.files[0]&&uploadRep(o.id,n,e.target.files[0])} />
+                                    </label>
+                                  </>
+                                )
+                                : <p className="text-[var(--tx3)] text-xs">Sin archivo disponible en este objeto público.</p>)}
                           </div>
                         )}
                       </div>
@@ -1121,15 +1572,16 @@ function Objects() {
       <Modal open={modal} onClose={closeModal} title={editObj?'Editar objeto':'Nuevo objeto'} maxWidth={860}>
         <div className="space-y-3">
           {feedback && <Notice variant={feedback.type}>{feedback.message}</Notice>}
+          {isReadOnlyObject && <Notice variant="info">Los objetos públicos del catálogo son de solo lectura para especialistas.</Notice>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Input label="Nombre" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} />
-            <Input label="Emoji"  value={form.em}   onChange={e=>setForm({...form,em:e.target.value})} />
-            <Select label="Categoría" value={form.category_id} onChange={e=>setForm({...form,category_id:e.target.value})}>
+            <Input label="Nombre" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} disabled={isReadOnlyObject} />
+            <Input label="Emoji"  value={form.em}   onChange={e=>setForm({...form,em:e.target.value})} disabled={isReadOnlyObject} />
+            <Select label="Categoría" value={form.category_id} onChange={e=>setForm({...form,category_id:e.target.value})} disabled={isReadOnlyObject}>
             <option value="">Selecciona...</option>
             {cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
           </div>
-          <Input label="URL del fichero 3D" value={form.model3d} onChange={e=>setForm({...form,model3d:e.target.value})} placeholder="https://sketchfab.com/models/.../embed" />
+          <Input label="URL del fichero 3D" value={form.model3d} onChange={e=>setForm({...form,model3d:e.target.value})} placeholder="https://sketchfab.com/models/.../embed" disabled={isReadOnlyObject} />
           {form.model3d && (
             <div className="modal-panel space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
               <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Previsualización 3D</p>
@@ -1141,10 +1593,14 @@ function Objects() {
           <div className="grid gap-3 md:grid-cols-2">
             <div className="modal-panel space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
               <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Foto</p>
-              <label className="modal-upload flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--ac)]">
-                Subir foto
-                <input type="file" accept="image/*" className="hidden" onChange={e => setFilePreview('photoFile', 'photoPreview', e.target.files?.[0] || null)} />
-              </label>
+              {isReadOnlyObject ? (
+                <div className="modal-upload flex items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--tx3)]">Solo lectura</div>
+              ) : (
+                <label className="modal-upload flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--ac)]">
+                  Subir foto
+                  <input type="file" accept="image/*" className="hidden" onChange={e => setFilePreview('photoFile', 'photoPreview', e.target.files?.[0] || null)} />
+                </label>
+              )}
               {form.photoPreview ? (
                 <img src={form.photoPreview} alt="Previsualización de foto" className="h-40 w-full rounded-[var(--r)] border border-[var(--bd)] object-cover bg-white" />
               ) : (
@@ -1153,10 +1609,14 @@ function Objects() {
             </div>
             <div className="modal-panel space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
               <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Dibujo</p>
-              <label className="modal-upload flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--ac)]">
-                Subir dibujo
-                <input type="file" accept="image/*" className="hidden" onChange={e => setFilePreview('drawingFile', 'drawingPreview', e.target.files?.[0] || null)} />
-              </label>
+              {isReadOnlyObject ? (
+                <div className="modal-upload flex items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--tx3)]">Solo lectura</div>
+              ) : (
+                <label className="modal-upload flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--ac)]">
+                  Subir dibujo
+                  <input type="file" accept="image/*" className="hidden" onChange={e => setFilePreview('drawingFile', 'drawingPreview', e.target.files?.[0] || null)} />
+                </label>
+              )}
               {form.drawingPreview ? (
                 <img src={form.drawingPreview} alt="Previsualización de dibujo" className="h-40 w-full rounded-[var(--r)] border border-[var(--bd)] object-cover bg-white" />
               ) : (
@@ -1167,7 +1627,7 @@ function Objects() {
         </div>
         <div className="modal-actions flex gap-2 justify-end mt-4">
           <Button variant="secondary" onClick={closeModal} disabled={saving}>Cancelar</Button>
-          <Button disabled={saving || !form.name || !form.category_id} onClick={save}>{saving ? 'Guardando...' : editObj?'Guardar':'Crear'}</Button>
+          <Button disabled={saving || isReadOnlyObject || !form.name || !form.category_id} onClick={save}>{saving ? 'Guardando...' : editObj?'Guardar':'Crear'}</Button>
         </div>
       </Modal>
       <Confirm open={!!delId} message="Se eliminará el objeto y sus representaciones." onConfirm={del} onCancel={()=>setDelId(null)} />
@@ -1228,7 +1688,7 @@ function Groups() {
           </div>
         )}
       />
-      {filtered.length === 0 ? <Empty icon="👥" title="Sin grupos" subtitle="Los grupos permiten asignar actividades a varios clientes a la vez" /> :
+      {filtered.length === 0 ? <Empty icon="👥" title="Sin grupos" subtitle="Los grupos permiten asignar actividades a varios clientes a la vez" action={<Button onClick={openNew}>Crear grupo</Button>} /> :
         <ListCollection className="entity-list-shell">
           <ListGrid columns={columnCount}>
           {filtered.map(g=>(

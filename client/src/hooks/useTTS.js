@@ -31,6 +31,10 @@ function resolveVoice(voices, language) {
     .sort((left, right) => right.score - left.score)[0]?.voice;
 }
 
+function getVoiceId(voice) {
+  return voice.voiceURI || `${voice.lang}::${voice.name}`;
+}
+
 function loadVoices() {
   if (!window.speechSynthesis) return Promise.resolve([]);
 
@@ -56,6 +60,7 @@ function loadVoices() {
 export function useTTS() {
   const enabled = usePrefsStore(s => s.ttsEnabled);
   const language = usePrefsStore(s => s.ttsLanguage);
+  const voiceId = usePrefsStore(s => s.ttsVoiceId);
   const rate = usePrefsStore(s => s.ttsRate);
   const volume = usePrefsStore(s => s.ttsVolume);
   const speak = useCallback(async (text, options = {}) => {
@@ -67,12 +72,14 @@ export function useTTS() {
     u.rate = rate;
     u.volume = volume;
     const voices = await loadVoices();
-    const voice = resolveVoice(voices, language);
+    const preferredVoice = voices.find((voice) => getVoiceId(voice) === voiceId);
+    const voice = preferredVoice || resolveVoice(voices, language);
     if (voice) {
       u.voice = voice;
+      u.lang = voice.lang || language;
     }
     window.speechSynthesis.speak(u);
-  }, [enabled, language, rate, volume]);
+  }, [enabled, language, voiceId, rate, volume]);
 
   const stop = useCallback(() => {
     if (!window.speechSynthesis) return;

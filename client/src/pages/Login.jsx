@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router';
 import useAuthStore  from '../stores/authStore';
 import usePrefsStore from '../stores/prefsStore';
 import { Button, Input } from '../components/ui';
+import BrandLogo from '../components/BrandLogo';
 
 const ROLE_PRESETS = [
   { id: 'client', label: 'Cliente', icon: '👶', hint: 'Padre/tutor', email: 'familia@ejemplo.com', password: 'Client1234!' },
   { id: 'specialist', label: 'Especialista', icon: '🧑‍⚕️', hint: 'Profesional', email: 'especialista@proyectogigi.com', password: 'Spec1234!' },
-  { id: 'admin', label: 'Admin', icon: '⚙️', hint: 'Gestión', email: 'admin@proyectogigi.com', password: 'Admin1234!' },
+  { id: 'admin', label: 'Admin', icon: '🛡️', hint: 'Gestión', email: 'admin@proyectogigi.com', password: 'Admin1234!' },
 ];
 
 export default function Login() {
@@ -48,7 +49,7 @@ export default function Login() {
     <div className="lw">
       <div className="lc login-card scale-in shadow-soft">
         <h1 className="ll login-title">
-          Proyecto<b>Gigi</b>
+          <BrandLogo className="login-brand" imageClassName="brand-logo__image--login" syncFavicon />
         </h1>
         <p className="login-subtitle">
           Pulsa un rol para entrar
@@ -59,6 +60,9 @@ export default function Login() {
             <button
               key={role.id}
               type="button"
+              role="tab"
+              aria-selected={selectedRole === role.id}
+              aria-label={`Acceder como ${role.label}`}
               className={`login-role-btn ${selectedRole === role.id ? 'is-active' : ''}`}
               onClick={() => pickRole(role.id)}
             >
@@ -95,6 +99,7 @@ export default function Login() {
                 key={p.id}
                 type="button"
                 title={p.label}
+                aria-label={`Usar paleta ${p.label}`}
                 onClick={() => setPalette(p.id)}
                 className={`pbtn ${paletteId === p.id ? 'on' : ''}`}
                 style={{ background: p.bg, borderColor: p.ac }}
@@ -102,7 +107,7 @@ export default function Login() {
             ))}
             </div>
           </div>
-          <Button type="submit" disabled={loading} className="mt-1 w-full justify-center" size="lg">
+          <Button type="submit" disabled={loading} className="mt-1 w-full justify-center" size="lg" aria-label="Entrar en la aplicación">
             {loading ? 'Entrando…' : 'Entrar'}
           </Button>
           <div className="text-center text-[11px] text-[var(--tx3)]">

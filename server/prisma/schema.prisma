@@ -290,3 +290,40 @@ model RefreshToken {
 
   @@map("refresh_tokens")
 }
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?  @map("actor_id")
+  actorRole  String?  @map("actor_role")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  message    String?
+  diff       Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@map("audit_logs")
+}
+
+model SubscriptionReminderJob {
+  id                  String   @id @default(uuid())
+  entityType          String   @map("entity_type")
+  entityId            String   @map("entity_id")
+  jobType             String   @default("expiry_15d") @map("job_type")
+  recipientEmail      String?  @map("recipient_email")
+  sendAt              DateTime @map("send_at")
+  subscriptionExpires DateTime @map("subscription_expires")
+  status              String   @default("pending")
+  attempts            Int      @default(0)
+  lastError           String?  @map("last_error") @db.Text
+  sentAt              DateTime? @map("sent_at")
+  payload             Json?
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@unique([entityType, entityId, jobType, subscriptionExpires])
+  @@index([status, sendAt])
+  @@map("subscription_reminder_jobs")
+}
