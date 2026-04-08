@@ -6,7 +6,7 @@ import {
 } from '../../api';
 import {
   Button, Badge, Card, Input, Select, Textarea, ActionIconButton, ColorPickerField,
-  SearchBar, ColumnToggle, Confirm, Modal, Empty, Spinner, SubBadge, Divider, Notice, OnboardingPanel,
+  SearchBar, ColumnToggle, Confirm, Modal, Empty, Spinner, SubBadge, Divider, Notice, OnboardingPanel, MetricCard,
 } from '../../components/ui';
 import { CategoryManagementView } from '../../components/modals/CategoryManagerModal';
 import SubscriptionModal from '../../components/modals/SubscriptionModal';
@@ -19,45 +19,15 @@ function getApiErrorMessage(error, fallback) {
 }
 
 function DashboardMetricCard({ value, label, helpText }) {
-  const [tooltipOpen, setTooltipOpen] = useState(false);
-
-  if (!helpText) {
-    return (
-      <div className="sp-dash-metric min-h-[88px] rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-[15px] py-3">
-        <p className="text-[1.8rem] font-black leading-none text-[var(--ac)]">{value ?? '0'}</p>
-        <p className="mt-1 text-[.65rem] font-bold uppercase tracking-[0.05em] text-[var(--tx3)]">{label}</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="relative">
-      <button
-        type="button"
-        className="sp-dash-metric w-full min-h-[88px] rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-[15px] py-3 text-left focus-visible:outline-none"
-        onClick={() => setTooltipOpen((current) => !current)}
-        onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) {
-            setTooltipOpen(false);
-          }
-        }}
-        aria-expanded={tooltipOpen}
-        aria-label={`${label}. Pulsa para ver la explicación de la métrica.`}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="text-[1.8rem] font-black leading-none text-[var(--ac)]">{value ?? '0'}</p>
-            <p className="mt-1 text-[.65rem] font-bold uppercase tracking-[0.05em] text-[var(--tx3)]">{label}</p>
-          </div>
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[var(--bd)] bg-[var(--bg2)] text-xs font-black text-[var(--tx3)]" aria-hidden="true">i</span>
-        </div>
-      </button>
-      {tooltipOpen && (
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-10 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-3 py-2 text-xs leading-relaxed text-[var(--tx2)] shadow-[var(--shadow-soft)]">
-          {helpText}
-        </div>
-      )}
-    </div>
+    <MetricCard
+      value={value}
+      label={label}
+      helpText={helpText}
+      className="sp-dash-metric min-h-[88px] rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-[15px] py-3"
+      valueClassName="text-[1.8rem] font-black leading-none text-[var(--ac)]"
+      labelClassName="mt-1 text-[.65rem] font-bold uppercase tracking-[0.05em] text-[var(--tx3)]"
+    />
   );
 }
 

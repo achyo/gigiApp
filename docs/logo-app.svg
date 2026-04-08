@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="614.59998"
+   height="134.10001"
+   viewBox="0 0 614.59998 134.10001"
+   version="1.1"
+   id="svg114"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1">
+    <style
+       id="style1">
+      .brand-name  { font-family: Arial, Helvetica, sans-serif; font-size: 52px; font-weight: 500; letter-spacing: -1px; }
+      .brand-sm    { font-family: Arial, Helvetica, sans-serif; font-size: 17px; font-weight: 500; }
+      .brand-tag   { font-family: Arial, Helvetica, sans-serif; font-size: 13px; letter-spacing: 3px; }
+      .body        { font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
+      .sec         { font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 2px; fill: #888780; }
+      .sw          { font-family: Arial, Helvetica, sans-serif; font-size: 11px; }
+      .label-md    { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 500; }
+      .label-desc  { font-family: Arial, Helvetica, sans-serif; font-size: 12px; }
+      .label-sub   { font-family: Arial, Helvetica, sans-serif; font-size: 13px; letter-spacing: 1.5px; }
+      .note        { font-family: Arial, Helvetica, sans-serif; font-size: 12px; fill: #444441; }
+    </style>
+  </defs>
+  <!-- FONDO GLOBAL -->
+  <rect
+     width="900"
+     height="1260"
+     fill="#f7f8fb"
+     id="rect1"
+     x="-93.723038"
+     y="-92.335129" />
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 1: FONDO BLANCO                              -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <rect
+     x="-55.400002"
+     y="-40.899998"
+     width="800"
+     height="210"
+     rx="14"
+     fill="#ffffff"
+     stroke="#d3d1c7"
+     stroke-width="0.5"
+     id="rect2" />
+  <!-- ICONO BOMBILLA CON BRAILLE — grande -->
+  <!-- Cuerpo -->
+  <path
+     d="m 46.599999,119.1 q -22,-19.999999 -22,-43.999999 0,-34 32,-44 32,-10 46.000001,14 10,18 0,38 -5.000001,12 -13.000001,21.999999 v 14 q 0,5 -4,5 h -18 q -4,0 -4,-5 v -14 q -9,-9.999999 -17,14 z"
+     fill="#185fa5"
+     id="path2" />
+  <!-- Base -->
+  <rect
+     x="63.599998"
+     y="122.1"
+     width="22"
+     height="7"
+     rx="2"
+     fill="#0c447c"
+     id="rect3" />
+  <rect
+     x="66.599998"
+     y="129.10001"
+     width="16"
+     height="5"
+     rx="2"
+     fill="#0c447c"
+     id="rect4" />
+  <!-- Brillo -->
+  <ellipse
+     cx="42.599998"
+     cy="59.100002"
+     rx="7"
+     ry="9"
+     fill="#b5d4f4"
+     opacity="0.5"
+     id="ellipse4" />
+  <!-- Braille "i": puntos 2 (izq medio) + 4 (der arriba) — sobre el cuerpo -->
+  <!-- Punto 1 (arriba izq) inactivo -->
+  <circle
+     cx="66.599998"
+     cy="54.100002"
+     r="4.5"
+     fill="#042C53"
+     opacity="0.22"
+     id="circle4"
+     style="fill:#000000;fill-opacity:1" />
+  <!-- Punto 4 (arriba der) ACTIVO -->
+  <circle
+     cx="82.599998"
+     cy="54.100002"
+     r="4.5"
+     fill="#ffffff"
+     id="circle5" />
+  <!-- Punto 2 (medio izq) ACTIVO -->
+  <circle
+     cx="66.599998"
+     cy="69.099998"
+     r="4.5"
+     fill="#ffffff"
+     id="circle6" />
+  <!-- Punto 5 (medio der) inactivo -->
+  <circle
+     cx="82.599998"
+     cy="69.099998"
+     r="4.5"
+     fill="#042C53"
+     opacity="0.22"
+     id="circle7"
+     style="fill:#000000;fill-opacity:1" />
+  <!-- Punto 3 (bajo izq) inactivo -->
+  <circle
+     cx="66.599998"
+     cy="84.099998"
+     r="4.5"
+     fill="#042C53"
+     opacity="0.22"
+     id="circle8"
+     style="fill:#000000;fill-opacity:1" />
+  <!-- Punto 6 (bajo der) inactivo -->
+  <circle
+     cx="82.599998"
+     cy="84.099998"
+     r="4.5"
+     fill="#042C53"
+     opacity="0.22"
+     id="circle9"
+     style="fill:#000000;fill-opacity:1" />
+  <!-- Rayos de luz -->
+  <line
+     x1="54.599998"
+     y1="23.100002"
+     x2="50.599998"
+     y2="7.1000013"
+     stroke="#185fa5"
+     stroke-width="2.2"
+     stroke-linecap="round"
+     id="line9" />
+  <line
+     x1="74.599998"
+     y1="19.100002"
+     x2="74.599998"
+     y2="1.1000015"
+     stroke="#185fa5"
+     stroke-width="2.2"
+     stroke-linecap="round"
+     id="line10" />
+  <line
+     x1="92.599998"
+     y1="27.100002"
+     x2="102.6"
+     y2="13.100001"
+     stroke="#185fa5"
+     stroke-width="1.8"
+     stroke-linecap="round"
+     opacity="0.75"
+     id="line11" />
+  <line
+     x1="108.6"
+     y1="49.100002"
+     x2="126.6"
+     y2="44.100002"
+     stroke="#185fa5"
+     stroke-width="1.5"
+     stroke-linecap="round"
+     opacity="0.6"
+     id="line12" />
+  <line
+     x1="22.599998"
+     y1="49.100002"
+     x2="4.5999994"
+     y2="44.100002"
+     stroke="#185fa5"
+     stroke-width="1.5"
+     stroke-linecap="round"
+     opacity="0.6"
+     id="line13" />
+  <line
+     x1="112.6"
+     y1="71.099998"
+     x2="130.60001"
+     y2="73.099998"
+     stroke="#185fa5"
+     stroke-width="1.2"
+     stroke-linecap="round"
+     opacity="0.4"
+     id="line14" />
+  <line
+     x1="18.599998"
+     y1="71.099998"
+     x2="0.59999925"
+     y2="73.099998"
+     stroke="#185fa5"
+     stroke-width="1.2"
+     stroke-linecap="round"
+     opacity="0.4"
+     id="line15" />
+  <!-- WORDMARK -->
+  <text
+     x="162.60001"
+     y="47.100002"
+     class="brand-name"
+     fill="#185fa5"
+     id="text15">I</text>
+  <text
+     x="186.60001"
+     y="47.100002"
+     class="brand-name"
+     fill="#0c447c"
+     id="text16">lumina</text>
+  <line
+     x1="162.60001"
+     y1="60.100002"
+     x2="614.59998"
+     y2="60.100002"
+     stroke="#185fa5"
+     stroke-width="0.5"
+     opacity="0.3"
+     id="line16" />
+  <text
+     x="162.60001"
+     y="83.099998"
+     class="brand-tag"
+     fill="#185fa5"
+     opacity="0.88"
+     id="text17">TERAPIA VISUAL · LOGOPEDIA</text>
+  <text
+     x="162.60001"
+     y="113.1"
+     class="body"
+     fill="#444441"
+     id="text18">Percibe. Reconoce. Comprende.</text>
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 2: FONDO AZUL PRIMARIO                       -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- Icono negativo -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 3: FONDO AZUL PROFUNDO                       -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 4: ICONOS Y BADGES                           -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- Icon azul -->
+  <!-- Icon oscuro -->
+  <!-- Icon blanco -->
+  <!-- Badge azul -->
+  <!-- Badge blanco -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 5: PALETA                                    -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 6: EJE TERAPÉUTICO                           -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- Icono concreto: bombilla sólida pequeña -->
+  <!-- Icono abstracto: solo puntos braille y rayo mínimo -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- PIE                                                   -->
+  <!-- ══════════════════════════════════════════════════════ -->
+</svg>

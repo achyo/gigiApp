@@ -30,6 +30,10 @@ function getCategoryState(category) {
   return { label: 'Privada', variant: 'default', note: 'Solo visible para su creador' };
 }
 
+function canManageCategory(role, userId, category) {
+  return role === 'admin' || category.ownerId === userId;
+}
+
 export function CategoryManagerPanel({ categories, onRefresh, role, onClose, showCloseButton = true }) {
   const user = useAuthStore(state => state.user);
   const [form, setForm] = useState(getInitialForm(role));
@@ -55,6 +59,11 @@ export function CategoryManagerPanel({ categories, onRefresh, role, onClose, sho
   };
 
   const openEdit = (category) => {
+    if (!canManageCategory(role, user?.id, category)) {
+      setFeedback({ type: 'info', message: 'Las categorías públicas son de solo lectura para especialistas.' });
+      return;
+    }
+
     setFeedback(null);
     setEditing(category);
     setForm({
@@ -97,6 +106,12 @@ export function CategoryManagerPanel({ categories, onRefresh, role, onClose, sho
 
   const removeCategory = async () => {
     if (!deleteTarget) return;
+    if (!canManageCategory(role, user?.id, deleteTarget)) {
+      setDeleteTarget(null);
+      setFeedback({ type: 'info', message: 'Las categorías públicas son de solo lectura para especialistas.' });
+      return;
+    }
+
     setSaving(true);
     setFeedback(null);
     try {
@@ -133,7 +148,7 @@ export function CategoryManagerPanel({ categories, onRefresh, role, onClose, sho
 
           <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
             {sortedCategories.map((category) => {
-              const canManage = role === 'admin' || category.ownerId === user?.id;
+              const canManage = canManageCategory(role, user?.id, category);
               const state = getCategoryState(category);
               return (
                 <div key={category.id} className="rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] p-3">
@@ -154,7 +169,7 @@ export function CategoryManagerPanel({ categories, onRefresh, role, onClose, sho
                         <ActionIconButton action="delete" onClick={() => setDeleteTarget(category)} disabled={saving} />
                       </div>
                     ) : (
-                      <Badge variant="default">Compartida</Badge>
+                      <Badge variant="blue">Solo lectura</Badge>
                     )}
                   </div>
                 </div>
@@ -241,6 +256,11 @@ export function CategoryManagementView({ title, subtitle, categories, onRefresh,
   };
 
   const openEdit = (category) => {
+    if (!canManageCategory(role, user?.id, category)) {
+      setFeedback({ type: 'info', message: 'Las categorías públicas son de solo lectura para especialistas.' });
+      return;
+    }
+
     setFeedback(null);
     setEditing(category);
     setForm({
@@ -284,6 +304,11 @@ export function CategoryManagementView({ title, subtitle, categories, onRefresh,
 
   const removeCategory = async () => {
     if (!deleteTarget) return;
+    if (!canManageCategory(role, user?.id, deleteTarget)) {
+      setDeleteTarget(null);
+      setFeedback({ type: 'info', message: 'Las categorías públicas son de solo lectura para especialistas.' });
+      return;
+    }
 
     setSaving(true);
     setFeedback(null);
@@ -341,7 +366,7 @@ export function CategoryManagementView({ title, subtitle, categories, onRefresh,
         ) : (
           <div className="grid items-start gap-2" style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}>
             {filteredCategories.map((category) => {
-              const canManage = role === 'admin' || category.ownerId === user?.id;
+              const canManage = canManageCategory(role, user?.id, category);
               const state = getCategoryState(category);
 
               return (
@@ -367,7 +392,7 @@ export function CategoryManagementView({ title, subtitle, categories, onRefresh,
                         <ActionIconButton action="delete" className="entity-action-btn" onClick={() => setDeleteTarget(category)} disabled={saving} />
                       </>
                     ) : (
-                      <Badge variant="default">Compartida</Badge>
+                      <Badge variant="blue">Solo lectura</Badge>
                     )}
                   </div>
                 </div>

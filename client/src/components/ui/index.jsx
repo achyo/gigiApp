@@ -91,6 +91,86 @@ export function Card({ children, className = '', ...props }) {
   );
 }
 
+export function MetricCard({
+  value,
+  label,
+  helpText,
+  className = '',
+  valueClassName = '',
+  labelClassName = '',
+}) {
+  const [tooltipOpen, setTooltipOpen] = React.useState(false);
+  const containerRef = React.useRef(null);
+  const tooltipId = React.useId();
+
+  React.useEffect(() => {
+    if (!tooltipOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!containerRef.current?.contains(event.target)) {
+        setTooltipOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setTooltipOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [tooltipOpen]);
+
+  if (!helpText) {
+    return (
+      <div className={className}>
+        <p className={valueClassName}>{value ?? '0'}</p>
+        <p className={labelClassName}>{label}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        className={`${className} w-full text-left focus-visible:outline-none`}
+        onClick={() => setTooltipOpen((current) => !current)}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setTooltipOpen(false);
+          }
+        }}
+        aria-expanded={tooltipOpen}
+        aria-describedby={tooltipOpen ? tooltipId : undefined}
+        aria-label={`${label}. Pulsa para ver la explicación de la métrica.`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className={valueClassName}>{value ?? '0'}</p>
+            <p className={labelClassName}>{label}</p>
+          </div>
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[var(--bd)] bg-[var(--bg2)] text-xs font-black text-[var(--tx3)]" aria-hidden="true">i</span>
+        </div>
+      </button>
+      {tooltipOpen && (
+        <div
+          id={tooltipId}
+          className="absolute left-0 right-0 top-[calc(100%+8px)] z-10 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)] px-3 py-2 text-xs leading-relaxed text-[var(--tx2)] shadow-[var(--shadow-soft)]"
+        >
+          {helpText}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Input ───────────────────────────────────────────────────────────────── */
 export function Input({ label, error, className = '', ...props }) {
   const isDateInput = props.type === 'date';

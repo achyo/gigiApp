@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate } from 'react-router';
 import { clientsApi, activitiesApi, groupsApi, assignmentsApi, objectsApi, categoriesApi, specialistsApi } from '../../api';
 import useAuthStore from '../../stores/authStore';
-import { Button, Badge, Card, Input, Select, Textarea, SearchBar, ColumnToggle, TabBar, Confirm, Modal, Empty, Spinner, SubBadge, Notice, ActionIconButton, ColorPickerField, IconButton, OnboardingPanel } from '../../components/ui';
+import { Button, Badge, Card, Input, Select, Textarea, SearchBar, ColumnToggle, TabBar, Confirm, Modal, Empty, Spinner, SubBadge, Notice, ActionIconButton, ColorPickerField, IconButton, OnboardingPanel, MetricCard } from '../../components/ui';
 import { CategoryManagementView } from '../../components/modals/CategoryManagerModal';
 import SubscriptionModal from '../../components/modals/SubscriptionModal';
 import ClientActivityModal from '../../components/modals/ClientActivityModal';
@@ -45,12 +45,16 @@ const SUBSCRIPTION_STATE_ORDER = {
   expired: 5,
 };
 
-function DashboardMetricCard({ value, label }) {
+function DashboardMetricCard({ value, label, helpText }) {
   return (
-    <div className="sp-dash-metric min-h-[88px] rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)]">
-      <p className="text-[1.8rem] font-black leading-none text-[var(--ac)]">{value ?? '0'}</p>
-      <p className="mt-1 text-[.65rem] font-bold uppercase tracking-[0.05em] text-[var(--tx3)]">{label}</p>
-    </div>
+    <MetricCard
+      value={value}
+      label={label}
+      helpText={helpText}
+      className="sp-dash-metric min-h-[88px] rounded-[var(--r)] border border-[var(--bd)] bg-[var(--sf)]"
+      valueClassName="text-[1.8rem] font-black leading-none text-[var(--ac)]"
+      labelClassName="mt-1 text-[.65rem] font-bold uppercase tracking-[0.05em] text-[var(--tx3)]"
+    />
   );
 }
 
@@ -105,6 +109,12 @@ function getToneVariant(tone) {
 function StudentProgressPanel({ overview, loading, error, onOpenClient }) {
   const summary = overview?.summary;
   const students = overview?.students || [];
+  const summaryHelpText = {
+    'Con actividad': 'Muestra cuántos alumnos tienen al menos una actividad asignada frente al total de alumnos bajo seguimiento.',
+    'Avance medio': 'Resume el porcentaje medio de pasos completados entre todos los alumnos con trabajo asignado.',
+    'Precisión media': 'Indica el porcentaje medio de respuestas correctas registradas en las actividades ya realizadas.',
+    'Requieren seguimiento': 'Cuenta los alumnos con baja finalización, baja precisión o actividad pendiente reciente para priorizar intervención.',
+  };
 
   return (
     <DashboardPanel icon="📈" title="Progreso por alumno" className="specialist-progress-panel min-h-[312px]">
@@ -123,10 +133,15 @@ function StudentProgressPanel({ overview, loading, error, onOpenClient }) {
               ['Precisión media', summary?.averageAccuracyPercent !== null && summary?.averageAccuracyPercent !== undefined ? `${summary.averageAccuracyPercent}%` : 'Sin datos'],
               ['Requieren seguimiento', String(summary?.attentionCount || 0)],
             ].map(([label, value]) => (
-              <div key={label} className="specialist-progress-summary__item">
-                <span className="specialist-progress-summary__label">{label}</span>
-                <strong className="specialist-progress-summary__value">{value}</strong>
-              </div>
+              <MetricCard
+                key={label}
+                value={value}
+                label={label}
+                helpText={summaryHelpText[label]}
+                className="specialist-progress-summary__item"
+                valueClassName="specialist-progress-summary__value"
+                labelClassName="specialist-progress-summary__label"
+              />
             ))}
           </div>
 
@@ -1185,6 +1200,7 @@ function Activities() {
 
 /* ── Objects page ──────────────────────────────────────────────────────── */
 function Objects() {
+  const currentUser = useAuthStore(state => state.user);
   const [objects,  setObjects]  = useState([]);
   const [cats,     setCats]     = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -1238,6 +1254,8 @@ function Objects() {
   const getRepresentation = (object, level) => object.representations?.find(rep => rep.level === level);
   const repDraftKey = (objectId, level) => `${objectId}:${level}`;
   const apiLevelFor = (level) => ({ model_3d: '1', photo: '2', drawing: '3' }[level]);
+  const canManageObject = (object) => Boolean(object?.ownerId && object.ownerId === currentUser?.id);
+  const isReadOnlyObject = Boolean(editObj && !canManageObject(editObj));
 
   const refreshObject = async (objectId) => {
     const refreshed = await objectsApi.get(objectId);
@@ -1262,6 +1280,10 @@ function Objects() {
   };
 
   const openEdit = (object) => {
+    if (!canManageObject(object)) {
+      return;
+    }
+
     const model3d = getRepresentation(object, 'model_3d');
     const photo = getRepresentation(object, 'photo');
     const drawing = getRepresentation(object, 'drawing');
@@ -1293,6 +1315,11 @@ function Objects() {
   };
 
   const save = async () => {
+    if (editObj && !canManageObject(editObj)) {
+      setFeedback({ type: 'error', message: 'Los objetos públicos del catálogo son de solo lectura para especialistas.' });
+      return;
+    }
+
     setSaving(true);
     setFeedback(null);
 
@@ -1340,6 +1367,12 @@ function Objects() {
   const del = async () => { await objectsApi.delete(delId); setObjects(p=>p.filter(o=>o.id!==delId)); setDelId(null); };
 
   const uploadRep = async (objId, level, file) => {
+    const object = objects.find((item) => item.id === objId);
+    if (!canManageObject(object)) {
+      setFeedback({ type: 'error', message: 'Solo puedes subir archivos en objetos privados creados por ti.' });
+      return;
+    }
+
     const fd = new FormData();
     fd.append('file', file);
     fd.append('level', level);
@@ -1348,6 +1381,12 @@ function Objects() {
   };
 
   const saveRepUrl = async (objectId) => {
+    const object = objects.find((item) => item.id === objectId);
+    if (!canManageObject(object)) {
+      setFeedback({ type: 'error', message: 'Solo puedes editar representaciones de objetos privados creados por ti.' });
+      return;
+    }
+
     const key = repDraftKey(objectId, 'model_3d');
     const value = (repDrafts[key] || '').trim();
     if (!value) return;
@@ -1363,6 +1402,12 @@ function Objects() {
   };
 
   const deleteRep = async (objectId, level) => {
+    const object = objects.find((item) => item.id === objectId);
+    if (!canManageObject(object)) {
+      setFeedback({ type: 'error', message: 'Solo puedes eliminar representaciones de objetos privados creados por ti.' });
+      return;
+    }
+
     const key = repDraftKey(objectId, level);
     setRepActionKey(key);
     try {
@@ -1409,6 +1454,7 @@ function Objects() {
           const has3d = reps.some(r=>r.level==='model_3d');
           const hasPhoto = reps.some(r=>r.level==='photo');
           const hasDraw  = reps.some(r=>r.level==='drawing');
+          const canManage = canManageObject(o);
           return (
             <div key={o.id} className={`bg-[var(--sf)] border-2 rounded-[var(--rl)] overflow-hidden transition-colors ${expanded===o.id?'border-[var(--ac)]':'border-[var(--bd)]'}`}>
               <div className="object-card entity-list-row cursor-pointer" onClick={()=>setExpanded(expanded===o.id?null:o.id)}>
@@ -1432,8 +1478,14 @@ function Objects() {
                     <Badge className="entity-item-badge" variant={o.ownerId ? 'default' : 'green'}>{o.ownerId ? 'Privado' : 'Público'}</Badge>
                   </div>
                   <div className="object-card__actions">
-                    <ActionIconButton className="entity-action-btn" onClick={e=>{e.stopPropagation();openEdit(o);}} />
-                    <ActionIconButton action="delete" className="entity-action-btn" onClick={e=>{e.stopPropagation();setDelId(o.id);}} />
+                    {canManage ? (
+                      <>
+                        <ActionIconButton className="entity-action-btn" onClick={e=>{e.stopPropagation();openEdit(o);}} />
+                        <ActionIconButton action="delete" className="entity-action-btn" onClick={e=>{e.stopPropagation();setDelId(o.id);}} />
+                      </>
+                    ) : (
+                      <Badge className="entity-item-badge" variant="blue">Solo lectura</Badge>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1453,43 +1505,59 @@ function Objects() {
                               ? (
                                 <>
                                   <div className="relative aspect-video overflow-hidden rounded-[var(--r)] border border-[var(--bd)] bg-black/5"><iframe src={rep.model3dUrl} className="absolute inset-0 w-full h-full" allowFullScreen title={`${o.name} 3D`} /></div>
-                                  <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
-                                  <div className="flex gap-2">
-                                    <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
-                                    <ActionIconButton action="delete" onClick={() => deleteRep(o.id, lvl)} disabled={isBusy} />
-                                  </div>
+                                  {canManage ? (
+                                    <>
+                                      <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
+                                      <div className="flex gap-2">
+                                        <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
+                                        <ActionIconButton action="delete" onClick={() => deleteRep(o.id, lvl)} disabled={isBusy} />
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <p className="text-xs text-[var(--tx3)]">Representación pública del catálogo. Crea un objeto privado si necesitas modificarla.</p>
+                                  )}
                                 </>
                               )
                               : (
                                 <>
                                   <img src={rep.fileUrl} alt="" className="w-full h-32 rounded-[var(--r)] border border-[var(--bd)] object-cover bg-white" />
-                                  <div className="flex gap-2">
-                                    <label className="inline-flex items-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer whitespace-nowrap px-2.5 py-1 text-xs bg-[var(--sf)] text-[var(--tx)] border-[var(--bd)] hover:bg-[var(--bg2)]">
-                                      Reemplazar
-                                      <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadRep(o.id, n, e.target.files[0])} />
-                                    </label>
-                                    <ActionIconButton action="delete" onClick={() => deleteRep(o.id, lvl)} disabled={isBusy} />
-                                  </div>
+                                  {canManage ? (
+                                    <div className="flex gap-2">
+                                      <label className="inline-flex items-center gap-1.5 font-bold rounded-[var(--r)] border transition-all cursor-pointer whitespace-nowrap px-2.5 py-1 text-xs bg-[var(--sf)] text-[var(--tx)] border-[var(--bd)] hover:bg-[var(--bg2)]">
+                                        Reemplazar
+                                        <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadRep(o.id, n, e.target.files[0])} />
+                                      </label>
+                                      <ActionIconButton action="delete" onClick={() => deleteRep(o.id, lvl)} disabled={isBusy} />
+                                    </div>
+                                  ) : (
+                                    <p className="text-xs text-[var(--tx3)]">Representación pública del catálogo. Crea un objeto privado si necesitas modificarla.</p>
+                                  )}
                                 </>
                               )
                             }
                           </>
                         ) : (
                           <div className="border-2 border-dashed border-[var(--bd)] rounded-lg p-4 text-center bg-white">
-                            {lvl==='model_3d' ? (
-                              <>
-                                <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
-                                <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
-                              </>
-                            ) : (
-                              <>
-                                <p className="text-[var(--tx3)] text-xs mb-1">Sin archivo</p>
-                                <label className="text-xs text-[var(--ac)] font-bold cursor-pointer">
-                                  📁 Subir
-                                  <input type="file" accept="image/*" className="hidden" onChange={e=>e.target.files[0]&&uploadRep(o.id,n,e.target.files[0])} />
-                                </label>
-                              </>
-                            )}
+                            {lvl === 'model_3d'
+                              ? (canManage
+                                ? (
+                                  <>
+                                    <Input value={draftValue} onChange={e => setRepDrafts(prev => ({ ...prev, [draftKey]: e.target.value }))} placeholder="https://sketchfab.com/models/.../embed" />
+                                    <Button size="sm" onClick={() => saveRepUrl(o.id)} disabled={isBusy || !draftValue.trim()}>{isBusy ? 'Guardando...' : 'Guardar URL'}</Button>
+                                  </>
+                                )
+                                : <p className="text-[var(--tx3)] text-xs">Sin representación disponible en este objeto público.</p>)
+                              : (canManage
+                                ? (
+                                  <>
+                                    <p className="text-[var(--tx3)] text-xs mb-1">Sin archivo</p>
+                                    <label className="text-xs text-[var(--ac)] font-bold cursor-pointer">
+                                      📁 Subir
+                                      <input type="file" accept="image/*" className="hidden" onChange={e=>e.target.files[0]&&uploadRep(o.id,n,e.target.files[0])} />
+                                    </label>
+                                  </>
+                                )
+                                : <p className="text-[var(--tx3)] text-xs">Sin archivo disponible en este objeto público.</p>)}
                           </div>
                         )}
                       </div>
@@ -1504,15 +1572,16 @@ function Objects() {
       <Modal open={modal} onClose={closeModal} title={editObj?'Editar objeto':'Nuevo objeto'} maxWidth={860}>
         <div className="space-y-3">
           {feedback && <Notice variant={feedback.type}>{feedback.message}</Notice>}
+          {isReadOnlyObject && <Notice variant="info">Los objetos públicos del catálogo son de solo lectura para especialistas.</Notice>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Input label="Nombre" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} />
-            <Input label="Emoji"  value={form.em}   onChange={e=>setForm({...form,em:e.target.value})} />
-            <Select label="Categoría" value={form.category_id} onChange={e=>setForm({...form,category_id:e.target.value})}>
+            <Input label="Nombre" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} disabled={isReadOnlyObject} />
+            <Input label="Emoji"  value={form.em}   onChange={e=>setForm({...form,em:e.target.value})} disabled={isReadOnlyObject} />
+            <Select label="Categoría" value={form.category_id} onChange={e=>setForm({...form,category_id:e.target.value})} disabled={isReadOnlyObject}>
             <option value="">Selecciona...</option>
             {cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
           </div>
-          <Input label="URL del fichero 3D" value={form.model3d} onChange={e=>setForm({...form,model3d:e.target.value})} placeholder="https://sketchfab.com/models/.../embed" />
+          <Input label="URL del fichero 3D" value={form.model3d} onChange={e=>setForm({...form,model3d:e.target.value})} placeholder="https://sketchfab.com/models/.../embed" disabled={isReadOnlyObject} />
           {form.model3d && (
             <div className="modal-panel space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
               <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Previsualización 3D</p>
@@ -1524,10 +1593,14 @@ function Objects() {
           <div className="grid gap-3 md:grid-cols-2">
             <div className="modal-panel space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
               <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Foto</p>
-              <label className="modal-upload flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--ac)]">
-                Subir foto
-                <input type="file" accept="image/*" className="hidden" onChange={e => setFilePreview('photoFile', 'photoPreview', e.target.files?.[0] || null)} />
-              </label>
+              {isReadOnlyObject ? (
+                <div className="modal-upload flex items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--tx3)]">Solo lectura</div>
+              ) : (
+                <label className="modal-upload flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--ac)]">
+                  Subir foto
+                  <input type="file" accept="image/*" className="hidden" onChange={e => setFilePreview('photoFile', 'photoPreview', e.target.files?.[0] || null)} />
+                </label>
+              )}
               {form.photoPreview ? (
                 <img src={form.photoPreview} alt="Previsualización de foto" className="h-40 w-full rounded-[var(--r)] border border-[var(--bd)] object-cover bg-white" />
               ) : (
@@ -1536,10 +1609,14 @@ function Objects() {
             </div>
             <div className="modal-panel space-y-2 rounded-[var(--r)] border border-[var(--bd)] bg-[var(--bg2)] p-3">
               <p className="text-[.68rem] font-bold uppercase tracking-wider text-[var(--tx3)]">Dibujo</p>
-              <label className="modal-upload flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--ac)]">
-                Subir dibujo
-                <input type="file" accept="image/*" className="hidden" onChange={e => setFilePreview('drawingFile', 'drawingPreview', e.target.files?.[0] || null)} />
-              </label>
+              {isReadOnlyObject ? (
+                <div className="modal-upload flex items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--tx3)]">Solo lectura</div>
+              ) : (
+                <label className="modal-upload flex cursor-pointer items-center justify-center rounded-[var(--r)] border border-dashed border-[var(--bd)] bg-white text-sm font-bold text-[var(--ac)]">
+                  Subir dibujo
+                  <input type="file" accept="image/*" className="hidden" onChange={e => setFilePreview('drawingFile', 'drawingPreview', e.target.files?.[0] || null)} />
+                </label>
+              )}
               {form.drawingPreview ? (
                 <img src={form.drawingPreview} alt="Previsualización de dibujo" className="h-40 w-full rounded-[var(--r)] border border-[var(--bd)] object-cover bg-white" />
               ) : (
@@ -1550,7 +1627,7 @@ function Objects() {
         </div>
         <div className="modal-actions flex gap-2 justify-end mt-4">
           <Button variant="secondary" onClick={closeModal} disabled={saving}>Cancelar</Button>
-          <Button disabled={saving || !form.name || !form.category_id} onClick={save}>{saving ? 'Guardando...' : editObj?'Guardar':'Crear'}</Button>
+          <Button disabled={saving || isReadOnlyObject || !form.name || !form.category_id} onClick={save}>{saving ? 'Guardando...' : editObj?'Guardar':'Crear'}</Button>
         </div>
       </Modal>
       <Confirm open={!!delId} message="Se eliminará el objeto y sus representaciones." onConfirm={del} onCancel={()=>setDelId(null)} />

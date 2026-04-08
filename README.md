@@ -205,11 +205,11 @@ El resultado queda en `client/dist`.
 
 La suite E2E usa Playwright y cubre los flujos críticos base:
 
-* login por rol
-* gestión administrativa con alta y baja básica
-* suscripciones
-* asignación masiva del especialista
-* arranque del juego del cliente
+*   login por rol
+*   gestión administrativa con alta y baja básica
+*   suscripciones
+*   asignación masiva del especialista
+*   arranque del juego del cliente
 
 Preparación inicial:
 
